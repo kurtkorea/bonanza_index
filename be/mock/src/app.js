@@ -6,11 +6,14 @@ const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
 const log = require('./utils/logger');
+const { send_push } = require("./utils/zmq-sender-push.js");
+
 
 const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/mockup_time_weight_execution');
 
 // Start of Selection
 global.logging = false;
+global.sock = null;
 
 if (process.env.NODE_ENV === "production") {
 	dotenv.config({ path: path.join(__dirname, "../env/prod.env") });
@@ -87,7 +90,6 @@ app.use((err, req, res, next) => {
 async function initializeApp() {
 	try {
 		// servier 초기화
-
 		// (await Message.findAll({ where: { message_use: true }, attributes: { exclude: ["message_desc", "createdAt", "updatedAt"] }, logging, raw: true })).forEach(
 		// 	(row) => (message[row.message_key] = { msg: row.message_msg, code: row.message_code }),
 		// );
@@ -98,6 +100,11 @@ async function initializeApp() {
 }
 
 initializeApp();
+
+// Start the server
+const server = app.listen(app.get("port"), () => {
+	console.log(`Server is running on port ${app.get("port")}`);
+});
 
 
 

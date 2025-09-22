@@ -261,8 +261,8 @@ class KorbitClient {
       try {
         const msg = JSON.parse(raw.toString());
         if (msg.type === "orderbook" && msg.data) {
-          const a = (msg.data.asks || []).map(x => [x.price ?? x[0], x.quantity ?? x[1]]);
-          const b = (msg.data.bids || []).map(x => [x.price ?? x[0], x.quantity ?? x[1]]);
+          const a = (msg.data.asks || []).map(x => [x.price, x.qty]);
+          const b = (msg.data.bids || []).map(x => [x.price, x.qty]);
           cb(this.name, normalize(b, a));
         }
       } catch (e) {
