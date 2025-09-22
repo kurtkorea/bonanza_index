@@ -7,7 +7,7 @@ const dotenv = require("dotenv");
 const http = require('http');
 const log = require('./utils/logger');
 
-const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/mockup_time_weight');
+const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/mockup_time_weight_execution');
 
 // Start of Selection
 global.logging = false;
