@@ -1,54 +1,30 @@
 "use strict";
 
 /**
- * 국내 4대 거래소(업비트/빗썸/코빗/코인원) 오더북 통합 VWAP & Mid 산출
- * - 심볼: BTC/KRW (각 거래소 형식으로 매핑)
- * - depth: 15단계 고정 (매수 15, 매도 15)
- * - 1초 주기 산출 (TICK_MS 환경변수로 조절 가능)
- * - 로깅: Winston
+ * 국내 4대 거래소(업비트/빗썸/코빗/코인원) 실시간 오더북 통합
+ * - 심볼: BTC/KRW (각 거래소 포맷으로 매핑)
+ * - depth: 15호가
+ * - 1초 주기 산출 (TICK_MS로 조절)
+ * - 로그: Winston(JSON)
  */
 
 const WebSocket = require("ws");
 const winston = require("winston");
+const { vwapBuyFromAsk, vwapSellFromBid } = require("../utils/vwap");
 
 // ===== 설정 =====
-const DEPTH   = 15; // 요청하신대로 15단계 고정
+const DEPTH   = 15;
 const TICK_MS = Number(process.env.TICK_MS || 1000);
 
-// ===== Winston 로거 =====
+// ===== 로거 =====
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
+  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
   transports: [new winston.transports.Console()],
 });
 
-// ===== 공통 유틸 =====
+// ===== 유틸 =====
 const toNum = (x) => (typeof x === "string" ? Number(x) : x);
-
-function vwap(levels) {
-  let sumPQ = 0, sumQ = 0;
-  for (const { price, qty } of levels) {
-    if (price > 0 && qty > 0) { sumPQ += price * qty; sumQ += qty; }
-  }
-  return sumQ > 0 ? sumPQ / sumQ : 0;
-}
-
-function computeIndex(books) {
-  const allAsks = [], allBids = [];
-  for (const ex in books) {
-    const b = books[ex];
-    if (!b) continue;
-    if (b.asks?.length) allAsks.push(...b.asks);
-    if (b.bids?.length) allBids.push(...b.bids);
-  }
-  const askVWAP = vwap(allAsks);
-  const bidVWAP = vwap(allBids);
-  const mid = (askVWAP + bidVWAP) / 2;
-  return { askVWAP, bidVWAP, mid };
-}
 
 function normalize(bids, asks) {
   const nb = bids
@@ -66,14 +42,28 @@ function normalize(bids, asks) {
   return { bids: nb, asks: na };
 }
 
-// ===== 1) 업비트 =====
+function computeAll(books) {
+  const allAsks = [], allBids = [];
+  for (const ex in books) {
+    const b = books[ex]; if (!b) continue;
+    if (b.asks?.length) allAsks.push(...b.asks);
+    if (b.bids?.length) allBids.push(...b.bids);
+  }
+  const buyVWAP  = vwapBuyFromAsk(allAsks, DEPTH);  // 매수 VWAP (Ask 기준)
+  const sellVWAP = vwapSellFromBid(allBids, DEPTH); // 매도 VWAP (Bid 기준)
+  const midVWAP  = (buyVWAP + sellVWAP) / 2;
+  return { buyVWAP, sellVWAP, midVWAP };
+}
+
+// ===== 거래소별 클라이언트 =====
+
+// 업비트
 class UpbitClient {
   constructor(code = "KRW-BTC") {
     this.name = "upbit";
-    this.url = "wss://api.upbit.com/websocket/v1";
+    this.url  = "wss://api.upbit.com/websocket/v1";
     this.code = code;
-    /** @type {WebSocket|null} */
-    this.ws = null;
+    this.ws   = null;
     this.book = { bids: [], asks: [] };
   }
   start(onbook) {
@@ -82,10 +72,10 @@ class UpbitClient {
       const req = [
         { ticket: "vwap-sample" },
         { type: "orderbook", codes: [this.code] },
-        { format: "SIMPLE" }, // SIMPLE: ap/bp/as/bs, obu
+        { format: "SIMPLE" }, // ap/bp/as/bs, obu
       ];
       this.ws.send(Buffer.from(JSON.stringify(req), "utf8"));
-      logger.info({ ex: this.name, code: this.code, msg: "subscribed" });
+      logger.info({ ex: this.name, msg: "subscribed", code: this.code });
     });
     this.ws.on("message", (buf) => {
       try {
@@ -106,13 +96,13 @@ class UpbitClient {
   }
 }
 
-// ===== 2) 빗썸 =====
+// 빗썸
 class BithumbClient {
   constructor(code = "KRW-BTC") {
     this.name = "bithumb";
-    this.url = "wss://ws-api.bithumb.com/websocket/v1";
+    this.url  = "wss://ws-api.bithumb.com/websocket/v1";
     this.code = code;
-    this.ws = null;
+    this.ws   = null;
     this.book = { bids: [], asks: [] };
   }
   start(onbook) {
@@ -124,7 +114,7 @@ class BithumbClient {
         { format: "SIMPLE" },
       ];
       this.ws.send(JSON.stringify(req));
-      logger.info({ ex: this.name, code: this.code, msg: "subscribed" });
+      logger.info({ ex: this.name, msg: "subscribed", code: this.code });
     });
     this.ws.on("message", (raw) => {
       try {
@@ -145,13 +135,13 @@ class BithumbClient {
   }
 }
 
-// ===== 3) 코빗 =====
+// 코빗
 class KorbitClient {
   constructor(symbol = "btc_krw") {
     this.name = "korbit";
-    this.url = "wss://ws-api.korbit.co.kr/v2/public";
+    this.url  = "wss://ws-api.korbit.co.kr/v2/public";
     this.symbol = symbol;
-    this.ws = null;
+    this.ws   = null;
     this.book = { bids: [], asks: [] };
   }
   start(onbook) {
@@ -159,7 +149,7 @@ class KorbitClient {
     this.ws.on("open", () => {
       const req = JSON.stringify([{ method: "subscribe", type: "orderbook", symbols: [this.symbol] }]);
       this.ws.send(req);
-      logger.info({ ex: this.name, symbol: this.symbol, msg: "subscribed" });
+      logger.info({ ex: this.name, msg: "subscribed", symbol: this.symbol });
     });
     this.ws.on("message", (raw) => {
       try {
@@ -179,14 +169,14 @@ class KorbitClient {
   }
 }
 
-// ===== 4) 코인원 =====
+// 코인원
 class CoinoneClient {
   constructor(qc = "KRW", tc = "BTC") {
     this.name = "coinone";
-    this.url = "wss://stream.coinone.co.kr";
-    this.qc = qc;
-    this.tc = tc;
-    this.ws = null;
+    this.url  = "wss://stream.coinone.co.kr";
+    this.qc   = qc;
+    this.tc   = tc;
+    this.ws   = null;
     this.book = { bids: [], asks: [] };
     this.pingInterval = null;
   }
@@ -197,12 +187,11 @@ class CoinoneClient {
         request_type: "SUBSCRIBE",
         channel: "ORDERBOOK",
         topic: { quote_currency: this.qc, target_currency: this.tc },
-        format: "SHORT", // p/q
+        format: "SHORT",
       };
       this.ws.send(JSON.stringify(sub));
-      logger.info({ ex: this.name, qc: this.qc, tc: this.tc, msg: "subscribed" });
+      logger.info({ ex: this.name, msg: "subscribed", qc: this.qc, tc: this.tc });
 
-      // 권장: 주기적 PING (유휴 연결 종료 방지)
       this.pingInterval = setInterval(() => {
         try { this.ws?.send(JSON.stringify({ request_type: "PING" })); } catch {}
       }, 20 * 60 * 1000);
@@ -229,6 +218,27 @@ class CoinoneClient {
   }
 }
 
+function computePerExchange(book) {
+  const buyVWAP  = vwapBuyFromAsk(book.asks, DEPTH);   // 매수 VWAP = Ask 기반
+  const sellVWAP = vwapSellFromBid(book.bids, DEPTH);  // 매도 VWAP = Bid 기반
+  const midVWAP  = (buyVWAP + sellVWAP) / 2;
+  return { buyVWAP, sellVWAP, midVWAP };
+}
+
+// ---- 기존: 통합 VWAP (모든 거래소 합산)
+function computeAggregate(books) {
+  const allAsks = [], allBids = [];
+  for (const ex in books) {
+    const b = books[ex]; if (!b) continue;
+    if (b.asks?.length) allAsks.push(...b.asks);
+    if (b.bids?.length) allBids.push(...b.bids);
+  }
+  const buyVWAP  = vwapBuyFromAsk(allAsks, DEPTH);
+  const sellVWAP = vwapSellFromBid(allBids, DEPTH);
+  const midVWAP  = (buyVWAP + sellVWAP) / 2;
+  return { buyVWAP, sellVWAP, midVWAP };
+}
+
 // ===== 실행부 =====
 const books = {};
 const clients = [
@@ -238,33 +248,46 @@ const clients = [
   new CoinoneClient("KRW", "BTC"),
 ];
 
-clients.forEach((c) => {
-  c.start((name, book) => {
-    books[name] = book;
-  });
-});
+// clients.forEach((c) => c.start((name, book) => { books[name] = book; }));
 
-// 1초마다 지수 산출
-setInterval(() => {
+// setInterval(() => {
+//   const names = Object.keys(books);
+//   if (!names.length) return;
 
-  
-  if (Object.keys(books).length === 0) return;
-  const { askVWAP, bidVWAP, mid } = computeIndex(books);
-  if (askVWAP && bidVWAP) {
-    logger.info({
-      t: new Date().toISOString(),
-      bidVWAP: Number(bidVWAP.toFixed(2)),
-      askVWAP: Number(askVWAP.toFixed(2)),
-      midVWAP: Number(mid.toFixed(2)),
-      sources: Object.keys(books),
-      depth: DEPTH,
-    });
-  }
-}, TICK_MS);
+//   // 1) 거래소별 로그
+//   for (const name of names) {
+//     const { buyVWAP, sellVWAP, midVWAP } = computePerExchange(books[name]);
+//     if (buyVWAP && sellVWAP) {
+//       console.log({
+//         type: "per-exchange",
+//         exchange: name,
+//         t: new Date().toISOString(),
+//         depth: DEPTH,
+//         buyVWAP:  Number(buyVWAP.toFixed(2)),   // 매수 VWAP (Ask 기반)
+//         sellVWAP: Number(sellVWAP.toFixed(2)),  // 매도 VWAP (Bid 기반)
+//         midVWAP:  Number(midVWAP.toFixed(2)),
+//       });
+//     }
+//   }
 
-// 안전 종료
-process.on("SIGINT", () => {
-  logger.warn("Stopping...");
-  try { clients.forEach((c) => c.ws && c.ws.close()); } catch {}
-  process.exit(0);
-});
+//   // 2) 통합(집계) 로그
+//   const agg = computeAggregate(books);
+//   if (agg.buyVWAP && agg.sellVWAP) {
+//     console.log({
+//       type: "aggregate",
+//       t: new Date().toISOString(),
+//       depth: DEPTH,
+//       sources: names,
+//       buyVWAP:  Number(agg.buyVWAP.toFixed(2)),
+//       sellVWAP: Number(agg.sellVWAP.toFixed(2)),
+//       midVWAP:  Number(agg.midVWAP.toFixed(2)),
+//     });
+//   }
+// }, TICK_MS);
+
+// // 안전 종료 핸들러 동일
+// process.on("SIGINT", () => {
+//   logger.warn("Stopping...");
+//   try { clients.forEach((c) => c.ws && c.ws.close()); } catch {}
+//   process.exit(0);
+// });

@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { respMsg } = require("../common");
+const { respMsg } = require("../utils/common");
 /**
  * @param {HttpRequest} req
  * @param {HttpResponse} resp

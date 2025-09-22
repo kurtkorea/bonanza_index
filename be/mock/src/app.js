@@ -5,12 +5,9 @@
 const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
-const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/mockup');
-
 const log = require('./utils/logger');
-const { toNum, vwap, computeIndex, normalize } = require('./service/mockup');
 
-
+const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/mockup_time_weight');
 
 // Start of Selection
 global.logging = false;
@@ -68,7 +65,7 @@ if (process.env.NODE_ENV === "production") {
 }
 
 //routers
-const { respMsg } = require("./common");
+const { respMsg } = require("./utils/common");
 
 //discovery register
 // const discovery = require("./discovery");

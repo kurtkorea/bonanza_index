@@ -4,10 +4,10 @@ const { Router } = require("express");
 const router = Router();
 
 const { verifyToken, verifyTokenRole } = require("../middleware/token");
-const { respMsgStr, respData, respMsg } = require("../common");
+const { respMsgStr, respData, respMsg } = require("../utils/common");
 const { verifyData, verifyTypes } = require("../middleware/verify");
 const { OpenOrder } = require("../../models");
-const common= require("../common");
+const common= require("../utils/common");
 
 router.use("/*", (req, resp, next) => {
 	//#swagger.tags = ["Advertise"]

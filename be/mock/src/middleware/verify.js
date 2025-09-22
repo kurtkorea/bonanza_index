@@ -1,4 +1,4 @@
-const { respMsg } = require("../common");
+const { respMsg } = require("../utils/common");
 
 exports.verifyTypes = Object.freeze({ Header: "headers", Body: "body", Query: "query", Param: "params" });
 
