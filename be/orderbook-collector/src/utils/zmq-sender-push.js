@@ -20,7 +20,7 @@ async function send_push(topic, ts, payload) {
   try {
     if (!q) {
       await initZmq();
-      await startPull();
+      // await startPull();
     }
     const payload_str = JSON.stringify(payload);
     return q.send([topic, ts, payload_str]);

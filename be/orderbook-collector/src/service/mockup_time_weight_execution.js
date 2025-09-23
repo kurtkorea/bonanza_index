@@ -216,8 +216,9 @@ class UpbitClient {
           const units = msg.obu || msg.orderbook_units || [];
 
           const fromAt = new Date(msg.tms);
-          const bids = units.map(u => [u.bp ?? u.bid_price, u.bs ?? u.bid_size]);
-          const asks = units.map(u => [u.ap ?? u.ask_price, u.as ?? u.ask_size]);
+          // 15개까지만 자르기
+          const bids = units.slice(0, 15).map(u => [u.bp ?? u.bid_price, u.bs ?? u.bid_size]);
+          const asks = units.slice(0, 15).map(u => [u.ap ?? u.ask_price, u.as ?? u.ask_size]);
 
           //ZMQ 로 다른 DB 저장 프로세스에 전달한다. => 거래소 별로 처리할지 거래소_코드 별로 처리할지 고민해야될듯.
           const orderbook_item = {
@@ -269,8 +270,9 @@ class BithumbClient {
         if ((msg.ty ?? msg.type) === "orderbook") {
           const fromAt = new Date(msg.tms);
           const units = msg.obu || msg.orderbook_units || [];
-          const bids = units.map(u => [u.bp ?? u.bid_price, u.bs ?? u.bid_size]);
-          const asks = units.map(u => [u.ap ?? u.ask_price, u.as ?? u.ask_size]);
+          // 15개까지만 추출
+          const bids = units.slice(0, 15).map(u => [u.bp ?? u.bid_price, u.bs ?? u.bid_size]);
+          const asks = units.slice(0, 15).map(u => [u.ap ?? u.ask_price, u.as ?? u.ask_size]);
 
           //ZMQ 로 다른 DB 저장 프로세스에 전달한다. => 거래소 별로 처리할지 거래소_코드 별로 처리할지 고민해야될듯.
           const orderbook_item = {
@@ -318,8 +320,9 @@ class KorbitClient {
         const msg = JSON.parse(raw.toString());
         if (msg.type === "orderbook" && msg.data) {
           const fromAt = new Date(msg.timestamp);
-          const bids = (msg.data.bids || []).map(x => [Number(x.price), Number(x.qty)]);
-          const asks = (msg.data.asks || []).map(x => [Number(x.price), Number(x.qty)]);
+          // 15개까지만 추출
+          const bids = (msg.data.bids || []).slice(0, 15).map(x => [Number(x.price), Number(x.qty)]);
+          const asks = (msg.data.asks || []).slice(0, 15).map(x => [Number(x.price), Number(x.qty)]);
 
           const orderbook_item = {
             symbol: process.env.SYMBOL ?? "KRW-BTC",
@@ -381,8 +384,9 @@ class CoinoneClient {
           const fromAt = new Date(d.t || Date.now());
 
           //코인원은 String 타입이다.
-          const bids = (d.b || d.bids || []).map(u => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]);
-          const asks = (d.a || d.asks || []).map(u => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]);
+          // 15개까지만 자르기
+          const bids = (d.b || d.bids || []).map(u => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, 15);
+          const asks = (d.a || d.asks || []).map(u => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, 15);
 
           const orderbook_item = {
             symbol: process.env.SYMBOL ?? "KRW-BTC",
@@ -394,7 +398,7 @@ class CoinoneClient {
             createdAt: new Date(Date.now()),
           };
 
-          // await SendToOrderBook_ZMQ(orderbook_item);
+          await SendToOrderBook_ZMQ(orderbook_item);
 
           cb(this.market_no, normalize(bids, asks));
         }
@@ -417,7 +421,12 @@ async function SendToOrderBook_ZMQ(orderbook_item) {
 
   const topic = `${orderbook_item.exchange_no}-${orderbook_item.symbol}`;
 
-  await send_push(topic, Date.now(), orderbook_item);
+  const ts = Date.now();
+  await send_push(topic, ts, orderbook_item);
+
+  let total_len = orderbook_item.bid.length + orderbook_item.ask.length;
+
+  console.log(`[WORK] ${topic} @ ${orderbook_item.createdAt instanceof Date ? orderbook_item.createdAt.getTime() : orderbook_item.createdAt}`, `total_count: ${total_len}, bid_count: ${orderbook_item.bid.length}, ask_count: ${orderbook_item.ask.length}`);
 
   // 실제 구현에서는 외부 시스템이나 DB, 혹은 메시지 큐로 전송할 수 있음
   // 여기서는 예시로 콘솔에 출력

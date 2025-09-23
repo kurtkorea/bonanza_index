@@ -3,14 +3,14 @@
 	"version": "1.0.0",
 	"main": "app.js",
 	"scripts": {
-		"restart": "npx pm2 delete file && npm run start-prod",
+		"restart": "npx pm2 delete collector && npm run start-prod",
 		"build": "babel src -d dist",
 		"swagger-prod": "npx cross-env NODE_ENV=production node swagger.js",
 		"swagger": "npx cross-env NODE_ENV=dev nodemon --ignore swagger_autogen.json swagger.js",
-		"start-prod": "npm run build && npm run swagger-prod && cross-env NODE_ENV=production pm2 start --time --name file dist/app.js",
+		"start-prod": "npm run build && npm run swagger-prod && cross-env NODE_ENV=production pm2 start --time --name collector dist/app.js",
 		"start": "start npm run swagger && npx cross-env NODE_ENV=dev nodemon --ignore swagger_autogen.json --exec babel-node src/app.js"
 	},
-	"author": "zenaway",
+	"author": "kurtkorea@gmail.com",
 	"license": "MIT",
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.423.0",
