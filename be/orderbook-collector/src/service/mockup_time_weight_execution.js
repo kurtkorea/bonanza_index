@@ -386,7 +386,7 @@ class CoinoneClient {
           //코인원은 String 타입이다.
           // 15개까지만 자르기
           const bids = (d.b || d.bids || []).map(u => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, 15);
-          const asks = (d.a || d.asks || []).map(u => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, 15);
+          const asks = (d.a || d.asks || []).reverse().map(u => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, 15);
 
           const orderbook_item = {
             symbol: process.env.SYMBOL ?? "KRW-BTC",
@@ -426,7 +426,7 @@ async function SendToOrderBook_ZMQ(orderbook_item) {
 
   let total_len = orderbook_item.bid.length + orderbook_item.ask.length;
 
-  console.log(`[WORK] ${topic} @ ${orderbook_item.createdAt instanceof Date ? orderbook_item.createdAt.getTime() : orderbook_item.createdAt}`, `total_count: ${total_len}, bid_count: ${orderbook_item.bid.length}, ask_count: ${orderbook_item.ask.length}`);
+  // console.log(`[WORK] ${topic} @ ${orderbook_item.createdAt instanceof Date ? orderbook_item.createdAt.getTime() : orderbook_item.createdAt}`, `total_count: ${total_len}, bid_count: ${orderbook_item.bid.length}, ask_count: ${orderbook_item.ask.length}`);
 
   // 실제 구현에서는 외부 시스템이나 DB, 혹은 메시지 큐로 전송할 수 있음
   // 여기서는 예시로 콘솔에 출력

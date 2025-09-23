@@ -361,7 +361,7 @@ async function processMessage(topicBuf, tsBuf, payloadBuf) {
 
     // 필요시 개별 로직…
     // console.log(`[WORK] ${topicBuf} @ ${ts}`, data);
-    console.log(`[WORK] ${topicBuf} @ ${ts}`, `total_count: ${total_count}, bid_count: ${bid_count}, ask_count: ${ask_count}`);
+    // console.log(`[WORK] ${topicBuf} @ ${ts}`, `total_count: ${total_count}, bid_count: ${bid_count}, ask_count: ${ask_count}`);
   }
 
 /** =========================
@@ -472,7 +472,7 @@ async function startPullQueue() {
         //   lines.push(toILP(topic, d.fromAt ?? ts, row));
         // }
 
-        console.log(`[WORK] ${topic} @ ${new Date(d.createdAt).getTime()}`, `total_count: ${total_count}, bid_count: ${bid_count}, ask_count: ${ask_count}`);
+        // console.log(`[WORK] ${topic} @ ${new Date(d.createdAt).getTime()}`, `total_count: ${total_count}, bid_count: ${bid_count}, ask_count: ${ask_count}`);
       }
 
       if (lines.length) {
