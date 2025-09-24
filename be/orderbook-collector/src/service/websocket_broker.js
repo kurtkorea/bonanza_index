@@ -288,7 +288,6 @@ class BithumbClient {
 
           await SendToOrderBook_ZMQ(orderbook_item);
 
-
           cb(this.market_no, normalize(bids, asks));
         }
       } catch (e) {
@@ -418,12 +417,12 @@ async function SendToOrderBook_ZMQ(orderbook_item) {
   const topic = `${orderbook_item.exchange_no}/${orderbook_item.symbol}`;
   const ts = Date.now();
   // ZMQ PUSH 방식으로 전송 => DB에 호가를 저장하는 프로세스에 전송
-  await send_push(topic, ts, orderbook_item);
   // ZMQ PUB 방식으로 전송 => 각 거래소/SYMBOL 별로 전송하고 각 프로세스에서 지수 산출하고 DB 저장
-  await send_publisher(topic, ts, orderbook_item);
+  await Promise.all([
+    send_push(topic, ts, orderbook_item),
+    send_publisher(orderbook_item.symbol, orderbook_item)
+  ]);
 }
-
-
 /** ------------------- 실행부 ------------------- */
 
 // 스냅샷 수신 → 역전 제외 포함한 시간가중 누적(개별/집계)

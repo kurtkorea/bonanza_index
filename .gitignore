@@ -2,3 +2,4 @@
 /be/orderbook-collector/package-lock.json
 /be/storage-worker/logs
 /be/storage-worker/package-lock.json
+/be/index-preprocess/logs

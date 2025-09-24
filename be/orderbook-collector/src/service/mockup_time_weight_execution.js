@@ -423,7 +423,7 @@ async function SendToOrderBook_ZMQ(orderbook_item) {
   // ZMQ PUSH 방식으로 전송 => DB에 호가를 저장하는 프로세스에 전송
   await send_push(topic, ts, orderbook_item);
   // ZMQ PUB 방식으로 전송 => 각 거래소 && SYMBOL 별로 전송하고 각 프로세스에서 지수 산출하고 DB 저장
-  await send_pub(topic, ts, orderbook_item);
+  await send_publisher(topic, orderbook_item);
 }
 
 

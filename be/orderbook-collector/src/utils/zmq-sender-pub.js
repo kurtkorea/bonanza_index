@@ -63,7 +63,7 @@ async function init_zmq_pub() {
   }
 }
 
-async function send_publisher(topic, ts, payload) {
+async function send_publisher(topic, payload) {
   try {
     // 초기화가 필요한 경우
     if (!q || !pub) {
@@ -83,7 +83,8 @@ async function send_publisher(topic, ts, payload) {
     }
     
     const payload_str = JSON.stringify(payload);
-    return await q.send([topic, ts, payload_str]);
+
+    return await q.send([topic, payload_str]);
   } catch (error) {
     console.error("send_pub error:", error);
     
