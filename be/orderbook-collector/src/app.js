@@ -6,10 +6,9 @@ const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
 const log = require('./utils/logger');
-const { send_push } = require("./utils/zmq-sender-push.js");
+// const { send_push, getZMQStatus, healthCheckZMQ } = require("./utils/zmq-sender-push.js");
 
-
-const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/mockup_time_weight_execution');
+const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
 
 // Start of Selection
 global.logging = false;
@@ -17,10 +16,10 @@ global.sock = null;
 
 if (process.env.NODE_ENV === "production") {
 	dotenv.config({ path: path.join(__dirname, "../env/prod.env") });
-	logging = false;
+	global.logging = false;
 } else {
 	dotenv.config({ path: path.join(__dirname, "../env/dev.env") });
-	logging = true;
+	global.logging = true;
 }
 const express = require("express");
 const app = express();
@@ -31,8 +30,6 @@ var message = {};
 const cors = require("cors");
 const morgan = require("morgan");
 
-// swagger
-const swaggerUi = require("swagger-ui-express");
 
 //cors setting
 app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
@@ -51,16 +48,6 @@ app.use(morgan("dev", { skip: (req, resp) => resp.statusCode < 400 }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
 
-app.use(express.static("./swagger"));
-app.use(
-	"/doc",
-	swaggerUi.serve,
-	swaggerUi.setup(null, {
-		swaggerOptions: {
-			url: `${process.env.SWAGGER_URL}/swagger_autogen.json`,
-		},
-	}),
-);
 
 //proxy checker
 if (process.env.NODE_ENV === "production") {
@@ -69,6 +56,10 @@ if (process.env.NODE_ENV === "production") {
 
 //routers
 const { respMsg } = require("./utils/common");
+const commandRouter = require("./router/command");
+
+// 라우터 등록
+app.use("/api/command", commandRouter);
 
 //discovery register
 // const discovery = require("./discovery");

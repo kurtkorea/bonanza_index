@@ -1,36 +1,209 @@
-const zmq = require("zeromq");
-const { ZmqSendQueue } = require("./zmq-send-queue.js");
+/*
+  ZMQ PUSH 방식으로 메시지를 전송한다.
+  PURPOSE: 외부 시스템에 메시지를 전송하기 위해 사용 ORDERBOOK 및 TICKER 등을 전송
+           PUSH 로 전송 받은 프로세스에서는 DB에 저장하거나 다른 시스템에 전송.
+  USAGE: 
+    await send_push(topic, ts, payload);
+  PARAMETERS:
+    topic: 메시지 토픽
+    ts: 메시지 시간
+    payload: 메시지 내용
+  RETURN:
+    Promise
+  EXAMPLE:
+    await send_push("topic", Date.now(), { message: "Hello, World!" });
+*/
 
-const { startPull } = require("./zmq-ender-pull.js");
+const zmq = require("zeromq");
+const { ZmqSendQueuePush } = require("./zmq-sender-push-queue.js");
 
 let push = null;
 let q = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY = 5000; // 5초
 
 // 초기화 함수
-async function initZmq() {
+async function init_zmq_push() {
   if (!push) {
-    push = new zmq.Push();
-    await push.bind("tcp://0.0.0.0:5557");
-    q = new ZmqSendQueue(push);
+    try {
+      console.log(`Initializing ZMQ Push socket on port ${process.env.ZMQ_PUSH_PORT}...`);
+      
+      // ZMQ 소켓 생성
+      push = new zmq.Push();
+      
+      // 소켓이 올바르게 생성되었는지 확인
+      if (!push || typeof push.bind !== 'function') {
+        throw new Error('Failed to create ZMQ Push socket');
+      }
+      
+      // 바인딩 시도
+      await push.bind(`tcp://0.0.0.0:${process.env.ZMQ_PUSH_PORT}`);
+
+      // 큐 생성
+      q = new ZmqSendQueuePush(push);
+      
+      console.log(`✅ ZMQ Push socket initialized successfully on port ${process.env.ZMQ_PUSH_PORT}`);
+    } catch (error) {
+      console.error("❌ Failed to initialize ZMQ Push socket:", error);
+      
+      // 정리
+      if (push) {
+        try {
+          push.close();
+        } catch (closeError) {
+          console.warn("Error closing failed socket:", closeError.message);
+        }
+      }
+      
+      push = null;
+      q = null;
+      throw error;
+    }
   }
 }
 
-// 어디서든 겹쳐 호출해도 안전
 async function send_push(topic, ts, payload) {
   try {
-    if (!q) {
-      await initZmq();
+    // 초기화가 필요한 경우
+    if (!q || !push) {
+      await init_zmq_push();
     }
+    
+    // 초기화 후에도 실패한 경우
+    if (!q || !push) {
+      console.error("ZMQ queue or socket is not initialized");
+      return Promise.resolve();
+    }
+    
+    // 소켓 상태 확인
+    if (typeof push.send !== 'function') {
+      console.error("ZMQ socket is not properly initialized");
+      return Promise.resolve();
+    }
+    
     const payload_str = JSON.stringify(payload);
-    return q.send([topic, ts, payload_str]);
+    return await q.send([topic, ts, payload_str]);
   } catch (error) {
     console.error("send_push error:", error);
+    
+    // 연결 관련 에러인 경우 재연결 시도
+    if (error.message.includes("socket") || error.message.includes("bind") || error.message.includes("ZMQ") || error.message.includes("not initialized")) {
+      console.log("Attempting to reconnect ZMQ due to error:", error.message);
+      try {
+        const reconnectSuccess = await reconnectZMQ();
+        if (reconnectSuccess && q && push) {
+          console.log("Retrying message send after reconnection...");
+          const payload_str = JSON.stringify(payload);
+          return await q.send([topic, ts, payload_str]);
+        } else {
+          console.error("Reconnection failed, message will be dropped");
+        }
+      } catch (reconnectError) {
+        console.error("Failed to reconnect ZMQ:", reconnectError);
+      }
+    }
+    
     // ZMQ 초기화 실패 시에도 앱이 크래시되지 않도록 에러를 무시
     return Promise.resolve();
   }
 }
 
+// ZMQ 연결 상태 체크 함수
+function isZMQConnected() {
+  return push !== null && q !== null;
+}
+
+// ZMQ 연결 상태 상세 정보
+function getZMQStatus() {
+  return {
+    pushSocket: push !== null,
+    queue: q !== null,
+    connected: isZMQConnected(),
+    port: process.env.ZMQ_PUSH_PORT || 'undefined',
+    reconnectAttempts: reconnectAttempts,
+    maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS
+  };
+}
+
+// ZMQ 헬스체크 함수
+async function healthCheckZMQ() {
+  try {
+    if (!isZMQConnected()) {
+      return { status: 'disconnected', message: 'ZMQ not initialized' };
+    }
+    
+    // 간단한 테스트 메시지 전송으로 연결 상태 확인
+    const testPayload = { healthCheck: true, timestamp: Date.now() };
+    await q.send(['health-check', Date.now(), JSON.stringify(testPayload)]);
+    
+    return { status: 'connected', message: 'ZMQ is healthy' };
+  } catch (error) {
+    return { status: 'error', message: error.message };
+  }
+}
+
+// ZMQ 재연결 함수
+async function reconnectZMQ() {
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    console.error(`Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);
+    return false;
+  }
+  
+  reconnectAttempts++;
+  console.log(`Starting ZMQ reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}...`);
+  
+  try {
+    // 기존 연결 정리
+    if (push) {
+      try {
+        push.close();
+        console.log("Previous ZMQ socket closed");
+      } catch (closeError) {
+        console.warn("Error closing previous socket:", closeError.message);
+      }
+    }
+    
+    // 변수 초기화
+    push = null;
+    q = null;
+    
+    // 잠시 대기 (소켓 정리 시간)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // 새 연결 시도
+    await init_zmq_push();
+    console.log("✅ ZMQ reconnected successfully");
+    
+    // 성공 시 재연결 시도 횟수 리셋
+    reconnectAttempts = 0;
+    return true;
+  } catch (error) {
+    console.error(`❌ Failed to reconnect ZMQ (attempt ${reconnectAttempts}):`, error);
+    push = null;
+    q = null;
+    
+    // 다음 재연결 시도까지 대기
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      console.log(`Waiting ${RECONNECT_DELAY/1000} seconds before next attempt...`);
+      await new Promise(resolve => setTimeout(resolve, RECONNECT_DELAY));
+    }
+    
+    return false;
+  }
+}
+
+// 재연결 시도 횟수 리셋 함수
+function resetReconnectAttempts() {
+  reconnectAttempts = 0;
+  console.log("ZMQ reconnect attempts reset");
+}
+
 module.exports = {
     send_push,
-    initZmq
+    isZMQConnected,
+    reconnectZMQ,
+    getZMQStatus,
+    healthCheckZMQ,
+    resetReconnectAttempts,
 };

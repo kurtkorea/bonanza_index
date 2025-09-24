@@ -6,7 +6,7 @@ const sequelize = new Sequelize(process.env.DB_SCHEME, process.env.DB_USERNAME, 
 	host: process.env.DB_HOST,
 	port: process.env.DB_PORT,
 	dialect: process.env.DB_DIALECT,
-	logging: global.logging,
+	logging: global.logging ? console.log : false,
   pool: {
     acquire: 10000,  // 연결 시도 최대 대기 시간 (기본 10000ms)
     max: 5,

@@ -6,7 +6,7 @@ const router = Router();
 const { verifyToken, verifyTokenRole } = require("../middleware/token");
 const { respMsgStr, respData, respMsg } = require("../utils/common");
 const { verifyData, verifyTypes } = require("../middleware/verify");
-const { OpenOrder } = require("../../models");
+const { Messages } = require("../../models");
 const common= require("../utils/common");
 
 router.use("/*", (req, resp, next) => {
@@ -79,15 +79,15 @@ router.post("/", /*verifyTokenRole("admin"),*/ verifyData(verifyTypes.Body, [  "
 			description : "광고 정렬 수정, orders 에 advertise_no 순서에 따라 order번호가 증가되어 자동 변경됨"
 		}*/
 	try {
-		
-		const order = await OpenOrder.build_order(req.body)
-		var orders = common.open_orders.get(order.symbol);
-		if ( orders == null)
-		{
-			orders = new Array();
-			common.open_orders.set( order.symbol, orders );
-		}
-		orders.push(order);
+		// OpenOrder 모델이 없으므로 임시로 주석 처리
+		// const order = await OpenOrder.build_order(req.body)
+		// var orders = common.open_orders.get(order.symbol);
+		// if ( orders == null)
+		// {
+		// 	orders = new Array();
+		// 	common.open_orders.set( order.symbol, orders );
+		// }
+		// orders.push(order);
 		req.body.success = true;
 		resp.json(req.body);
 	} catch (error) {

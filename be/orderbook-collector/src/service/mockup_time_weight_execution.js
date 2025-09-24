@@ -14,6 +14,7 @@ const winston = require("winston");
 const { execAvgBuyFromAsk, execAvgSellFromBid } = require("../utils/vwap_exec");
 const { MARKET_NO_ENUM, MARKET_NAME_ENUM } = require("../utils/common");
 const { send_push } = require("../utils/zmq-sender-push.js");
+const { send_pub } = require("../utils/zmq-sender-pub.js");
 
 // ===== 설정 =====
 const DEPTH    = 15;
@@ -336,8 +337,6 @@ class KorbitClient {
 
           await SendToOrderBook_ZMQ(orderbook_item);
 
-          //ZMQ 로 다른 DB 저장 프로세스에 전달한다. => 거래소 별로 처리할지 거래소_코드 별로 처리할지 고민해야될듯.
-
           cb(this.market_no, normalize(bids, asks));
         }
       } catch (e) {
@@ -414,24 +413,17 @@ class CoinoneClient {
   }
 }
 
-
-
 // OrderBook에 데이터를 전송하는 함수
 async function SendToOrderBook_ZMQ(orderbook_item) {
 
   const topic = `${orderbook_item.exchange_no}-${orderbook_item.symbol}`;
 
   const ts = Date.now();
+
+  // ZMQ PUSH 방식으로 전송 => DB에 호가를 저장하는 프로세스에 전송
   await send_push(topic, ts, orderbook_item);
-
-  let total_len = orderbook_item.bid.length + orderbook_item.ask.length;
-
-  // console.log(`[WORK] ${topic} @ ${orderbook_item.createdAt instanceof Date ? orderbook_item.createdAt.getTime() : orderbook_item.createdAt}`, `total_count: ${total_len}, bid_count: ${orderbook_item.bid.length}, ask_count: ${orderbook_item.ask.length}`);
-
-  // 실제 구현에서는 외부 시스템이나 DB, 혹은 메시지 큐로 전송할 수 있음
-  // 여기서는 예시로 콘솔에 출력
-  // console.log("SendToOrderBook_ZMQ:", JSON.stringify(orderbook_item, null, 2));
-  // console.log("global.app", global.sock);
+  // ZMQ PUB 방식으로 전송 => 각 거래소 && SYMBOL 별로 전송하고 각 프로세스에서 지수 산출하고 DB 저장
+  await send_pub(topic, ts, orderbook_item);
 }
 
 
