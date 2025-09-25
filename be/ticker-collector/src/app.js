@@ -24,7 +24,7 @@ if (process.env.NODE_ENV === "production") {
 const express = require("express");
 const app = express();
 // const server = require("http").createServer(app);
-app.set("port", process.env.PORT || 3000);
+
 var message = {};
 
 const cors = require("cors");
@@ -34,12 +34,6 @@ const morgan = require("morgan");
 //cors setting
 app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
 
-//db connection
-const { sequelize, Message } = require("../models");
-sequelize
-	.sync({ force: false })
-	.then(() => console.log("DB 연결 성공"))
-	.catch((err) => console.log("DB 연결 실패", err));
 
 //console log middleware
 app.use(morgan("dev", { skip: (req, resp) => resp.statusCode < 400 }));
@@ -92,10 +86,8 @@ async function initializeApp() {
 
 initializeApp();
 
-// Start the server
-const server = app.listen(app.get("port"), () => {
-	console.log(`Server is running on port ${app.get("port")}`);
-});
-
-
-
+// 서버 시작
+// const PORT = process.env.PORT || 3000;
+// app.listen(PORT, () => {
+// 	console.log(`Server is running on port ${PORT}`);
+// });

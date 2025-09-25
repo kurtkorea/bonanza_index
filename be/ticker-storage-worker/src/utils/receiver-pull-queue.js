@@ -1,8 +1,7 @@
 // receiver-pull-queue.js
 const zmq = require("zeromq");
- const net = require("net");
- const { sequelize, QueryTypes } = require("../db/db.js");                  // (옵션) raw SQL fallback 시 사용
- const { OrderBook } = require("../models/orderbook.js");  // Sequelize 경로는 지금은 미사용
+const net = require("net");
+const { sequelize, QueryTypes } = require("../db/db.js");                  // (옵션) raw SQL fallback 시 사용
 
 /** =========================
  *  ILP Writer (TCP 9009)
@@ -266,98 +265,6 @@ async function processMessage(topicBuf, tsBuf, payloadBuf) {
 
     // console.log("data", data);
 
-    // bids/asks가 다수라면 각 레벨을 개별 레코드로 펼쳐서 전송
-
-    let total_count = 0;
-    let bid_count = 0;
-    let ask_count = 0;
-
-    let seq = 0;
-    if (Array.isArray(d.bid)) {
-      for (const [price, size] of d.bid) {
-        const row = {
-          symbol: d.symbol,
-          exchange_no: d.exchange_no,
-          exchange_name: d.exchange_name,
-          seq,
-          side: "B",
-          price,
-          size,
-          createdAt: d.createdAt,
-          diff_ms: d.diff_ms,
-          fromAt: d.fromAt,
-        };
-
-        // 직접 쿼리로 변경
-         await sequelize.query(
-           `INSERT INTO tb_order_book 
-             (symbol, exchange_no, exchange_name, seq, side, price, size, createdAt, fromAt, diff_ms)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-           {
-             replacements: [
-               d.symbol,
-               d.exchange_no,
-               d.exchange_name,
-               seq,
-               "B",
-               price,
-               size,
-               d.createdAt,
-               d.fromAt,
-               d.diff_ms
-             ],
-             type: QueryTypes.INSERT
-           }
-         );
-
-        bid_count++;
-        total_count++;
-        seq++;
-      }
-    }
-     seq = 0;
-     if (Array.isArray(d.ask)) {
-       for (const [price, size] of d.ask) {
-         const row = {
-           symbol: d.symbol,
-           exchange_no: d.exchange_no,
-           exchange_name: d.exchange_name,
-           seq,
-           side: "A",
-           price,
-           size,
-           createdAt: d.createdAt,
-           diff_ms: d.diff_ms,
-           fromAt: d.fromAt,
-         };
-         
-         // Ask 데이터도 저장
-         await sequelize.query(
-           `INSERT INTO tb_order_book 
-             (symbol, exchange_no, exchange_name, seq, side, price, size, createdAt, fromAt, diff_ms)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-           {
-             replacements: [
-               d.symbol,
-               d.exchange_no,
-               d.exchange_name,
-               seq,
-               "A",
-               price,
-               size,
-               d.createdAt,
-               d.fromAt,
-               d.diff_ms
-             ],
-             type: QueryTypes.INSERT
-           }
-         );
-         
-         ask_count++;
-         total_count++;
-         seq++;
-       }
-     }
 
     // 필요시 개별 로직…
     // console.log(`[WORK] ${topicBuf} @ ${ts}`, data);
@@ -374,8 +281,8 @@ async function startPullQueue() {
 
   // 1) ZMQ PULL
   const pull = new zmq.Pull();
-  pull.connect("tcp://127.0.0.1:5557");
-  console.log("[PULL] connected tcp://127.0.0.1:5557");
+  pull.connect( process.env.ZMQ_PUSH_HOST );
+  console.log("[PULL] connected ", process.env.ZMQ_PUSH_HOST);
 
   // 2) 작업 큐 (개별 처리 경로 쓸 때)
   const workQueue = new AsyncWorkQueue({
@@ -394,10 +301,6 @@ async function startPullQueue() {
       for (const item of batch) {
         const { topic, ts, data } = item;
 
-        let total_count = 0;
-        let bid_count = 0;
-        let ask_count = 0;
-
         let d = data;
         if (typeof d === "string") {
           try { d = JSON.parse(d); } catch { d = { raw: d }; }
@@ -410,69 +313,20 @@ async function startPullQueue() {
            d.diff_ms = (d2 - d1) / 1000; // 초 단위(원하시면 ms로 조정)
          }
 
-        // bids/asks가 다수라면 각 레벨을 개별 레코드로 펼쳐서 전송
-        let seq = 0;
-        if (Array.isArray(d.bid)) {
-          for (const [price, size] of d.bid) {
-            const row = {
-              symbol: d.symbol,
-              exchange_no: d.exchange_no,
-              exchange_name: d.exchange_name,
-              seq,
-              side: "B",
-              price,
-              size,
-              createdAt: d.createdAt,
-              diff_ms: d.diff_ms,
-              fromAt: d.fromAt,
-            };
-            lines.push(toILP(topic, d.fromAt ?? ts, row));
-            seq++;
-            bid_count++;
-            total_count++;
-          }
-        }
-        seq = 0;
-        if (Array.isArray(d.ask)) {
-          for (const [price, size] of d.ask) {
-            const row = {
-              symbol: d.symbol,
-              exchange_no: d.exchange_no,
-              exchange_name: d.exchange_name,
-              seq,
-              side: "A",
-              price,
-              size,
-              createdAt: d.createdAt,
-              diff_ms: d.diff_ms,
-              fromAt: d.fromAt,
-            };
-            lines.push(toILP(topic, d.fromAt ?? ts, row));
-            seq++;
-            ask_count++;
-            total_count++;
-          }
-        }
-
-        // bid/ask가 없는 단건 포맷(체결 등)도 처리 가능
-        // if (!Array.isArray(d.bid) && !Array.isArray(d.ask)) {
-        //   const row = {
-        //     symbol: d.symbol,
-        //     exchange_no: d.exchange_no,
-        //     exchange_name: d.exchange_name,
-        //     seq: d.seq ?? 0,
-        //     side: d.side ?? "",
-        //     price: d.price ?? null,
-        //     size: d.size ?? null,
-        //     createdAt: d.createdAt,
-        //     diff_ms: d.diff_ms,
-        //     fromAt: d.fromAt,
-        //   };
-        //   console.log("row", row);
-        //   lines.push(toILP(topic, d.fromAt ?? ts, row));
-        // }
-
-        // console.log(`[WORK] ${topic} @ ${new Date(d.createdAt).getTime()}`, `total_count: ${total_count}, bid_count: ${bid_count}, ask_count: ${ask_count}`);
+         const row = {
+          symbol: d.symbol,
+          exchange_no: d.exchange_no,
+          exchange_name: d.exchange_name,
+          open: d.open,
+          high: d.high,
+          low: d.low,
+          close: d.close,
+          volume: d.volume,
+          createdAt: d.createdAt,
+          diff_ms: d.diff_ms,
+          fromAt: d.fromAt,
+        };
+        lines.push(toILP(topic, d.fromAt ?? ts, row));
       }
 
       if (lines.length) {
@@ -497,6 +351,8 @@ async function startPullQueue() {
           ts: Number(tsBuf.toString()),
           data: parsed
         };
+
+        console.log("item", item);
 
         if (process.env.IS_BATCH === "true") {
           batcher.push(item);

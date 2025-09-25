@@ -53,7 +53,6 @@ class UpbitClient {
             symbol: process.env.SYMBOL ?? "KRW-BTC",
             exchange_no: this.market_no,
             exchange_name: this.name,
-            price: price,
             fromAt: fromAt,
             createdAt: new Date(Date.now()),
             open: Number(msg.op),
@@ -68,7 +67,7 @@ class UpbitClient {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
       }
     });
-    this.ws.on("close", () => setTimeout(() => this.start(cb), 1500));
+    this.ws.on("close", () => setTimeout(() => this.start(), 1500));
     this.ws.on("error", (e) => logger.error({ ex: this.name, err: String(e) }, "ws error"));
   }
 }
@@ -116,7 +115,7 @@ class BithumbClient {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
       }
     });
-    this.ws.on("close", () => setTimeout(() => this.start(cb), 1700));
+    this.ws.on("close", () => setTimeout(() => this.start(), 1700));
     this.ws.on("error", (e) => logger.error({ ex: this.name, err: String(e) }, "ws error"));
   }
 }
@@ -160,7 +159,7 @@ class KorbitClient {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
       }
     });
-    this.ws.on("close", () => setTimeout(() => this.start(cb), 2000));
+    this.ws.on("close", () => setTimeout(() => this.start(), 2000));
     this.ws.on("error", (e) => logger.error({ ex: this.name, err: String(e) }, "ws error"));
   }
 }
@@ -217,7 +216,7 @@ class CoinoneClient {
     });
     this.ws.on("close", () => {
       if (this.pingInterval) clearInterval(this.pingInterval);
-      setTimeout(() => this.start(cb), 2200);
+      setTimeout(() => this.start(), 2200);
     });
     this.ws.on("error", (e) => logger.error({ ex: this.name, err: String(e) }, "ws error"));
   }
@@ -226,7 +225,7 @@ class CoinoneClient {
 // Ticker에 데이터를 전송하는 함수
 async function SendToTicker_ZMQ(ticker_item) {
 
-  console.log( JSON.stringify(ticker_item, null, 2) );
+  // console.log( JSON.stringify(ticker_item, null, 2) );
 
   const topic = `${ticker_item.exchange_no}/${ticker_item.symbol}`;
   const ts = Date.now();

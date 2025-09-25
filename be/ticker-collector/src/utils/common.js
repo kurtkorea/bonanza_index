@@ -5,6 +5,26 @@ const message = {
 	missing_request: {
 		code: 400,
 		msg: "Missing request parameters"
+	},
+	token_expire: {
+		code: 420,
+		msg: "Token expired"
+	},
+	token_invalid: {
+		code: 401,
+		msg: "Invalid token"
+	},
+	token_permission: {
+		code: 403,
+		msg: "Insufficient permissions"
+	},
+	param_require: {
+		code: 400,
+		msg: "Required parameters missing"
+	},
+	server_error: {
+		code: 500,
+		msg: "Internal server error"
 	}
 	// 다른 메시지들도 여기에 추가 가능
 };
@@ -43,14 +63,6 @@ var symbolMap = new Map();
 var open_orders = new Map();
 var positions = new Map();
 
-const MARKET_NO = Object.freeze({
-	UPBIT: 101,
-	BITHUMB: 102,
-	KORBIT: 103,
-	COINONE: 104
-});
-
-// enum 형태로 변경 (ES6의 객체 freeze를 활용한 유사 enum)
 const MARKET_NO_ENUM = Object.freeze({
 	UPBIT: 101,
 	BITHUMB: 102,
