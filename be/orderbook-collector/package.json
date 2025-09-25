@@ -3,9 +3,9 @@
 	"version": "1.0.0",
 	"main": "app.js",
 	"scripts": {
-		"restart": "npx pm2 delete collector && npm run start-prod",
+		"restart": "npx pm2 delete orderbook-collector && npm run start-prod",
 		"build": "babel src -d dist",
-		"start-prod": "npm run build && cross-env NODE_ENV=production pm2 start --time --name collector dist/app.js",
+		"start-prod": "npm run build && cross-env NODE_ENV=production pm2 start --time --name orderbook-collector dist/app.js",
 		"start": "npx cross-env NODE_ENV=dev nodemon --exec babel-node src/app.js"
 	},
 	"author": "kurtkorea@gmail.com",

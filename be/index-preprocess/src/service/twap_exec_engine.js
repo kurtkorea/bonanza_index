@@ -174,9 +174,9 @@ class TwapExecEngine {
   onSnapshot(snap) {
     const symbol = String(snap.symbol || "").trim();
     if (!symbol) return;
-    const exchange = String(snap.exchange_name || snap.exchange_no || "UNKNOWN");
+    const exchange = String(snap.exchange_no || "UNKNOWN");
 
-    const tRaw = snap.createdAt || snap.fromAt || Date.now();
+    const tRaw = snap.fromAt || Date.now();
     let ts = new Date(tRaw).getTime();
     if (!Number.isFinite(ts)) ts = Date.now();
 
