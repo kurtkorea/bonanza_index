@@ -1,5 +1,5 @@
 {
-	"name": "ticker_collector",
+	"name": "ticker-collector",
 	"version": "1.0.0",
 	"main": "app.js",
 	"scripts": {

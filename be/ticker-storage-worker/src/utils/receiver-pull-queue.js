@@ -89,7 +89,7 @@ function createIlpWriter({ host = process.env.QDB_ILP_HOST || "127.0.0.1", port 
 }
 
 /** =========================
- *  ILP 라인 포맷터 (tb_order_book)
+ *  ILP 라인 포맷터 (tb_ticker)
  *  ========================= */
 
 // 안전 ns 변환기: 문자열/숫자/Date/BigInt 모두 처리, 실패 시 폴백 사용
@@ -148,18 +148,20 @@ function toNs(anyTs, fallbackMs = Date.now()) {
  */
  function toILP(topic, eventTs, data) {
      const ns = toNs(data.fromAt ?? eventTs);
-     const tags = `symbol=${escTag(data.symbol)},exchange_name=${escTag(data.exchange_name)},side=${escTag(data.side)}`;
- 
+     const tags = `symbol=${escTag(data.symbol)},exchange_name=${escTag(data.exchange_name)}`;
      const fields = [];
      if (data.exchange_no != null) fields.push(`exchange_no=${intField(data.exchange_no)}`); // INT → i
      if (data.seq != null)         fields.push(`seq=${intField(data.seq)}`);                 // LONG → i
-     if (data.price != null)       fields.push(`price=${floatField(data.price)}`);
-     if (data.size != null)        fields.push(`size=${floatField(data.size)}`);
+     if (data.open != null)        fields.push(`open=${floatField(data.open)}`);
+     if (data.high != null)        fields.push(`high=${floatField(data.high)}`);
+     if (data.low != null)         fields.push(`low=${floatField(data.low)}`);
+     if (data.close != null)       fields.push(`close=${floatField(data.close)}`);
+     if (data.volume != null)      fields.push(`volume=${floatField(data.volume)}`);
      if (data.fromAt)              fields.push(`fromAt=${tsFieldMicros(data.fromAt)}`); // ★ TIMESTAMP → μs + t
      if (data.createdAt)           fields.push(`createdAt=${tsFieldMicros(data.createdAt)}`); // ★ TIMESTAMP → μs + t
      if (data.diff_ms != null && data.diff_ms !== undefined) fields.push(`diff_ms=${floatField(data.diff_ms)}`);
      if (!fields.length) fields.push("dummy=1");
-     return `tb_order_book,${tags} ${fields.join(",")} ${ns}\n`;
+     return `tb_ticker,${tags} ${fields.join(",")} ${ns}\n`;
  }
 
 
@@ -313,6 +315,8 @@ async function startPullQueue() {
            d.diff_ms = (d2 - d1) / 1000; // 초 단위(원하시면 ms로 조정)
          }
 
+        //  console.log("d", d);
+
          const row = {
           symbol: d.symbol,
           exchange_no: d.exchange_no,
@@ -351,9 +355,6 @@ async function startPullQueue() {
           ts: Number(tsBuf.toString()),
           data: parsed
         };
-
-        console.log("item", item);
-
         if (process.env.IS_BATCH === "true") {
           batcher.push(item);
         } else {

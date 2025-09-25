@@ -6,7 +6,7 @@ const router = Router();
 const { verifyToken, verifyTokenRole } = require("../middleware/token");
 const { respMsgStr, respData, respMsg } = require("../utils/common");
 const { verifyData, verifyTypes } = require("../middleware/verify");
-const { Messages } = require("../../models");
+// const { Messages } = require("../../models");
 const common= require("../utils/common");
 
 router.use("/*", (req, resp, next) => {

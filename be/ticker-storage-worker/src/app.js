@@ -88,9 +88,9 @@ async function initializeApp() {
 initializeApp();
 
 // Start the server
-const server = app.listen(app.get("port"), () => {
-	console.log(`Server is running on port ${app.get("port")}`);
-});
+// const server = app.listen(app.get("port"), () => {
+// 	console.log(`Server is running on port ${app.get("port")}`);
+// });
 
 
 process.on('unhandledRejection', (reason, p) => {

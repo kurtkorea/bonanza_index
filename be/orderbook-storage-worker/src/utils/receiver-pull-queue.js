@@ -149,8 +149,7 @@ function toNs(anyTs, fallbackMs = Date.now()) {
  */
  function toILP(topic, eventTs, data) {
      const ns = toNs(data.fromAt ?? eventTs);
-     const tags = `symbol=${escTag(data.symbol)},exchange_name=${escTag(data.exchange_name)},side=${escTag(data.side)}`;
- 
+     const tags = `symbol=${escTag(data.symbol)},exchange_name=${escTag(data.exchange_name)},side=${escTag(data.side)}`
      const fields = [];
      if (data.exchange_no != null) fields.push(`exchange_no=${intField(data.exchange_no)}`); // INT → i
      if (data.seq != null)         fields.push(`seq=${intField(data.seq)}`);                 // LONG → i

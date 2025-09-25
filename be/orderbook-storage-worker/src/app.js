@@ -31,8 +31,6 @@ var message = {};
 const cors = require("cors");
 const morgan = require("morgan");
 
-// swagger
-const swaggerUi = require("swagger-ui-express");
 
 //cors setting
 app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
@@ -49,16 +47,6 @@ app.use(morgan("dev", { skip: (req, resp) => resp.statusCode < 400 }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
 
-app.use(express.static("./swagger"));
-app.use(
-	"/doc",
-	swaggerUi.serve,
-	swaggerUi.setup(null, {
-		swaggerOptions: {
-			url: `${process.env.SWAGGER_URL}/swagger_autogen.json`,
-		},
-	}),
-);
 
 //proxy checker
 if (process.env.NODE_ENV === "production") {
@@ -100,9 +88,9 @@ async function initializeApp() {
 initializeApp();
 
 // Start the server
-const server = app.listen(app.get("port"), () => {
-	console.log(`Server is running on port ${app.get("port")}`);
-});
+// const server = app.listen(app.get("port"), () => {
+// 	console.log(`Server is running on port ${app.get("port")}`);
+// });
 
 
 process.on('unhandledRejection', (reason, p) => {
