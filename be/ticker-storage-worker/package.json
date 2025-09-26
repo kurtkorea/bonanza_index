@@ -1,11 +1,11 @@
 {
-	"name": "ticker-storage-worker",
+	"name": "tk-storage",
 	"version": "1.0.0",
 	"main": "app.js",
 	"scripts": {
-		"restart": "npx pm2 delete ticker-storage-worker && npm run start-prod",
+		"restart": "npx pm2 delete tk-storage && npm run start-prod",
 		"build": "babel src -d dist",
-		"start-prod": "npm run build && cross-env NODE_ENV=production pm2 start --time --name ticker-storage-worker dist/app.js",
+		"start-prod": "npm run build && cross-env NODE_ENV=production pm2 start --time --name tk-storage dist/app.js",
 		"start": "npx cross-env NODE_ENV=dev nodemon --exec babel-node src/app.js"
 	},
 	"author": "kurtkorea@gmail.com",

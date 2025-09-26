@@ -3,3 +3,5 @@
 /be/storage-worker/logs
 /be/storage-worker/package-lock.json
 /be/index-preprocess/logs
+/be/ticker-collector/logs
+/be/ticker-collector/package-lock.json
