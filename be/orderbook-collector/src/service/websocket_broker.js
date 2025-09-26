@@ -210,9 +210,9 @@ class UpbitClient {
       this.ws.send(Buffer.from(JSON.stringify(req), "utf8"));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
     });
-    this.ws.on("message", async (buf) => {
+    this.ws.on("message", async (raw) => {
       try {
-        const msg = JSON.parse(buf.toString());
+        const msg = JSON.parse(raw.toString());
         if ((msg.ty || msg.type) === "orderbook") {
           const units = msg.obu || msg.orderbook_units || [];
 
@@ -232,7 +232,7 @@ class UpbitClient {
             coollectorAt: new Date(Date.now()),
           };
 
-          await SendToOrderBook_ZMQ(orderbook_item);
+          await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
 
           cb(this.market_no, normalize(bids, asks));
         }
@@ -286,7 +286,7 @@ class BithumbClient {
             coollectorAt: new Date(Date.now()),
           };
 
-          await SendToOrderBook_ZMQ(orderbook_item);
+          await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
 
           cb(this.market_no, normalize(bids, asks));
         }
@@ -334,7 +334,7 @@ class KorbitClient {
             coollectorAt: new Date(Date.now()),
           };
 
-          await SendToOrderBook_ZMQ(orderbook_item);
+          await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
 
           cb(this.market_no, normalize(bids, asks));
         }
@@ -396,7 +396,7 @@ class CoinoneClient {
             coollectorAt: new Date(Date.now()),
           };
 
-          await SendToOrderBook_ZMQ(orderbook_item);
+          await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
 
           cb(this.market_no, normalize(bids, asks));
         }
@@ -413,7 +413,7 @@ class CoinoneClient {
 }
 
 // OrderBook에 데이터를 전송하는 함수
-async function SendToOrderBook_ZMQ(orderbook_item) {
+async function SendToOrderBook_ZMQ(orderbook_item, raw = null) {
   const topic = `${orderbook_item.exchange_no}/${orderbook_item.symbol}`;
   const ts = Date.now();
   //거래소에서 부터 수집된 시간을 저장한다.
@@ -423,9 +423,13 @@ async function SendToOrderBook_ZMQ(orderbook_item) {
 
   // ZMQ PUSH 방식으로 전송 => DB에 호가를 저장하는 프로세스에 전송
   // ZMQ PUB 방식으로 전송 => 각 거래소/SYMBOL 별로 전송하고 각 프로세스에서 지수 산출하고 DB 저장
+
+  const raw_orderbook_item = { ...orderbook_item };
+  raw_orderbook_item.raw = raw;
+
   await Promise.all([
     send_push(topic, ts, orderbook_item),
-    send_publisher(orderbook_item.symbol, orderbook_item)
+    send_publisher(raw_orderbook_item.symbol, raw_orderbook_item)
   ]);
 }
 /** ------------------- 실행부 ------------------- */

@@ -3,8 +3,8 @@ const { Sequelize, DataTypes, Op } = require("sequelize");
 const db = {};
 
 const sequelize = new Sequelize("qdb", "admin", "quest", {
-	host: "121.88.4.81",
-	port: 8812,
+	host: process.env.DB_HOST,
+	port: process.env.DB_PORT,
 	dialect: "postgres",
 	logging: false,
     pool:{

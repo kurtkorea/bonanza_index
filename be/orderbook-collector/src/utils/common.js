@@ -1,5 +1,7 @@
 "use strict";
 
+const zlib = require('zlib');
+
 // 메시지 객체 정의
 const message = {
 	missing_request: {
@@ -65,7 +67,24 @@ const MARKET_NAME_ENUM = Object.freeze({
 	COINONE: "COINONE"
 });
 
+function gzipCompressToBase64(str, callback) {
+	zlib.gzip(Buffer.from(str, 'utf8'), (err, buf) => {
+	  if (err) return callback(err);
+	  callback(null, buf.toString('base64'));
+	});
+  }
+  
+  function gzipDecompressFromBase64(b64, callback) {
+	const buf = Buffer.from(b64, 'base64');
+	zlib.gunzip(buf, (err, out) => {
+	  if (err) return callback(err);
+	  callback(null, out.toString('utf8'));
+	});
+  }
+
 module.exports = {
+	gzipCompressToBase64,
+	gzipDecompressFromBase64,
 	isEmpty,
 	respMsg,
 	respData,

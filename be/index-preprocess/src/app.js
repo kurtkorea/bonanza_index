@@ -13,7 +13,8 @@ global.logger = log;
 
 // const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
 
-const { init_zmq_subscriber } = require('./service/zmq-data-sub.js');
+const { init_zmq_depth_subscriber, init_zmq_ticker_subscriber } = require('./service/zmq-data-sub.js');
+const { connect } = require("./db/db.js");
 
 // Start of Selection
 global.logging = false;
@@ -132,13 +133,27 @@ async function initializeApp() {
 		console.log('애플리케이션 초기화 시작...');
 
 		// 환경 변수 검증
-		if (!process.env.ZMQ_SUB_HOST) {
-			throw new Error('ZMQ_SUB_HOST 환경 변수가 설정되지 않았습니다.');
+		if (!process.env.ZMQ_SUB_DEPTH_HOST) {
+			throw new Error('ZMQ_SUB_DEPTH_HOST 환경 변수가 설정되지 않았습니다.');
 		}
 
-		console.log('ZMQ Subscriber 초기화 중...');
-		await init_zmq_subscriber();
-		console.log('ZMQ Subscriber 초기화 완료');
+		if (!process.env.ZMQ_SUB_TICKER_HOST) {
+			throw new Error('ZMQ_SUB_TICKER_HOST 환경 변수가 설정되지 않았습니다.');
+		}
+
+		// DB 연결 (필요시 주석 해제)
+		// await connect();
+
+		console.log('ZMQ depth Subscriber 초기화 중...');
+		console.log('ZMQ ticker Subscriber 초기화 중...');
+
+		await Promise.all([
+			init_zmq_depth_subscriber(),
+			init_zmq_ticker_subscriber()
+		]);
+
+		console.log('ZMQ depth Subscriber 초기화 완료');
+		console.log('ZMQ ticker Subscriber 초기화 완료');
 
 		// 메시지 초기화 (필요시)
 		// (await Message.findAll({ where: { message_use: true }, attributes: { exclude: ["message_desc", "createdAt", "updatedAt"] }, logging, raw: true })).forEach(

@@ -25,21 +25,41 @@ function num(k, d) {
   const n = v == null ? NaN : Number(v);
   return Number.isFinite(n) ? n : d;
 }
-const toNum  = (x) => (typeof x === "string" ? Number(x) : x);
+const toNum  = (x) => {
+  if (x === null || x === undefined) return 0;
+  if (typeof x === "string") {
+    const num = Number(x);
+    return isNaN(num) ? 0 : num;
+  }
+  if (typeof x === "number") {
+    return isNaN(x) ? 0 : x;
+  }
+  return 0;
+};
 const roundN = (x, n = 2) => { const k = 10 ** n; return Math.round(x * k) / k; };
 
 function normalize(snapshot) {
-  const bids = (snapshot.bid || [])
-    .map(([p, q]) => ({ price: toNum(p), qty: toNum(q) }))
-    .sort((a, b) => b.price - a.price)
-    .slice(0, DEPTH);
+  try {
+    const bids = (snapshot.bid || [])
+      .filter(item => Array.isArray(item) && item.length >= 2)
+      .map(([p, q]) => ({ price: toNum(p), qty: toNum(q) }))
+      .filter(item => item.price > 0 && item.qty > 0)
+      .sort((a, b) => b.price - a.price)
+      .slice(0, DEPTH);
 
-  const asks = (snapshot.ask || [])
-    .map(([p, q]) => ({ price: toNum(p), qty: toNum(q) }))
-    .sort((a, b) => a.price - b.price)
-    .slice(0, DEPTH);
+    const asks = (snapshot.ask || [])
+      .filter(item => Array.isArray(item) && item.length >= 2)
+      .map(([p, q]) => ({ price: toNum(p), qty: toNum(q) }))
+      .filter(item => item.price > 0 && item.qty > 0)
+      .sort((a, b) => a.price - b.price)
+      .slice(0, DEPTH);
 
-  return { bids, asks };
+    return { bids, asks };
+  } catch (error) {
+    console.error('normalize 함수 에러:', error);
+    console.error('snapshot 데이터:', snapshot);
+    return { bids: [], asks: [] };
+  }
 }
 
 function isCrossed(book) {
@@ -79,15 +99,42 @@ class FkbrtiEngine {
 
   // 실시간 스냅샷 주입
   onSnapshot(snap) {
-    if (!this.symbol) this.symbol = String(snap.symbol || "").trim() || "(UNKNOWN)";
-    const ex = String(snap.exchange_name || snap.exchange_no || "UNKNOWN");
+    try {
+      if (!this.symbol) this.symbol = String(snap.symbol || "").trim() || "(UNKNOWN)";
+      const ex = String(snap.exchange_name || snap.exchange_no || "UNKNOWN");
 
-    const { bids, asks } = normalize(snap);
-    const tRaw = snap.createdAt || snap.fromAt || Date.now();
-    let ts = new Date(tRaw).getTime();
-    if (!Number.isFinite(ts)) ts = Date.now();
+      const { bids, asks } = normalize(snap);
+      
+      // 타임스탬프 처리 개선
+      let ts = Date.now(); // 기본값
+      if (snap.createdAt) {
+        if (typeof snap.createdAt === 'string') {
+          ts = new Date(snap.createdAt).getTime();
+        } else if (snap.createdAt instanceof Date) {
+          ts = snap.createdAt.getTime();
+        } else if (typeof snap.createdAt === 'number') {
+          ts = snap.createdAt;
+        }
+      } else if (snap.fromAt) {
+        if (typeof snap.fromAt === 'string') {
+          ts = new Date(snap.fromAt).getTime();
+        } else if (snap.fromAt instanceof Date) {
+          ts = snap.fromAt.getTime();
+        } else if (typeof snap.fromAt === 'number') {
+          ts = snap.fromAt;
+        }
+      }
+      
+      // 유효하지 않은 타임스탬프 처리
+      if (!Number.isFinite(ts) || ts <= 0) {
+        ts = Date.now();
+      }
 
-    this.booksByEx[ex] = { bids, asks, ts };
+      this.booksByEx[ex] = { bids, asks, ts };
+    } catch (error) {
+      console.error('FkbrtiEngine.onSnapshot 에러:', error);
+      console.error('snap 데이터:', snap);
+    }
   }
 
   start() {
@@ -154,8 +201,7 @@ class FkbrtiEngine {
         provisional: false,
         no_publish: false
       };
-      console.log(JSON.stringify(out));
-
+      //console.log(JSON.stringify(out));
       this.last = {
         ts: now,
         buy: out.vwap_buy, sell: out.vwap_sell, mid: out.index_mid,
@@ -166,7 +212,6 @@ class FkbrtiEngine {
       if (this.last) {
         if (!this.last.provisionalSince) this.last.provisionalSince = now;
         const elapsed = now - this.last.provisionalSince;
-
         const out = {
           type: "fkbrti",
           t: new Date(now).toISOString(),
@@ -210,24 +255,3 @@ class FkbrtiEngine {
 
 module.exports = { FkbrtiEngine };
 
-/* ---------------- Example ----------------
-const { FkbrtiEngine } = require("./fkbrti_engine");
-
-const eng = new FkbrtiEngine({
-  symbol: "KRW-BTC",
-  // expectedExchanges: ["UPBIT","BITHUMB","KORBIT","COINONE"],
-  // staleMs: 30000, provMaxMs: 60000, tickMs: 1000, depth: 15, decimals: 2
-});
-
-eng.start();
-
-// 실시간 스냅샷 주입
-eng.onSnapshot({
-  symbol: "KRW-BTC",
-  exchange_no: 101,
-  exchange_name: "UPBIT",
-  bid: [[161144000, 0.26],[161140000, 0.12]],
-  ask: [[161150000, 0.01],[161152000, 0.00006]],
-  createdAt: new Date().toISOString()
-});
-------------------------------------------- */

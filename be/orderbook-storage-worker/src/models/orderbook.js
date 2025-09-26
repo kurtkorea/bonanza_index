@@ -13,6 +13,8 @@ const OrderBook = db.sequelize.define("order_book", {
     fromAt:       { type: DataTypes.DATE },
     createdAt:    { type: DataTypes.DATE },
     diff_ms:      { type: DataTypes.DOUBLE },
+    diff_ms_db:   { type: DataTypes.DOUBLE },
+    raw:          { type: DataTypes.TEXT },
 }, {
   tableName: "tb_order_book",
   timestamps: false,

@@ -15,7 +15,7 @@ async function orderbook_schema() {
             marketAt       TIMESTAMP,               -- 거래소에서 찍혀온 시간
             coollectorAt   TIMESTAMP,               -- 수집 시간
             dbAt         TIMESTAMP,                 -- DB에 저장된 시간
-            diff_ms      DOUBLE,                     -- 거래소에서 찍혀온 시간과 수집 시간의 차이
+            diff_ms      DOUBLE,                    -- 거래소에서 찍혀온 시간과 수집 시간의 차이
             diff_ms_db   DOUBLE                     -- 거래소에서 찍혀온 시간과 DB에 저장된 시간의 차이
         ) TIMESTAMP(marketAt)
             PARTITION BY DAY
