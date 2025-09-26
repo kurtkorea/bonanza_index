@@ -8,7 +8,9 @@ const http = require('http');
 const log = require('./utils/logger');
 // const { send_push, getZMQStatus, healthCheckZMQ } = require("./utils/zmq-sender-push.js");
 
-const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
+const { UpbitClientTrade, BithumbClientTrade, KorbitClientTrade, CoinoneClientTrade } = require('./service/websocket_trade_broker.js');
+const { UpbitClientTicker, BithumbClientTicker, KorbitClientTicker, CoinoneClientTicker } = require('./service/websocket_ticker_broker.js');
+
 
 // Start of Selection
 global.logging = false;

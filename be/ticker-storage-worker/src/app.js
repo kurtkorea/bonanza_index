@@ -38,6 +38,7 @@ app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }))
 //db connection
 const { connect } = require("./db/db.js");
 const { ticker_schema } = require("./ddl/ticker_ddl.js");
+const { trade_schema } = require("./ddl/trade_ddl.js");
 
 
 //console log middleware
@@ -71,6 +72,7 @@ async function initializeApp() {
 		// DB 연결
 		await connect();
 		await ticker_schema();
+		await trade_schema();
 		
 		// ZMQ 큐 시작
 		await startPullQueue();

@@ -143,21 +143,23 @@ function toNs(anyTs, fallbackMs = Date.now()) {
   function escTag(s){ return String(s ?? "").replace(/[,= ]/g, "\\$&"); }
 /**
  * @param {string} topic  (로깅용)
- * @param {any} eventTs   fromAt(권장) 또는 수신 ts(문자/숫자/Date/BigInt)
+ * @param {any} eventTs   수신 ts(문자/숫자/Date/BigInt)
  * @param {object} data   { symbol, exchange_no, exchange_name, seq, side, price, size, createdAt, diff_ms }
  * @returns string  ILP 라인 (끝에 \n)
  */
  function toILP(topic, eventTs, data) {
-     const ns = toNs(data.fromAt ?? eventTs);
+     const ns = toNs(data.marketAt ?? eventTs);
      const tags = `symbol=${escTag(data.symbol)},exchange_name=${escTag(data.exchange_name)},side=${escTag(data.side)}`
      const fields = [];
      if (data.exchange_no != null) fields.push(`exchange_no=${intField(data.exchange_no)}`); // INT → i
      if (data.seq != null)         fields.push(`seq=${intField(data.seq)}`);                 // LONG → i
      if (data.price != null)       fields.push(`price=${floatField(data.price)}`);
      if (data.size != null)        fields.push(`size=${floatField(data.size)}`);
-     if (data.fromAt)              fields.push(`fromAt=${tsFieldMicros(data.fromAt)}`); // ★ TIMESTAMP → μs + t
-     if (data.createdAt)           fields.push(`createdAt=${tsFieldMicros(data.createdAt)}`); // ★ TIMESTAMP → μs + t
+     if (data.marketAt)              fields.push(`marketAt=${tsFieldMicros(data.marketAt)}`); // ★ TIMESTAMP → μs + t
+     if (data.coollectorAt)           fields.push(`coollectorAt=${tsFieldMicros(data.coollectorAt)}`); // ★ TIMESTAMP → μs + t
+     if (data.dbAt)           fields.push(`dbAt=${tsFieldMicros(data.dbAt)}`); // ★ TIMESTAMP → μs + t
      if (data.diff_ms != null && data.diff_ms !== undefined) fields.push(`diff_ms=${floatField(data.diff_ms)}`);
+     if (data.diff_ms_db != null && data.diff_ms_db !== undefined) fields.push(`diff_ms_db=${floatField(data.diff_ms_db)}`);
      if (!fields.length) fields.push("dummy=1");
      return `tb_order_book,${tags} ${fields.join(",")} ${ns}\n`;
  }
@@ -244,125 +246,6 @@ async function handleMessage(topicBuf, tsBuf, payloadBuf) {
   console.log(`[WORK] ${topic} @ ${ts}`, data);
 }
 
-async function processMessage(topicBuf, tsBuf, payloadBuf) {
-    const topic = topicBuf.toString();
-    const ts = Number(tsBuf.toString());
-    let data;
-    try { data = JSON.parse(payloadBuf.toString()); }
-    catch { data = { raw: payloadBuf.toString() }; }
-  
-    let d = data;
-    if (typeof d === "string") {
-      try { d = JSON.parse(d); } catch { d = { raw: d }; }
-    }
-
-     // ms_diff 계산 (있으면 사용)
-     if (d.fromAt && d.createdAt) {
-       const d1 = new Date(d.fromAt);
-       const d2 = new Date(d.createdAt);
-       d.diff_ms = (d2 - d1) / 1000; // 초 단위(원하시면 ms로 조정)
-    }
-
-    // console.log("data", data);
-
-    // bids/asks가 다수라면 각 레벨을 개별 레코드로 펼쳐서 전송
-
-    let total_count = 0;
-    let bid_count = 0;
-    let ask_count = 0;
-
-    let seq = 0;
-    if (Array.isArray(d.bid)) {
-      for (const [price, size] of d.bid) {
-        const row = {
-          symbol: d.symbol,
-          exchange_no: d.exchange_no,
-          exchange_name: d.exchange_name,
-          seq,
-          side: "B",
-          price,
-          size,
-          createdAt: d.createdAt,
-          diff_ms: d.diff_ms,
-          fromAt: d.fromAt,
-        };
-
-        // 직접 쿼리로 변경
-         await sequelize.query(
-           `INSERT INTO tb_order_book 
-             (symbol, exchange_no, exchange_name, seq, side, price, size, createdAt, fromAt, diff_ms)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-           {
-             replacements: [
-               d.symbol,
-               d.exchange_no,
-               d.exchange_name,
-               seq,
-               "B",
-               price,
-               size,
-               d.createdAt,
-               d.fromAt,
-               d.diff_ms
-             ],
-             type: QueryTypes.INSERT
-           }
-         );
-
-        bid_count++;
-        total_count++;
-        seq++;
-      }
-    }
-     seq = 0;
-     if (Array.isArray(d.ask)) {
-       for (const [price, size] of d.ask) {
-         const row = {
-           symbol: d.symbol,
-           exchange_no: d.exchange_no,
-           exchange_name: d.exchange_name,
-           seq,
-           side: "A",
-           price,
-           size,
-           createdAt: d.createdAt,
-           diff_ms: d.diff_ms,
-           fromAt: d.fromAt,
-         };
-         
-         // Ask 데이터도 저장
-         await sequelize.query(
-           `INSERT INTO tb_order_book 
-             (symbol, exchange_no, exchange_name, seq, side, price, size, createdAt, fromAt, diff_ms)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-           {
-             replacements: [
-               d.symbol,
-               d.exchange_no,
-               d.exchange_name,
-               seq,
-               "A",
-               price,
-               size,
-               d.createdAt,
-               d.fromAt,
-               d.diff_ms
-             ],
-             type: QueryTypes.INSERT
-           }
-         );
-         
-         ask_count++;
-         total_count++;
-         seq++;
-       }
-     }
-
-    // 필요시 개별 로직…
-    // console.log(`[WORK] ${topicBuf} @ ${ts}`, data);
-    // console.log(`[WORK] ${topicBuf} @ ${ts}`, `total_count: ${total_count}, bid_count: ${bid_count}, ask_count: ${ask_count}`);
-  }
-
 /** =========================
  *  메인 루프
  *  ========================= */
@@ -373,8 +256,8 @@ async function startPullQueue() {
 
   // 1) ZMQ PULL
   const pull = new zmq.Pull();
-  pull.connect("tcp://127.0.0.1:5557");
-  console.log("[PULL] connected tcp://127.0.0.1:5557");
+  pull.connect(process.env.ZMQ_PULL_HOST);
+  console.log("[PULL] connected ", process.env.ZMQ_PULL_HOST);
 
   // 2) 작업 큐 (개별 처리 경로 쓸 때)
   const workQueue = new AsyncWorkQueue({
@@ -402,12 +285,9 @@ async function startPullQueue() {
           try { d = JSON.parse(d); } catch { d = { raw: d }; }
         }
 
-         // ms_diff 계산 (있으면 사용)
-         if (d.fromAt && d.createdAt) {
-           const d1 = new Date(d.fromAt);
-           const d2 = new Date(d.createdAt);
-           d.diff_ms = (d2 - d1) / 1000; // 초 단위(원하시면 ms로 조정)
-         }
+        const dbAt = new Date().getTime();
+        // diff_ms_db 계산 로직 수정: 밀리초 단위로 계산 (초 단위 아님)
+        const diff_ms_db = ( new Date().getTime() - new Date(d.marketAt).getTime() ) / 1000 > 0 ? ( new Date().getTime() - new Date(d.marketAt).getTime() ) / 1000 : 0;
 
         // bids/asks가 다수라면 각 레벨을 개별 레코드로 펼쳐서 전송
         let seq = 0;
@@ -421,11 +301,13 @@ async function startPullQueue() {
               side: "B",
               price,
               size,
-              createdAt: d.createdAt,
+              marketAt: d.marketAt,
+              coollectorAt: d.coollectorAt,
+              dbAt: dbAt,
               diff_ms: d.diff_ms,
-              fromAt: d.fromAt,
+              diff_ms_db: diff_ms_db,
             };
-            lines.push(toILP(topic, d.fromAt ?? ts, row));
+            lines.push(toILP(topic, d.marketAt ?? ts, row));
             seq++;
             bid_count++;
             total_count++;
@@ -442,42 +324,25 @@ async function startPullQueue() {
               side: "A",
               price,
               size,
-              createdAt: d.createdAt,
+              marketAt: d.marketAt,
+              coollectorAt: d.coollectorAt,
+              dbAt: dbAt,
               diff_ms: d.diff_ms,
-              fromAt: d.fromAt,
+              diff_ms_db: diff_ms_db,
             };
-            lines.push(toILP(topic, d.fromAt ?? ts, row));
+            lines.push(toILP(topic, d.marketAt ?? ts, row));
             seq++;
             ask_count++;
             total_count++;
           }
         }
 
-        // bid/ask가 없는 단건 포맷(체결 등)도 처리 가능
-        // if (!Array.isArray(d.bid) && !Array.isArray(d.ask)) {
-        //   const row = {
-        //     symbol: d.symbol,
-        //     exchange_no: d.exchange_no,
-        //     exchange_name: d.exchange_name,
-        //     seq: d.seq ?? 0,
-        //     side: d.side ?? "",
-        //     price: d.price ?? null,
-        //     size: d.size ?? null,
-        //     createdAt: d.createdAt,
-        //     diff_ms: d.diff_ms,
-        //     fromAt: d.fromAt,
-        //   };
-        //   console.log("row", row);
-        //   lines.push(toILP(topic, d.fromAt ?? ts, row));
-        // }
-
-        // console.log(`[WORK] ${topic} @ ${new Date(d.createdAt).getTime()}`, `total_count: ${total_count}, bid_count: ${bid_count}, ask_count: ${ask_count}`);
       }
 
       if (lines.length) {
-        ilp.write(lines); // backpressure/재연결은 내부에서 처리
-        // console.log(`[BATCH] ILP flush ${lines.length} lines`);
-        
+        if (process.env.IS_SAVE_DB === "true") {
+          ilp.write(lines); // backpressure/재연결은 내부에서 처리
+        }
       }
     },
   });
@@ -497,14 +362,12 @@ async function startPullQueue() {
           data: parsed
         };
 
-        if (process.env.IS_BATCH === "true") {
+        if (process.env.IS_SAVE_DB === "true") {
           batcher.push(item);
-        } else {
-          workQueue.push(() => processMessage(topicBuf, Buffer.from(Date.now().toString()), payloadBuf));
         }
       } else {
         // 형식이 다르면 개별 처리로 우회
-        if (process.env.IS_BATCH === "true") {
+        if (process.env.IS_SAVE_DB === "true") {
             workQueue.push(() => handleMessage(Buffer.from("unknown"), Buffer.from(Date.now().toString()), msg[0]));
         }
       }

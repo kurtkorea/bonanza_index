@@ -65,6 +65,7 @@ function createIlpWriter({ host = process.env.QDB_ILP_HOST || "127.0.0.1", port 
 
   /** lines: string 또는 string[] (각 line 끝에 '\n' 포함) */
   function write(lines) {
+
     const payload = Array.isArray(lines) ? lines.join("") : String(lines);
     if (!payload) return true;
     if (!connected || !sock) {
@@ -146,8 +147,8 @@ function toNs(anyTs, fallbackMs = Date.now()) {
  * @param {object} data   { symbol, exchange_no, exchange_name, seq, side, price, size, createdAt, diff_ms }
  * @returns string  ILP 라인 (끝에 \n)
  */
- function toILP(topic, eventTs, data) {
-     const ns = toNs(data.fromAt ?? eventTs);
+
+ function toILP_Ticker(data) {
      const tags = `symbol=${escTag(data.symbol)},exchange_name=${escTag(data.exchange_name)}`;
      const fields = [];
      if (data.exchange_no != null) fields.push(`exchange_no=${intField(data.exchange_no)}`); // INT → i
@@ -161,8 +162,22 @@ function toNs(anyTs, fallbackMs = Date.now()) {
      if (data.createdAt)           fields.push(`createdAt=${tsFieldMicros(data.createdAt)}`); // ★ TIMESTAMP → μs + t
      if (data.diff_ms != null && data.diff_ms !== undefined) fields.push(`diff_ms=${floatField(data.diff_ms)}`);
      if (!fields.length) fields.push("dummy=1");
-     return `tb_ticker,${tags} ${fields.join(",")} ${ns}\n`;
+     return `tb_ticker,${tags} ${fields.join(",")}\n`;
  }
+
+ function toILP_Trade(data) {
+  const tags = `symbol=${escTag(data.symbol)},exchange_name=${escTag(data.exchange_name)}`;
+  const fields = [];
+  if (data.exchange_no != null) fields.push(`exchange_no=${intField(data.exchange_no)}`); // INT → i
+  if (data.price != null)        fields.push(`price=${floatField(data.price)}`);
+  if (data.volume != null)      fields.push(`volume=${floatField(data.volume)}`);
+  if (data.side != null)        fields.push(`side="${escTag(data.side)}"`); // 문자열 필드는 반드시 쌍따옴표
+  if (data.fromAt)              fields.push(`fromAt=${tsFieldMicros(data.fromAt)}`); // ★ TIMESTAMP → μs + t
+  if (data.createdAt)           fields.push(`createdAt=${tsFieldMicros(data.createdAt)}`); // ★ TIMESTAMP → μs + t
+  if (data.diff_ms != null && data.diff_ms !== undefined) fields.push(`diff_ms=${floatField(data.diff_ms)}`);
+  if (!fields.length) fields.push("dummy=1");
+  return `tb_trade,${tags} ${fields.join(",")}\n`;
+}
 
 
 /** =========================
@@ -299,9 +314,10 @@ async function startPullQueue() {
     maxBatchSize: 2000,
     onFlush: async (batch) => {
       // 데이터 정규화 → ILP 라인 생성
-      const lines = [];
+      const ticker_lines = [];
+      const trade_lines = [];
       for (const item of batch) {
-        const { topic, ts, data } = item;
+        const { topic, data } = item;
 
         let d = data;
         if (typeof d === "string") {
@@ -315,28 +331,44 @@ async function startPullQueue() {
            d.diff_ms = (d2 - d1) / 1000; // 초 단위(원하시면 ms로 조정)
          }
 
-        //  console.log("d", d);
-
-         const row = {
-          symbol: d.symbol,
-          exchange_no: d.exchange_no,
-          exchange_name: d.exchange_name,
-          open: d.open,
-          high: d.high,
-          low: d.low,
-          close: d.close,
-          volume: d.volume,
-          createdAt: d.createdAt,
-          diff_ms: d.diff_ms,
-          fromAt: d.fromAt,
-        };
-        lines.push(toILP(topic, d.fromAt ?? ts, row));
+         if (typeof topic === "string" && topic.includes("ticker")) {
+            const ticker_row = {
+              symbol: d.symbol,
+              exchange_no: d.exchange_no,
+              exchange_name: d.exchange_name,
+              open: d.open,
+              high: d.high,
+              low: d.low,
+              close: d.close,
+              volume: d.volume,
+              createdAt: d.createdAt,
+              diff_ms: d.diff_ms,
+              fromAt: d.fromAt,
+            };
+            ticker_lines.push(toILP_Ticker(ticker_row));
+         } else if (typeof topic === "string" && topic.includes("trade")) {
+          //  console.log(`[LOG] trade topic 감지: topic=${topic}, data=`, d);
+            const trade_row = {
+              symbol: d.symbol,
+              exchange_no: d.exchange_no,
+              exchange_name: d.exchange_name,
+              price: d.price,
+              volume: d.volume,
+              side: d.side,
+              createdAt: d.createdAt,
+              diff_ms: d.diff_ms,
+              fromAt: d.fromAt,
+            };
+            trade_lines.push(toILP_Trade(trade_row));
+         } else {
+           console.log(`[LOG] 기타 topic 감지: topic=${topic}, data=`, d);
+         }
       }
-
-      if (lines.length) {
-        ilp.write(lines); // backpressure/재연결은 내부에서 처리
-        // console.log(`[BATCH] ILP flush ${lines.length} lines`);
-        
+      if (ticker_lines.length) {
+        ilp.write(ticker_lines); // backpressure/재연결은 내부에서 처리
+      }
+      if (trade_lines.length) {
+        ilp.write(trade_lines); // backpressure/재연결은 내부에서 처리
       }
     },
   });

@@ -12,10 +12,12 @@ async function orderbook_schema() {
             side         SYMBOL CAPACITY 4,         -- 'B'/'S'
             price        DOUBLE,
             size         DOUBLE,
-            fromAt       TIMESTAMP,                 -- 이벤트 시간(타임스탬프 디자인 컬럼)
-            createdAt    TIMESTAMP,
-            diff_ms      DOUBLE
-        ) TIMESTAMP(fromAt)
+            marketAt       TIMESTAMP,               -- 거래소에서 찍혀온 시간
+            coollectorAt   TIMESTAMP,               -- 수집 시간
+            dbAt         TIMESTAMP,                 -- DB에 저장된 시간
+            diff_ms      DOUBLE,                     -- 거래소에서 찍혀온 시간과 수집 시간의 차이
+            diff_ms_db   DOUBLE                     -- 거래소에서 찍혀온 시간과 DB에 저장된 시간의 차이
+        ) TIMESTAMP(marketAt)
             PARTITION BY DAY
             WAL;`;
         await db.sequelize.query(orderbook);
