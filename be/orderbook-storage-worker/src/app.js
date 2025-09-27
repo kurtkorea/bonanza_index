@@ -36,7 +36,7 @@ const morgan = require("morgan");
 app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
 
 //db connection
-const { connect } = require("./db/db.js");
+const { connect, db } = require("./db/db.js");
 const { orderbook_schema } = require("./ddl/orderbook_ddl.js");
 
 
@@ -69,8 +69,8 @@ app.use((err, req, res, next) => {
 async function initializeApp() {
 	try {
 		// DB 연결
-		await connect();
-		await orderbook_schema();
+		await connect(process.env.QDB_HOST, process.env.QDB_PORT);
+		await orderbook_schema(db);
 		
 		// ZMQ 큐 시작
 		await startPullQueue();

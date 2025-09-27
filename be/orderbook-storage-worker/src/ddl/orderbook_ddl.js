@@ -1,7 +1,6 @@
 // ddl.js
-const db = require("../db/db.js");
 
-async function orderbook_schema() {
+async function orderbook_schema(db) {
     try {
         const orderbook = `
         CREATE TABLE IF NOT EXISTS tb_order_book (

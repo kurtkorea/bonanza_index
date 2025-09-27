@@ -2,7 +2,7 @@
 const zmq = require("zeromq");
  const net = require("net");
  const { sequelize, QueryTypes } = require("../db/db.js");                  // (옵션) raw SQL fallback 시 사용
- const { OrderBook } = require("../models/orderbook.js");  // Sequelize 경로는 지금은 미사용
+ const { createOrderBookModel } = require("../models/orderbook.js");  // Sequelize 경로는 지금은 미사용
 
 /** =========================
  *  ILP Writer (TCP 9009)
@@ -164,7 +164,6 @@ function toNs(anyTs, fallbackMs = Date.now()) {
      return `tb_order_book,${tags} ${fields.join(",")} ${ns}\n`;
  }
 
-
 /** =========================
  *  비동기 작업 큐 (동시 처리 제한)
  *  ========================= */
@@ -284,6 +283,8 @@ async function startPullQueue() {
         if (typeof d === "string") {
           try { d = JSON.parse(d); } catch { d = { raw: d }; }
         }
+
+        console.log(d);
 
         const dbAt = new Date().getTime();
         // diff_ms_db 계산 로직 수정: 밀리초 단위로 계산 (초 단위 아님)

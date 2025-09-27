@@ -1,4 +1,14 @@
 // receiver-pull-queue.js
+const path = require("path");
+const dotenv = require("dotenv");
+
+// 환경 변수 로드
+if (process.env.NODE_ENV === "production") {
+	dotenv.config({ path: path.join(__dirname, "../../env/prod.env") });
+} else {
+	dotenv.config({ path: path.join(__dirname, "../../env/dev.env") });
+}
+
 const zmq = require("zeromq");
 const net = require("net");
 const { sequelize, QueryTypes } = require("../db/db.js");                  // (옵션) raw SQL fallback 시 사용
@@ -328,6 +338,9 @@ async function startPullQueue() {
         // console.log("d", d);
         // console.log("topic", topic);
 
+        // console.log("d", d);
+        console.log("topic", topic, d);
+
          if (typeof topic === "string" && topic.includes("ticker")) {
             const ticker_row = {
               symbol: d.symbol,
@@ -363,7 +376,7 @@ async function startPullQueue() {
             };
             trade_lines.push(toILP_Trade(trade_row));
          } else {
-           console.log(`[LOG] 기타 topic 감지: topic=${topic}, data=`, d);
+          //  console.log(`[LOG] 기타 topic 감지: topic=${topic}, data=`, d);
          }
       }
       if (ticker_lines.length) {

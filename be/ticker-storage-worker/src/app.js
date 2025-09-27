@@ -36,7 +36,7 @@ const morgan = require("morgan");
 app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
 
 //db connection
-const { connect } = require("./db/db.js");
+const { connect, db } = require("./db/db.js");
 const { ticker_schema } = require("./ddl/ticker_ddl.js");
 const { trade_schema } = require("./ddl/trade_ddl.js");
 
@@ -71,8 +71,8 @@ async function initializeApp() {
 	try {
 		// DB 연결
 		await connect();
-		await ticker_schema();
-		await trade_schema();
+		await ticker_schema(db);
+		await trade_schema(db);
 		
 		// ZMQ 큐 시작
 		await startPullQueue();

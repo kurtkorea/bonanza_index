@@ -141,8 +141,10 @@ async function initializeApp() {
 			throw new Error('ZMQ_SUB_TICKER_HOST 환경 변수가 설정되지 않았습니다.');
 		}
 
-		// DB 연결 (필요시 주석 해제)
+		// DB 연결 (일시적으로 비활성화 - ZMQ 에러 해결 후 활성화)
+		// console.log('DB 연결 중...');
 		// await connect();
+		// console.log('DB 연결 완료');
 
 		console.log('ZMQ depth Subscriber 초기화 중...');
 		console.log('ZMQ ticker Subscriber 초기화 중...');
