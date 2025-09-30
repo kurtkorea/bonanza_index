@@ -17,30 +17,106 @@
         "tags": [
           "Index History"
         ],
-        "description": "index history get",
+        "description": "FKBRTI 지수 히스토리 조회 (기본 데이터)",
         "parameters": [
+          {
+            "name": "sort",
+            "in": "query",
+            "type": "string"
+          },
           {
             "name": "from_date",
             "in": "query",
             "type": "datetime",
-            "description": "검색시작시간"
+            "description": "검색시작시간 (예: 2025-09-01T00:00:00Z)"
           },
           {
             "name": "to_date",
             "in": "query",
             "type": "datetime",
-            "description": "검색마지막시간"
+            "description": "검색마지막시간 (예: 2025-09-30T23:59:59Z)"
           },
           {
-            "name": "interval",
+            "name": "page",
             "in": "query",
             "type": "integer",
-            "description": "interval(1, 5, 10)"
+            "description": "페이지 번호 (기본값: 1)"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "type": "integer",
+            "description": "페이지 크기 (기본값: 100)"
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "type": "string",
+            "description": "정렬 순서 - asc 또는 desc (기본값: desc)"
           }
         ],
         "responses": {
           "200": {
             "description": "성공"
+          },
+          "400": {
+            "description": "잘못된 요청"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          }
+        }
+      }
+    },
+    "/v1/index_calc/": {
+      "get": {
+        "tags": [
+          "Index Calculation"
+        ],
+        "description": "FKBRTI 지수 계산 (5초, 10초 이동평균 포함)",
+        "parameters": [
+          {
+            "name": "sort",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "type": "datetime",
+            "description": "검색시작시간 (예: 2025-09-01T00:00:00Z)"
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "type": "datetime",
+            "description": "검색마지막시간 (예: 2025-09-30T23:59:59Z)"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "type": "integer",
+            "description": "페이지 번호 (기본값: 1)"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "type": "integer",
+            "description": "페이지 크기 (기본값: 100)"
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "type": "string",
+            "description": "정렬 순서 - asc 또는 desc (기본값: desc)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "400": {
+            "description": "잘못된 요청"
           },
           "440": {
             "description": "각종 오류 - 상세 내용은 message 참조"

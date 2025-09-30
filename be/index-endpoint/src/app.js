@@ -13,7 +13,6 @@ global.logger = log;
 
 // const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
 
-const { start_fkbrti_engine, init_zmq_depth_subscriber, init_zmq_ticker_subscriber } = require('./service/zmq-data-sub.js');
 const { connect, db } = require("./db/db.js");
 
 // Start of Selection
