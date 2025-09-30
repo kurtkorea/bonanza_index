@@ -88,6 +88,10 @@ const MARKET_NAME_ENUM = Object.freeze({
 	COINONE: "COINONE"
 });
 
+let latestTickerByExchange = new Map();
+let latestTradeByExchange = new Map();
+let latestDepthByExchange = new Map();
+
 module.exports = {
 	isEmpty,
 	respMsg,
@@ -99,4 +103,7 @@ module.exports = {
 	message,
 	MARKET_NO_ENUM,
 	MARKET_NAME_ENUM,
+	latestTickerByExchange,
+	latestDepthByExchange,
+	latestTradeByExchange,
 };

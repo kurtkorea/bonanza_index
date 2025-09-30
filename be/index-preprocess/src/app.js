@@ -13,8 +13,11 @@ global.logger = log;
 
 // const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
 
-const { init_zmq_depth_subscriber, init_zmq_ticker_subscriber } = require('./service/zmq-data-sub.js');
-const { connect } = require("./db/db.js");
+const { start_fkbrti_engine, init_zmq_depth_subscriber, init_zmq_ticker_subscriber } = require('./service/zmq-data-sub.js');
+const { connect, db } = require("./db/db.js");
+const { fkbrti_1sec_schema } = require('./ddl/fkbrti_1sec_ddl.js');
+const { fkbrti_5sec_schema } = require('./ddl/fkbrti_5sec_ddl.js');
+const { fkbrti_10sec_schema } = require('./ddl/fkbrti_10sec_ddl.js');
 
 // Start of Selection
 global.logging = false;
@@ -60,16 +63,15 @@ var message = {};
 const cors = require("cors");
 const morgan = require("morgan");
 
-
 //cors setting
 app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
 
 //db connection
-const { sequelize, Message } = require("../models");
-sequelize
-	.sync({ force: false })
-	.then(() => console.log("DB 연결 성공"))
-	.catch((err) => console.log("DB 연결 실패", err));
+// const { sequelize, Message } = require("../models");
+// sequelize
+// 	.sync({ force: false })
+// 	.then(() => console.log("DB 연결 성공"))
+// 	.catch((err) => console.log("DB 연결 실패", err));
 
 //console log middleware
 app.use(morgan("dev", { skip: (req, resp) => resp.statusCode < 400 }));
@@ -77,7 +79,6 @@ app.use(morgan("dev", { skip: (req, resp) => resp.statusCode < 400 }));
 //express setting
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
-
 
 //proxy checker
 if (process.env.NODE_ENV === "production") {
@@ -132,6 +133,8 @@ async function initializeApp() {
 	try {
 		console.log('애플리케이션 초기화 시작...');
 
+		connect();
+
 		// 환경 변수 검증
 		if (!process.env.ZMQ_SUB_DEPTH_HOST) {
 			throw new Error('ZMQ_SUB_DEPTH_HOST 환경 변수가 설정되지 않았습니다.');
@@ -141,17 +144,21 @@ async function initializeApp() {
 			throw new Error('ZMQ_SUB_TICKER_HOST 환경 변수가 설정되지 않았습니다.');
 		}
 
-		// DB 연결 (일시적으로 비활성화 - ZMQ 에러 해결 후 활성화)
-		// console.log('DB 연결 중...');
-		// await connect();
-		// console.log('DB 연결 완료');
+		// DB 연결
+		console.log('DB 연결 중...');
+		await connect();
+		await fkbrti_1sec_schema(db);
+		await fkbrti_5sec_schema(db);
+		await fkbrti_10sec_schema(db);
+		console.log('DB 연결 완료');
 
 		console.log('ZMQ depth Subscriber 초기화 중...');
 		console.log('ZMQ ticker Subscriber 초기화 중...');
 
 		await Promise.all([
 			init_zmq_depth_subscriber(),
-			init_zmq_ticker_subscriber()
+			init_zmq_ticker_subscriber(),
+			start_fkbrti_engine(),
 		]);
 
 		console.log('ZMQ depth Subscriber 초기화 완료');

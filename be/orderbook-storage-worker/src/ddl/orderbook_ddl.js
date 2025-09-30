@@ -4,8 +4,8 @@ async function orderbook_schema(db) {
     try {
         const orderbook = `
         CREATE TABLE IF NOT EXISTS tb_order_book (
-            symbol       SYMBOL CAPACITY 4096,
-            exchange_no  INT,
+            symbol       SYMBOL CAPACITY 128,
+            exchange_no  SYMBOL CAPACITY 128,
             exchange_name SYMBOL CAPACITY 128,
             seq          LONG,                      -- 거래소 시퀀스(고유)
             side         SYMBOL CAPACITY 4,         -- 'B'/'S'

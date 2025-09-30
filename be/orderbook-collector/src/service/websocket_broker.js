@@ -215,8 +215,10 @@ class UpbitClient {
         const msg = JSON.parse(raw.toString());
         if ((msg.ty || msg.type) === "orderbook") {
           const units = msg.obu || msg.orderbook_units || [];
+          const marketAt = msg.tms;
+          const coollectorAt = new Date(Date.now()).getTime();
 
-          const marketAt = new Date(msg.tms);
+          // console.log(marketAt);
           // 15개까지만 자르기
           const bids = units.slice(0, 15).map(u => [u.bp ?? u.bid_price, u.bs ?? u.bid_size]);
           const asks = units.slice(0, 15).map(u => [u.ap ?? u.ask_price, u.as ?? u.ask_size]);
@@ -229,8 +231,11 @@ class UpbitClient {
             bid: bids,
             ask: asks,
             marketAt: marketAt,
-            coollectorAt: new Date(Date.now()),
+            coollectorAt: coollectorAt,
+            diff_ms: (coollectorAt - marketAt) / 1000,
           };
+
+          // console.log(orderbook_item);
 
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
 
@@ -269,7 +274,10 @@ class BithumbClient {
       try {
         const msg = JSON.parse(raw.toString());
         if ((msg.ty ?? msg.type) === "orderbook") {
-          const marketAt = new Date(msg.tms);
+          const marketAt = parseInt(msg.tms / 1000);
+          const coollectorAt = new Date(Date.now()).getTime();
+          // console.log(marketAt);
+
           const units = msg.obu || msg.orderbook_units || [];
           // 15개까지만 추출
           const bids = units.slice(0, 15).map(u => [u.bp ?? u.bid_price, u.bs ?? u.bid_size]);
@@ -283,8 +291,11 @@ class BithumbClient {
             bid: bids,
             ask: asks,
             marketAt: marketAt,
-            coollectorAt: new Date(Date.now()),
+            coollectorAt: coollectorAt,
+            diff_ms: (coollectorAt - marketAt) / 1000,
           };
+
+          // console.log(orderbook_item);
 
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
 
@@ -319,7 +330,10 @@ class KorbitClient {
       try {
         const msg = JSON.parse(raw.toString());
         if (msg.type === "orderbook" && msg.data) {
-          const marketAt = new Date(msg.timestamp);
+          const marketAt = msg.timestamp;
+          const coollectorAt = new Date(Date.now()).getTime();
+
+          // console.log(marketAt);
           // 15개까지만 추출
           const bids = (msg.data.bids || []).slice(0, 15).map(x => [Number(x.price), Number(x.qty)]);
           const asks = (msg.data.asks || []).slice(0, 15).map(x => [Number(x.price), Number(x.qty)]);
@@ -328,11 +342,14 @@ class KorbitClient {
             symbol: process.env.SYMBOL ?? "KRW-BTC",
             exchange_no: this.market_no,
             exchange_name: this.name,
-            bid: bids,
+            bid: bids,  
             ask: asks,
             marketAt: marketAt,
-            coollectorAt: new Date(Date.now()),
+            coollectorAt: coollectorAt,
+            diff_ms: (coollectorAt - marketAt) / 1000,
           };
+
+          // console.log(orderbook_item);
 
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
 
@@ -379,7 +396,9 @@ class CoinoneClient {
         const msg = JSON.parse(raw.toString());
         if ((msg.c === "ORDERBOOK" || msg.channel === "ORDERBOOK") && (msg.d || msg.data)) {
           const d = msg.d || msg.data;
-          const marketAt = new Date(d.t || Date.now());
+          const marketAt = d.t;
+          const coollectorAt = new Date(Date.now()).getTime();
+
 
           //코인원은 String 타입이다.
           // 15개까지만 자르기
@@ -393,8 +412,11 @@ class CoinoneClient {
             bid: bids,
             ask: asks,
             marketAt: marketAt,
-            coollectorAt: new Date(Date.now()),
+            coollectorAt: coollectorAt,
+            diff_ms: (coollectorAt - marketAt) / 1000,
           };
+
+          // console.log(orderbook_item);
 
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
 
@@ -416,13 +438,6 @@ class CoinoneClient {
 async function SendToOrderBook_ZMQ(orderbook_item, raw = null) {
   const topic = `${orderbook_item.exchange_no}/${orderbook_item.symbol}`;
   const ts = Date.now();
-  //거래소에서 부터 수집된 시간을 저장한다.
-  orderbook_item.diff_ms = (orderbook_item.coollectorAt - orderbook_item.marketAt) / 1000 >0 ? (orderbook_item.coollectorAt - orderbook_item.marketAt) / 1000 : 0;
-
-  // console.log(orderbook_item);
-
-  // ZMQ PUSH 방식으로 전송 => DB에 호가를 저장하는 프로세스에 전송
-  // ZMQ PUB 방식으로 전송 => 각 거래소/SYMBOL 별로 전송하고 각 프로세스에서 지수 산출하고 DB 저장
 
   const raw_orderbook_item = { ...orderbook_item };
   raw_orderbook_item.raw = raw;

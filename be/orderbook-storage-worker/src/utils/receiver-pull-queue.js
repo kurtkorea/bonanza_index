@@ -284,11 +284,12 @@ async function startPullQueue() {
           try { d = JSON.parse(d); } catch { d = { raw: d }; }
         }
 
-        console.log(d);
+        // console.log(d.marketAt);
 
         const dbAt = new Date().getTime();
         // diff_ms_db 계산 로직 수정: 밀리초 단위로 계산 (초 단위 아님)
-        const diff_ms_db = ( new Date().getTime() - new Date(d.marketAt).getTime() ) / 1000 > 0 ? ( new Date().getTime() - new Date(d.marketAt).getTime() ) / 1000 : 0;
+        const diff_ms_db = (dbAt - d.marketAt) / 1000;
+        // console.log(d);
 
         // bids/asks가 다수라면 각 레벨을 개별 레코드로 펼쳐서 전송
         let seq = 0;

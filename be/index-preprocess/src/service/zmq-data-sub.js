@@ -4,11 +4,15 @@
 
 const zmq = require('zeromq');
 const { logError, safeAsync, validateObject } = require('../utils/errorHandler');
-
 const { FkbrtiEngine } = require("./fkbrti_engine");
 
-const _FkbrtiEngine_ = new FkbrtiEngine();
-_FkbrtiEngine_.start();
+const { latestTickerByExchange, latestTradeByExchange, latestDepthByExchange } = require('../utils/common');
+
+// 거래소별 ticker의 최종 데이터를 담기 위한 Map 추가
+
+let _FkbrtiEngine_1sec_ = null;
+let _FkbrtiEngine_5sec_ = null;
+let _FkbrtiEngine_10sec_ = null;
 
 async function init_zmq_depth_subscriber() {
     console.log('Initializing ZMQ depthSubscriber...');
@@ -38,20 +42,30 @@ async function init_zmq_depth_subscriber() {
                 for await (const [topic, payload] of sub_depth) {
                     const result = await safeAsync(async () => {
                         const orderbook_item = JSON.parse(payload.toString());
-                        
                         // 데이터 유효성 검사
                         validateObject(orderbook_item, 'orderbook_item');
-                       
-                        if ( _FkbrtiEngine_ != null ) {
 
-                        //   console.log("orderbook_item", orderbook_item);
-
-                          _FkbrtiEngine_.onSnapshot(orderbook_item);
+                        if (orderbook_item.hasOwnProperty('raw')) {
+                            delete orderbook_item.raw;
                         }
 
-                        // console.log("orderbook_item", orderbook_item);
-                        
-                        
+                        const last_key = orderbook_item.exchange_no + "_" + orderbook_item.symbol;
+                        latestDepthByExchange.set(last_key, orderbook_item);
+
+                        // console.log ( "latestDepthByExchange", latestDepthByExchange);
+  
+                        if ( _FkbrtiEngine_1sec_ != null ) {
+                            _FkbrtiEngine_1sec_.onSnapshotOrderBook(orderbook_item);
+                        }
+
+                        if ( _FkbrtiEngine_5sec_ != null ) {
+                            _FkbrtiEngine_5sec_.onSnapshotOrderBook(orderbook_item);
+                        }
+
+                        if ( _FkbrtiEngine_10sec_ != null ) {
+                            _FkbrtiEngine_10sec_.onSnapshotOrderBook(orderbook_item);
+                        }
+
                         return true;
                     }, 'ZMQ 데이터 처리', false);
                     
@@ -108,14 +122,37 @@ async function init_zmq_ticker_subscriber() {
                     const result = await safeAsync(async () => {
 
                         const feed_item = JSON.parse(payload.toString());
+
                         if ( feed_item != null) {
+
+                            validateObject(feed_item, 'feed_item');
+
+                            if (feed_item.hasOwnProperty('raw')) {
+                                delete feed_item.raw;
+                            }
+
+                            //메모리에 저장해둔다.
                             if (topic.toString().includes('ticker')) {
-                                console.log("ticker_item", JSON.stringify(feed_item, null, 2));
+                                // console.log("feed_item", JSON.stringify(feed_item, null, 2));
+                                // if ( _FkbrtiEngine_ != null ) {
+                                //     _FkbrtiEngine_.onSnapshotTicker(feed_item);
+                                // }
+                                const last_key = feed_item.exchange_no + "_" + feed_item.symbol;
+                                if (feed_item.hasOwnProperty('raw')) {
+                                    delete feed_item.raw;
+                                }
+                                latestTickerByExchange.set(last_key, feed_item);
                             } else if (topic.toString().includes('trade')) {
-                                console.log("trade_item", JSON.stringify(feed_item, null, 2));
+                                // if ( _FkbrtiEngine_ != null ) {
+                                //     _FkbrtiEngine_.onSnapshotTrade(feed_item);
+                                // }
+                                const last_key = feed_item.exchange_no + "_" + feed_item.symbol;
+                                if (feed_item.hasOwnProperty('raw')) {
+                                    delete feed_item.raw;
+                                }
+                                latestTradeByExchange.set(last_key, feed_item);
                             }
                         }
-
                         return true;
                     }, 'ZMQ 데이터 처리', false);
                     
@@ -143,7 +180,32 @@ async function init_zmq_ticker_subscriber() {
     }
 }
 
+function start_fkbrti_engine() {
+    try {
+        _FkbrtiEngine_1sec_ = new FkbrtiEngine( { symbol: "KRW-BTC", tickMs: 1000, table_name: "tb_fkbrti_1sec" } );
+        _FkbrtiEngine_1sec_.start();
+        console.log('FkbrtiEngine 1sec 초기화 성공');
+    } catch (error) {
+        console.error('FkbrtiEngine 1sec 초기화 실패:', error);
+    }
+    try {
+        _FkbrtiEngine_5sec_ = new FkbrtiEngine( { symbol: "KRW-BTC", tickMs: 5000, table_name: "tb_fkbrti_5sec" } );
+        _FkbrtiEngine_5sec_.start();
+        console.log('FkbrtiEngine 5sec 초기화 성공');
+    } catch (error) {
+        console.error('FkbrtiEngine 5sec 초기화 실패:', error);
+    }
+    try {
+        _FkbrtiEngine_10sec_ = new FkbrtiEngine( { symbol: "KRW-BTC", tickMs: 10000, table_name: "tb_fkbrti_10sec" } );
+        _FkbrtiEngine_10sec_.start();
+        console.log('FkbrtiEngine 10sec 초기화 성공');
+    } catch (error) {
+        console.error('FkbrtiEngine 10sec 초기화 실패:', error);
+    }
+}
+
 module.exports = {
     init_zmq_depth_subscriber,
-    init_zmq_ticker_subscriber
+    init_zmq_ticker_subscriber,
+    start_fkbrti_engine,
 }

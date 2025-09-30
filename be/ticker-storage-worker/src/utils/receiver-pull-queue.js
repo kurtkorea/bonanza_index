@@ -335,13 +335,11 @@ async function startPullQueue() {
         // diff_ms_db 계산 로직 수정: 밀리초 단위로 계산 (초 단위 아님)
         const diff_ms_db = ( new Date().getTime() - new Date(d.marketAt).getTime() ) / 1000 > 0 ? ( new Date().getTime() - new Date(d.marketAt).getTime() ) / 1000 : 0;
 
-        // console.log("d", d);
-        // console.log("topic", topic);
-
-        // console.log("d", d);
-        console.log("topic", topic, d);
-
          if (typeof topic === "string" && topic.includes("ticker")) {
+            if ( d.open == null || d.high == null || d.low == null || d.close == null || d.volume == null ) {
+              console.log("d", d);
+              continue;
+            }
             const ticker_row = {
               symbol: d.symbol,
               exchange_no: d.exchange_no,
@@ -361,6 +359,12 @@ async function startPullQueue() {
             ticker_lines.push(toILP_Ticker(ticker_row));
          } else if (typeof topic === "string" && topic.includes("trade")) {
           //  console.log(`[LOG] trade topic 감지: topic=${topic}, data=`, d);
+
+            if ( d.price == null || d.volume == null || d.side == null ) {
+              console.log("d", d);
+              continue;
+            }
+
             const trade_row = {
               symbol: d.symbol,
               exchange_no: d.exchange_no,
