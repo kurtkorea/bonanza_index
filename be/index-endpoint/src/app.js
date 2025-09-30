@@ -15,7 +15,6 @@ global.logger = log;
 
 const { start_fkbrti_engine, init_zmq_depth_subscriber, init_zmq_ticker_subscriber } = require('./service/zmq-data-sub.js');
 const { connect, db } = require("./db/db.js");
-const { fkbrti_1sec_schema } = require('./ddl/fkbrti_1sec_ddl.js');
 
 // Start of Selection
 global.logging = false;
@@ -54,12 +53,14 @@ if (process.env.NODE_ENV === "production") {
 }
 const express = require("express");
 const app = express();
-// const server = require("http").createServer(app);
-
-var message = {};
+const server = require("http").createServer(app);
+app.set("port", process.env.PORT || 3000);
 
 const cors = require("cors");
 const morgan = require("morgan");
+
+//swagger
+const swaggerUi = require("swagger-ui-express");
 
 //cors setting
 app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
@@ -75,8 +76,19 @@ app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }))
 app.use(morgan("dev", { skip: (req, resp) => resp.statusCode < 400 }));
 
 //express setting
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+app.use(express.json({ limit: "5mb" }));
+
+app.use(express.static("./swagger"));
+app.use(
+	"/doc",
+	swaggerUi.serve,
+	swaggerUi.setup(null, {
+		swaggerOptions: {
+			url: `/swagger_autogen.json`,
+		},
+	}),
+);
 
 //proxy checker
 if (process.env.NODE_ENV === "production") {
@@ -85,10 +97,12 @@ if (process.env.NODE_ENV === "production") {
 
 //routers
 const { respMsg } = require("./utils/common");
-const commandRouter = require("./router/command");
+const indexHistoryRouter = require("./router/index_history.js");
+const indexCalcRouter = require("./router/index_calc.js");
 
 // 라우터 등록
-app.use("/api/command", commandRouter);
+app.use("/v1/index_history", indexHistoryRouter);
+app.use("/v1/index_calc", indexCalcRouter);
 
 //discovery register
 // const discovery = require("./discovery");
@@ -98,6 +112,7 @@ app.use("/api/command", commandRouter);
 
 //404 handling middleware
 app.use((req, res) => {
+	console.log('404 Not Found:', req.method, req.url);
 	respMsg(res, "missing_request");
 });
 
@@ -131,38 +146,11 @@ async function initializeApp() {
 	try {
 		console.log('애플리케이션 초기화 시작...');
 
-		// 환경 변수 검증
-		if (!process.env.ZMQ_SUB_DEPTH_HOST) {
-			throw new Error('ZMQ_SUB_DEPTH_HOST 환경 변수가 설정되지 않았습니다.');
-		}
-
-		if (!process.env.ZMQ_SUB_TICKER_HOST) {
-			throw new Error('ZMQ_SUB_TICKER_HOST 환경 변수가 설정되지 않았습니다.');
-		}
-
 		// DB 연결
 		console.log('DB 연결 중...');
 		await connect();
-		await fkbrti_1sec_schema(db);
 		console.log('DB 연결 완료');
 
-		console.log('ZMQ depth Subscriber 초기화 중...');
-		console.log('ZMQ ticker Subscriber 초기화 중...');
-
-		await Promise.all([
-			init_zmq_depth_subscriber(),
-			init_zmq_ticker_subscriber(),
-			start_fkbrti_engine(),
-		]);
-
-		console.log('ZMQ depth Subscriber 초기화 완료');
-		console.log('ZMQ ticker Subscriber 초기화 완료');
-
-		// 메시지 초기화 (필요시)
-		// (await Message.findAll({ where: { message_use: true }, attributes: { exclude: ["message_desc", "createdAt", "updatedAt"] }, logging, raw: true })).forEach(
-		// 	(row) => (message[row.message_key] = { msg: row.message_msg, code: row.message_code }),
-		// );
-		
 		console.log('애플리케이션 초기화 완료');
 	} catch (error) {
 		console.error('애플리케이션 초기화 실패:', {
@@ -182,10 +170,14 @@ async function initializeApp() {
 
 initializeApp();
 
-// Start the server
-// const server = app.listen(app.get("port"), () => {
-// 	console.log(`Server is running on port ${app.get("port")}`);
-// });
+server.listen(app.get("port"), async () => {
+	try {
+
+	} catch (err) {
+		console.log(err.name, err.message);
+	}
+	console.log("SERVER_PORT :", app.get("port"));
+});
 
 
 

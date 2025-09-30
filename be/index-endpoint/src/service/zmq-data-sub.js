@@ -10,8 +10,9 @@ const { latestTickerByExchange, latestTradeByExchange, latestDepthByExchange } =
 
 // 거래소별 ticker의 최종 데이터를 담기 위한 Map 추가
 
-
 let _FkbrtiEngine_1sec_ = null;
+let _FkbrtiEngine_5sec_ = null;
+let _FkbrtiEngine_10sec_ = null;
 
 async function init_zmq_depth_subscriber() {
     console.log('Initializing ZMQ depthSubscriber...');
@@ -55,6 +56,14 @@ async function init_zmq_depth_subscriber() {
   
                         if ( _FkbrtiEngine_1sec_ != null ) {
                             _FkbrtiEngine_1sec_.onSnapshotOrderBook(orderbook_item);
+                        }
+
+                        if ( _FkbrtiEngine_5sec_ != null ) {
+                            _FkbrtiEngine_5sec_.onSnapshotOrderBook(orderbook_item);
+                        }
+
+                        if ( _FkbrtiEngine_10sec_ != null ) {
+                            _FkbrtiEngine_10sec_.onSnapshotOrderBook(orderbook_item);
                         }
 
                         return true;
@@ -178,6 +187,20 @@ function start_fkbrti_engine() {
         console.log('FkbrtiEngine 1sec 초기화 성공');
     } catch (error) {
         console.error('FkbrtiEngine 1sec 초기화 실패:', error);
+    }
+    try {
+        _FkbrtiEngine_5sec_ = new FkbrtiEngine( { symbol: "KRW-BTC", tickMs: 5000, table_name: "tb_fkbrti_5sec" } );
+        _FkbrtiEngine_5sec_.start();
+        console.log('FkbrtiEngine 5sec 초기화 성공');
+    } catch (error) {
+        console.error('FkbrtiEngine 5sec 초기화 실패:', error);
+    }
+    try {
+        _FkbrtiEngine_10sec_ = new FkbrtiEngine( { symbol: "KRW-BTC", tickMs: 10000, table_name: "tb_fkbrti_10sec" } );
+        _FkbrtiEngine_10sec_.start();
+        console.log('FkbrtiEngine 10sec 초기화 성공');
+    } catch (error) {
+        console.error('FkbrtiEngine 10sec 초기화 실패:', error);
     }
 }
 
