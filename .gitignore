@@ -5,3 +5,8 @@
 /be/index-preprocess/logs
 /be/ticker-collector/logs
 /be/ticker-collector/package-lock.json
+
+/be/index-endpoint/logs/*.log
+/be/index-endpoint/package-lock.json
+/be/orderbook-storage-worker/logs/*.log
+/be/ticker-storage-worker/logs/*.log

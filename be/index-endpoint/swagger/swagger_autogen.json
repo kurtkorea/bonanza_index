@@ -1,0 +1,52 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "index-calculator",
+    "version": "1.0.0",
+    "description": ""
+  },
+  "host": "localhost:3009",
+  "basePath": "/",
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "paths": {
+    "/v1/index_history/": {
+      "get": {
+        "tags": [
+          "Index History"
+        ],
+        "description": "index history get",
+        "parameters": [
+          {
+            "name": "from_date",
+            "in": "query",
+            "type": "datetime",
+            "description": "검색시작시간"
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "type": "datetime",
+            "description": "검색마지막시간"
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "type": "integer",
+            "description": "interval(1, 5, 10)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          }
+        }
+      }
+    }
+  }
+}
