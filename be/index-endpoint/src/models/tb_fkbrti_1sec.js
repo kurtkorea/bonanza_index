@@ -100,7 +100,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 				createdAt,
 				vwap_buy,
 				vwap_sell,
-				index_mid,
+				index_mid AS fkbrti_1s,
 				avg(index_mid) OVER (
 					ORDER BY createdAt
 					ROWS BETWEEN 4 PRECEDING AND CURRENT ROW
