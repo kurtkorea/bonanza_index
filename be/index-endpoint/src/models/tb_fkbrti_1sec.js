@@ -73,6 +73,8 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 			replacements.toDate = toDate;
 		}
 
+		
+
 		// 전체 개수 조회
 		const countQuery = `
 			SELECT COUNT(*) as total
@@ -119,6 +121,8 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 			ORDER BY createdAt ${orderDirection}
 			LIMIT ${maxLimit}
 		`;
+
+		// console.log("replacements.fromDate", replacements.toDate);
 
 		const results = await this.sequelize.query(query, {
 			replacements,

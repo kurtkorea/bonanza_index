@@ -33,7 +33,9 @@ router.get("/", prePaging("createdAt", "desc", 100), async (req, resp, next) => 
 		// 날짜 파라미터가 있으면 추가
 		if (req.query.from_date && req.query.to_date) {
 			options.fromDate = new Date(req.query.from_date).toISOString();
-			options.toDate = new Date(req.query.to_date).toISOString();
+			const toDateObj = new Date(req.query.to_date);
+			toDateObj.setDate(toDateObj.getDate() + 1);
+			options.toDate = toDateObj.toISOString();
 		}
 
 		const result = await db.tb_fkbrti_1sec.getIndexHistory(options);
