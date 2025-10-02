@@ -84,11 +84,6 @@ async function send_push(topic, ts, payload) {
     
     const payload_str = JSON.stringify(payload);
 
-    if ( payload.exchange_no == "102" )
-    {
-      // console.log("send_push", payload);
-    }
-
     return await q.send([topic, ts, payload_str]);
   } catch (error) {
     console.error("send_push error:", error);
