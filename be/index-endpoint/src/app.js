@@ -6,6 +6,7 @@ const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
 const log = require('./utils/logger');
+const { init_server } = require('./service/realmgr');
 
 // 전역 로거 설정
 global.logger = log;
@@ -150,6 +151,8 @@ async function initializeApp() {
 		await connect();
 		console.log('DB 연결 완료');
 
+		await init_server(server, app.get("port"));
+
 		console.log('애플리케이션 초기화 완료');
 	} catch (error) {
 		console.error('애플리케이션 초기화 실패:', {
@@ -169,14 +172,14 @@ async function initializeApp() {
 
 initializeApp();
 
-server.listen(app.get("port"), async () => {
-	try {
+// server.listen(app.get("port"), async () => {
+// 	try {
 
-	} catch (err) {
-		console.log(err.name, err.message);
-	}
-	console.log("SERVER_PORT :", app.get("port"));
-});
+// 	} catch (err) {
+// 		console.log(err.name, err.message);
+// 	}
+// 	console.log("SERVER_PORT :", app.get("port"));
+// });
 
 
 

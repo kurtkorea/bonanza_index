@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "description": ""
   },
-  "host": "localhost:3009",
+  "host": "localhost:3010",
   "basePath": "/",
   "schemes": [
     "http",

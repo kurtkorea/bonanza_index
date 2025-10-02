@@ -16,6 +16,8 @@ const { latestTickerByExchange, latestTradeByExchange, latestDepthByExchange } =
 
 const { db, sequelize } = require('../db/db.js');
 
+const { send_publisher } = require('./zmq-sender-pub.js');
+
 const DEPTH        = num("DEPTH", 15);
 const TICK_MS      = num("TICK_MS", 1000);
 const DECIMALS     = num("DECIMALS", 2);
@@ -304,54 +306,58 @@ class FkbrtiEngine {
 
     //console.log("table_name", this.table_name);
 
-    db.sequelize.query(
-      `
-      INSERT INTO :table_name (
-          symbol,
-          vwap_buy,
-          vwap_sell,
-          index_mid,
-          expected_exchanges,
-          sources,
-          expected_status,
-          provisional,
-          no_publish,
-          createdAt
-        ) VALUES (
-          :symbol,
-          :vwap_buy,
-          :vwap_sell,
-          :index_mid,
-          :expected_exchanges,
-          :sources,
-          :expected_status,
-          :provisional,
-          :no_publish,
-          :createdAt
-        )
-        `,
-        {
-          replacements: {
-            table_name: this.table_name,
-            symbol: out.symbol,
-            vwap_buy: out.vwap_buy,
-            vwap_sell: out.vwap_sell,
-            index_mid: out.index_mid,
-            expected_exchanges: JSON.stringify(out.expected_exchanges),
-            sources: JSON.stringify(out.sources),
-            expected_status: JSON.stringify(out.expected_status),
-            provisional: out.provisional,
-            no_publish: out.no_publish,
-            createdAt: out.t,
-          }
-        }
+  db.sequelize.query(
+    `
+    INSERT INTO :table_name (
+        symbol,
+        vwap_buy,
+        vwap_sell,
+        index_mid,
+        expected_exchanges,
+        sources,
+        expected_status,
+        provisional,
+        no_publish,
+        createdAt
+      ) VALUES (
+        :symbol,
+        :vwap_buy,
+        :vwap_sell,
+        :index_mid,
+        :expected_exchanges,
+        :sources,
+        :expected_status,
+        :provisional,
+        :no_publish,
+        :createdAt
       )
-      .then(() => {
-        //console.log("[DB] tb_fkbrti_1sec insert 성공:", out.symbol, out.t);
-      })
-      .catch((err) => {
-        console.error("[DB] tb_fkbrti_1sec insert 실패:", err);
-      });
+      `,
+      {
+        replacements: {
+          table_name: this.table_name,
+          symbol: out.symbol,
+          vwap_buy: out.vwap_buy,
+          vwap_sell: out.vwap_sell,
+          index_mid: out.index_mid,
+          expected_exchanges: JSON.stringify(out.expected_exchanges),
+          sources: JSON.stringify(out.sources),
+          expected_status: JSON.stringify(out.expected_status),
+          provisional: out.provisional,
+          no_publish: out.no_publish,
+          createdAt: out.t,
+        }
+      }
+    )
+    .then(() => {
+      //console.log("[DB] tb_fkbrti_1sec insert 성공:", out.symbol, out.t);
+
+      //select를 해서 마지막 데이터를 가져온다.
+
+      send_publisher("fkbrti", out);
+    })
+    .catch((err) => {
+      console.error("[DB] tb_fkbrti_1sec insert 실패:", err);
+    });
   }
 }
 

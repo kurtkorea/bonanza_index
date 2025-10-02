@@ -38,7 +38,8 @@ async function connect() {
 				statement_timeout: 0,
 				idle_in_transaction_session_timeout: 0,
 			},
-			retry:{ max: 2 }
+			retry:{ max: 2 },
+			timezone: 'UTC'
 		}
 	);
 

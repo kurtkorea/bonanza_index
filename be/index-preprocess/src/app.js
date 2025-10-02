@@ -17,6 +17,8 @@ const { start_fkbrti_engine, init_zmq_depth_subscriber, init_zmq_ticker_subscrib
 const { connect, db } = require("./db/db.js");
 const { fkbrti_1sec_schema } = require('./ddl/fkbrti_1sec_ddl.js');
 
+const { init_zmq_pub } = require('./service/zmq-sender-pub.js');
+
 // Start of Selection
 global.logging = false;
 global.sock = null;
@@ -150,6 +152,7 @@ async function initializeApp() {
 		console.log('ZMQ ticker Subscriber 초기화 중...');
 
 		await Promise.all([
+			init_zmq_pub(),
 			init_zmq_depth_subscriber(),
 			init_zmq_ticker_subscriber(),
 			start_fkbrti_engine(),

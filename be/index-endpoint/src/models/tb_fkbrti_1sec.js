@@ -67,13 +67,15 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		let whereClause = '';
 		const replacements = {};
 
+		// console.log("fromDate", fromDate);
+		// console.log("toDate", toDate);
+
 		if (fromDate && toDate) {
-			whereClause = 'WHERE createdAt >= :fromDate AND createdAt < :toDate';
+			whereClause = `WHERE to_timezone(createdAt, 'Asia/Seoul') >= to_timezone('2025-09-25T00:00:00.000Z', 'Asia/Seoul')
+							AND to_timezone(createdAt, 'Asia/Seoul') < to_timezone('2025-10-02T23:59:59.000Z', 'Asia/Seoul')`;
 			replacements.fromDate = fromDate;
 			replacements.toDate = toDate;
 		}
-
-		
 
 		// 전체 개수 조회
 		const countQuery = `
@@ -97,9 +99,10 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		// 페이징을 위해 필요한 전체 데이터만 조회 (page * size 만큼)
 		const maxLimit = page * size;
 		
-		const query = `
+		let query = `
 			SELECT
 				createdAt,
+				to_timezone(createdAt, 'Asia/Seoul') AS createdAt_KOR,
 				vwap_buy,
 				vwap_sell,
 				index_mid AS fkbrti_1s,
@@ -122,13 +125,13 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 			LIMIT ${maxLimit}
 		`;
 
-		// console.log("replacements.fromDate", replacements.toDate);
-
 		const results = await this.sequelize.query(query, {
 			replacements,
 			type: Sequelize.QueryTypes.SELECT,
-			raw: true
+			raw: true,
 		});
+
+		// console.log("results", results);
 
 		// 애플리케이션 레벨에서 페이징 처리
 		const startIndex = (page - 1) * size;
@@ -138,11 +141,14 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		// JSON 필드 파싱
 		const datalist = pagedResults.map(item => ({
 			...item,
+			createdAt: new Date(item.createdAt.getTime() + 18 * 60 * 60 * 1000).toISOString(),
 			expected_exchanges: this.parseJSON(item.expected_exchanges),
 			sources: this.parseJSON(item.sources),
 			expected_status: this.parseJSON(item.expected_status)
 		}));
 
+		// console.log("datalist", datalist);
+		
 		return {
 			pagination: {
 				page,
@@ -175,36 +181,58 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 			order = 'desc'
 		} = options;
 		
-		const whereClause = {};
-		
+		let whereClause = '';
+		const replacements = {};
+
 		if (fromDate && toDate) {
-			whereClause.createdAt = {
-				[this.sequelize.Sequelize.Op.gte]: fromDate,
-				[this.sequelize.Sequelize.Op.lt]: toDate
-			};
+			whereClause = `WHERE to_timezone(createdAt, 'Asia/Seoul') >= to_timezone(:fromDate, 'Asia/Seoul')
+							AND to_timezone(createdAt, 'Asia/Seoul') < to_timezone(:toDate, 'Asia/Seoul')`;
+			replacements.fromDate = fromDate;
+			replacements.toDate = toDate;
 		}
 
-		// 전체 개수 조회
-		const totalCount = await this.count({
-			where: whereClause,
-			logging: process.env.QDB_LOG === "true"
+		const countQuery = `
+			SELECT COUNT(*) as total
+			FROM tb_fkbrti_1sec
+			${whereClause}
+		`;
+
+		const countResult = await this.sequelize.query(countQuery, {
+			replacements,
+			type: Sequelize.QueryTypes.SELECT,
+			raw: true
 		});
 
+		// 전체 개수 조회
+		const totalCount = parseInt(countResult[0].total);
 		const totalPages = Math.ceil(totalCount / size);
 		
 		// 페이징을 위해 필요한 데이터만 조회 (page * size 만큼)
 		const maxLimit = page * size;
 		const orderDirection = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-		const results = await this.findAll({
-			attributes: { 
-				exclude: ['id', 'updatedAt'] 
-			},
-			where: whereClause,
-			limit: maxLimit,
-			order: [['createdAt', orderDirection]],
+		let query = `
+			SELECT
+				createdAt,
+				to_timezone(createdAt, 'Asia/Seoul') AS createdAt_KOR,
+				vwap_buy,
+				vwap_sell,
+				index_mid AS fkbrti_1s,
+				expected_exchanges,
+				sources,
+				expected_status,
+				provisional,
+				no_publish
+			FROM tb_fkbrti_1sec
+			${whereClause}
+			ORDER BY createdAt ${orderDirection}
+			LIMIT ${maxLimit}
+		`;
+
+		const results = await this.sequelize.query(query, {
+			replacements,
+			type: Sequelize.QueryTypes.SELECT,
 			raw: true,
-			logging: process.env.QDB_LOG === "true"
 		});
 
 		// 애플리케이션 레벨에서 페이징 처리

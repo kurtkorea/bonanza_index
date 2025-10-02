@@ -61,6 +61,22 @@ const respMsgStr = (msg_key = "missing_request") => {
 	return message["missing_request"].msg;
 };
 
+/**
+ * JSON 문자열 파싱 헬퍼 메서드
+ * @param {string} value - JSON 문자열
+ * @returns {Object|null} 파싱된 객체 또는 null
+ */
+const parseJSON = (value) => {
+	if (!value || typeof value !== 'string') {
+	  return value;
+	}
+	try {
+	  return JSON.parse(value);
+	} catch (e) {
+	  return null;
+	}
+  }
+
 // 전역 상태 관리
 var symbolMap = new Map();
 var open_orders = new Map();
@@ -106,4 +122,5 @@ module.exports = {
 	latestTickerByExchange,
 	latestDepthByExchange,
 	latestTradeByExchange,
+	parseJSON,
 };

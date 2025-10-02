@@ -38,6 +38,8 @@ router.get("/", prePaging("createdAt", "desc", 100), async (req, resp, next) => 
 			options.toDate = toDateObj.toISOString();			
 		}
 
+		// console.log("options", options);
+
 		// 모델의 static 메서드 호출
 		const result = await db.tb_fkbrti_1sec.getIndexWithMovingAverage(options);
 
