@@ -107,7 +107,7 @@ async function send_publisher(topic, payload) {
                       provisional,
                       no_publish
                     FROM tb_fkbrti_1sec ORDER BY createdAT DESC
-                    LIMIT 1`;
+                    LIMIT 10`;
 
     const results = await db.sequelize.query(query, {
       replacements: {},
@@ -123,7 +123,7 @@ async function send_publisher(topic, payload) {
 			expected_status: parseJSON(item.expected_status)
 		}));
 
-    return await q.send([topic, JSON.stringify(datalist[0])]);
+    return await q.send([topic, JSON.stringify(datalist)]);
     
   } catch (error) {
     console.error("send_pub error:", error);

@@ -349,10 +349,6 @@ class FkbrtiEngine {
       }
     )
     .then(() => {
-      //console.log("[DB] tb_fkbrti_1sec insert 성공:", out.symbol, out.t);
-
-      //select를 해서 마지막 데이터를 가져온다.
-
       send_publisher("fkbrti", out);
     })
     .catch((err) => {
