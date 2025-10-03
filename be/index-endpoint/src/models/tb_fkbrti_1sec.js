@@ -71,8 +71,8 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		// console.log("toDate", toDate);
 
 		if (fromDate && toDate) {
-			whereClause = `WHERE to_timezone(createdAt, 'Asia/Seoul') >= to_timezone('2025-09-25T00:00:00.000Z', 'Asia/Seoul')
-							AND to_timezone(createdAt, 'Asia/Seoul') < to_timezone('2025-10-02T23:59:59.000Z', 'Asia/Seoul')`;
+			whereClause = `WHERE to_timezone(createdAt, 'Asia/Seoul') >= to_timezone(:fromDate, 'Asia/Seoul')
+							AND to_timezone(createdAt, 'Asia/Seoul') < to_timezone(:toDate, 'Asia/Seoul')`;
 			replacements.fromDate = fromDate;
 			replacements.toDate = toDate;
 		}
@@ -98,6 +98,8 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		
 		// 페이징을 위해 필요한 전체 데이터만 조회 (page * size 만큼)
 		const maxLimit = page * size;
+
+		// console.log("totalCount", totalCount);
 		
 		let query = `
 			SELECT
