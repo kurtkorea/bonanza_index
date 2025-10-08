@@ -1,0 +1,415 @@
+@import "~antd/dist/antd.less";
+// @import "~antd/lib/style/themes/dark.less";
+
+// html {
+// 	overflow-x: clip;
+// }
+@primary-color: #6b5dd3; // primary color for all components
+
+// 전역 포커스 관리 개선
+*:focus {
+	outline: 2px solid #6b5dd3;
+	outline-offset: 2px;
+}
+
+// aria-hidden 요소의 포커스 방지 (더 강력한 규칙)
+[aria-hidden="true"] {
+	pointer-events: none !important;
+	
+	* {
+		pointer-events: none !important;
+	}
+	
+	// 포커스 가능한 요소들 비활성화
+	button, input, select, textarea, a, [tabindex] {
+		tab-index: -1 !important;
+		pointer-events: none !important;
+	}
+}
+
+// Ant Design의 내부 포커스 관리 요소들 비활성화
+.ant-modal-wrap[aria-hidden="true"],
+.ant-modal-mask[aria-hidden="true"] {
+	pointer-events: none !important;
+	
+	* {
+		pointer-events: none !important;
+	}
+}
+
+// Ant Design의 포커스 트랩 요소 비활성화
+.ant-modal-wrap .ant-modal-content[tabindex="-1"] {
+	tab-index: -1 !important;
+	pointer-events: none !important;
+}
+
+// Ant Design의 숨겨진 포커스 요소들 비활성화
+div[style*="width: 0px"][style*="height: 0px"][style*="overflow: hidden"] {
+	pointer-events: none !important;
+	
+	* {
+		pointer-events: none !important;
+	}
+}
+
+#chart_icon {
+	// margin-left: 50px;
+	font-size: 20px;
+	line-height: 20px;
+	margin-right: 5px;
+}
+
+.chart_hide_button {
+	margin: 8px 5px 8px 0px;
+}
+.chart_button_on {
+}
+
+#myElement,
+#myElement2 {
+	padding-top: 15px;
+	overflow-y: scroll;
+}
+/* 스크롤바 설정*/
+#myElement::-webkit-scrollbar {
+	width: 0px;
+}
+#myElement2::-webkit-scrollbar {
+	width: 0px;
+}
+/* 스크롤바 막대 설정*/
+#myElement::-webkit-scrollbar-thumb {
+	background-color: #b0afac;
+	/* 스크롤바 둥글게 설정    */
+	border-radius: 10px;
+	border: 5px solid #b0afac;
+}
+
+/* 스크롤바 뒷 배경 설정*/
+#myElement::-webkit-scrollbar-track {
+	background-color: rgba(0, 0, 0, 0);
+}
+
+@media (max-width: 380px) {
+	.thbit-trade-tab {
+		max-width: 380px;
+		overflow: scroll hidden;
+	}
+	.thbit-trade-tab .tab {
+		padding: 0 7px;
+	}
+}
+
+// 폴드
+@media (max-width: 280px) {
+	.thbit-trade-tab {
+		max-width: 280px;
+		overflow: scroll hidden;
+	}
+	.thbit-trade-tab .tab {
+		padding: 0 5px;
+	}
+	.leverage-modal {
+		max-width: 200px;
+	}
+}
+
+@media (max-width: 380px) {
+	.thbit-trade-container {
+		overflow: scroll hidden;
+	}
+	.thbit-index-tab {
+		overflow: scroll hidden;
+	}
+}
+
+.thbit-trade-section.order-open .thbit-trade-container .container.orderform {
+	z-index: 1;
+}
+
+// Modal이 열렸을 때 body 스크롤 방지
+body.modal-open {
+	overflow: hidden;
+}
+
+// 커스텀 Notice Modal 스타일
+.custom-notice-modal {
+	// 포커스 스타일
+	&:focus {
+		outline: 2px solid #6b5dd3;
+		outline-offset: 2px;
+	}
+	
+	// 버튼 포커스 스타일
+	button:focus {
+		outline: 2px solid #6b5dd3;
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
+	
+	// 스크린 리더를 위한 숨김 텍스트
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+}
+
+// Modal backdrop 스타일
+.modal-backdrop {
+	// 포커스 방지
+	&:focus {
+		outline: none;
+	}
+}
+
+.custom-modal {
+	height: auto !important;
+	.ant-modal-body {
+		padding: 0px !important;
+	}
+	.ant-modal-content {
+		border-radius: 10px !important;
+	}
+	// 접근성 개선을 위한 포커스 스타일
+	.ant-modal-content:focus {
+		outline: 2px solid #6b5dd3;
+		outline-offset: 2px;
+	}
+}
+
+// 기존 Modal 관련 스타일 정리 (사용하지 않음)
+.thbit-modal {
+	position: inherit;
+	display: unset;
+	z-index: unset;
+	top: unset;
+	left: unset;
+	transform: unset;
+}
+
+.modal-notice {
+	position: fixed;
+	display: none;
+	z-index: 0;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+}
+
+.thbit-modal-orderform {
+	position: inherit;
+	display: unset;
+	z-index: unset;
+	top: unset;
+	left: unset;
+	transform: unset;
+	// top: 50%;
+	// transform: translate(-50%, -50%);
+	height: 400px;
+	.close {
+		line-height: 3;
+		margin-right: 20px;
+	}
+	.modal-head {
+		display: flex;
+		justify-content: space-between;
+		border-radius: 10px 10px 0px 0px;
+		h2 {
+			margin-left: 20px;
+			line-height: 2;
+			margin-bottom: 0px !important;
+		}
+	}
+	.trade-range-form {
+		border: 1px solid #bac6d7;
+		border-radius: 4px;
+		// padding-top: 15px;
+		// padding-bottom: 15px;
+		padding: 15px 15px 15px;
+		.label {
+			width: auto;
+		}
+	}
+	// .thbit-trade-form {
+	// 	padding-bottom: 0px;
+	// 	.form-row .btn {
+	// 		.updn.ico-up:before {
+	// 			top: calc(50% + 3px);
+	// 		}
+	// 		.updn.ico-dn:before {
+	// 			top: calc(50% + 1px);
+	// 		}
+	// 	}
+	// }
+	.thbit-scroll-content {
+		height: auto;
+	}
+
+	.modal-orderconfirm {
+		border: 1px solid #bac6d7;
+		border-radius: 4px;
+		// padding-top: 15px;
+		// padding-bottom: 15px;
+		padding: 40px 40px 15px;
+		.label {
+			width: auto;
+		}
+	}
+
+	.modal-stoploss {
+		border: 1px solid #bac6d7;
+		border-radius: 4px;
+		padding-top: 15px;
+		padding-bottom: 15px;
+		// padding: 40px 40px 15px;
+		.label {
+			width: auto;
+		}
+	}
+}
+
+.ant-scrolling-effect {
+	width: 100% !important;
+}
+
+.loading {
+	margin: calc(50% - 25px) calc(50% - 25px);
+	width: 50px;
+	height: 50px;
+	box-sizing: border-box;
+	border: 3px solid rgba(0, 0, 0, 0.3);
+	border-top-color: #000000;
+
+	border-radius: 100%;
+	animation: spin 1s ease-in-out infinite;
+}
+@keyframes spin {
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+/////다크모드/////
+.trading-theme-dark {
+	.modal-head {
+		background-color: #282e33;
+		color: #e9e9e9;
+	}
+	// .thbit-trade-form{
+	// 	background-color: #282e33;
+	// }
+	.thbit-modal-orderform .trade-range-form {
+		border-color: #45474d;
+	}
+	.thbit-trade-form .form-button .button {
+		border-color: #45474d;
+	}
+	.custom-modal .ant-modal-body {
+		background-color: #282e33;
+	}
+	.thbit-trade-form .form-row {
+		color: white;
+	}
+	.ant-popover-inner-content {
+		background-color: #282e33;
+		.ant-btn-sm:first-child {
+			background-color: #45474d;
+			border-color: #45474d;
+		}
+	}
+	.ant-popover-message {
+		color: #e9e9e9;
+	}
+	.ant-popover-arrow-content {
+		--antd-arrow-background-color: #282e33;
+	}
+}
+/////다크모드 끝/////
+
+// .thbit-modal.modal-notice .thbit-scroll-content {
+// 	padding-bottom: unset;
+// }
+
+.ant-design-draggable-modal {
+	z-index: 10000 !important;
+	.ant-modal {
+		border: 0px !important;
+	}
+	.ant-modal-header {
+		border: 0px;
+	}
+	.ant-modal-header,
+	.ant-modal-body {
+		margin: 0px;
+	}
+	.ant-modal-body {
+		display: flex;
+		flex-flow: column;
+		overflow-y: unset !important;
+	}
+	.ant-design-draggable-modal-title {
+		padding: 0px !important;
+		padding-top: 16px !important;
+		margin: 0px;
+	}
+	.ant-modal-close-x {
+		position: relative;
+	}
+}
+
+.ant-design-draggable-modal-resize-handle {
+	display: none;
+}
+
+.cust-scrollbar::-webkit-scrollbar {
+	height: 4px;
+	width: 4px;
+}
+.cust-scrollbar::-webkit-scrollbar-thumb {
+	height: 4px;
+	background-color: #dee1e5;
+}
+.cust-scrollbar::-webkit-scrollbar-track {
+	height: 4px;
+	// background-color: gold;
+}
+.flex {
+	display: flex;
+}
+.flex.row {
+	flex-flow: row;
+	> div {
+		margin: 0px;
+	}
+	.spacer {
+		flex-grow: 1;
+	}
+	.staroff {
+		opacity: 0.5;
+	}
+}
+.flex.between {
+	justify-content: space-between;
+}
+
+.ant-design-draggable-modal .thbit-modal.chat-content,
+.ant-design-draggable-modal .thbit-modal .thbit-scroll-content {
+	margin: 0px !important;
+}
+@media (max-width: 1280px) {
+	.thbit-trade-price-list.coin-list .list-wrap .list .col.pair .name {
+		display: unset;
+		padding: 10px;
+	}
+}
+
+.ant-message {
+	margin-top: 70px;
+}
