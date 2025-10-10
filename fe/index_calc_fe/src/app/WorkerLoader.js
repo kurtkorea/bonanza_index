@@ -30,7 +30,7 @@ const WorkerLoader = ({ children }) => {
 				switch (type) {
 					case "fkbrti":
 						// /topic/fkbrti_1sec 데이터 수신 처리
-						dispatch({ type: "fkbrti/update", payload: data });
+						dispatch({ type: "fkbrti/update", payload: { datalist: data } });
 						break;
 					default:
 						break;

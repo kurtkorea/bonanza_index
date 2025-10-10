@@ -8,8 +8,6 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = (env, options) => {
 
-	const proxy = require('http-proxy-middleware');
-
 	const config = dotenv.config({
 		path: "./env/dev.env",
 	});
@@ -48,36 +46,25 @@ module.exports = (env, options) => {
 			static: {
 				directory: __dirname + "/public",
 			},
-            proxy: {
-                '/service/*': {
-                    target: process.env.SERVICE,
-                    secure: false,
-                    changeOrigin: true,
-                    onProxyRes: (proxyRes) => {
-                    },
-                },
-                '/v1/*': {
-                    target: process.env.SERVICE,
-                    secure: false,
-                    changeOrigin: true,
-                    onProxyRes: (proxyRes) => {
-                    },
-                },	
-                '/order/*': {
-                    target: process.env.ORDER,
-                    secure: false,
-                    changeOrigin: true,
-                    onProxyRes: (proxyRes) => {
-                    },
-                },					
-                '/virtual/*': {
-                    target: process.env.VIRTUAL,
-                    secure: false,
-                    changeOrigin: true,
-                    onProxyRes: (proxyRes) => {
-                    },
-                },									
-            },			
+			proxy: [
+				{
+					context: ['/v1', '/service', '/order', '/virtual'],
+					target: process.env.SERVICE,
+					secure: false,
+					changeOrigin: true,
+					onProxyReq: (proxyReq, req, res) => {
+						// 프록시 요청 시 헤더 설정
+						proxyReq.setHeader('Origin', process.env.SERVICE);
+					},
+					onProxyRes: (proxyRes, req, res) => {
+						// CORS 헤더 추가
+						proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+						proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+						proxyRes.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+						proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+					},
+				},
+			],
 		},
 
 		module: {
