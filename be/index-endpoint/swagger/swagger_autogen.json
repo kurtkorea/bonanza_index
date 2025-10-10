@@ -59,9 +59,6 @@
           "200": {
             "description": "성공"
           },
-          "204": {
-            "description": "콘텐츠 없음"
-          },
           "400": {
             "description": "잘못된 요청"
           },
@@ -117,9 +114,6 @@
         "responses": {
           "200": {
             "description": "성공"
-          },
-          "204": {
-            "description": "콘텐츠 없음"
           },
           "400": {
             "description": "잘못된 요청"

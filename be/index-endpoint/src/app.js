@@ -63,7 +63,13 @@ const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 
 //cors setting
-app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
+const corsOptions = {
+    origin: process.env.CORS_ORIGIN === '*' ? true : process.env.CORS_ORIGIN.split(","),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Token', 'Ip', 'Mac', 'Dnt', 'Sec-Ch-Ua', 'Sec-Ch-Ua-Mobile', 'Sec-Ch-Ua-Platform', 'User-Agent', 'Accept', 'Referer']
+};
+app.use(cors(corsOptions));
 
 //db connection
 // const { sequelize, Message } = require("../models");
