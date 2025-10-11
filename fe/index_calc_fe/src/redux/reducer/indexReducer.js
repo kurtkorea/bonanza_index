@@ -56,7 +56,7 @@ export default (state = initState, { type, payload }) => {
           if ( process.env.IS_DEBUG == "true" ) {
             draft.index_data = [...new_datalist, ...draft.index_data].slice(0, 5000);
           } else {
-            draft.index_data = [...new_datalist, ...draft.index_data].slice(0, 50000);
+            draft.index_data = [...new_datalist, ...draft.index_data].slice(0, 10000);
           }
         }
       });
@@ -102,7 +102,7 @@ export default (state = initState, { type, payload }) => {
           if ( process.env.IS_DEBUG == "true" ) {
             draft.index_data = [...draft.index_data, ...new_datalist].slice(0, 5000);
           } else {
-            draft.index_data = [...draft.index_data, ...new_datalist].slice(0, 50000);
+            draft.index_data = [...draft.index_data, ...new_datalist].slice(0, 10000);
           }
         }
       });

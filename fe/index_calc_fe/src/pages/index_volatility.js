@@ -47,7 +47,7 @@ export default function VolatilityTable({
         <table className="mb-2 mt-1 min-w-max border-collapse w-full">
           <thead style={{ borderBottom: "1.5px solid #D1D5DB", height: "60px" }}>
             <tr>
-              <Th sticky>horizon</Th>
+              <Th sticky></Th>
               {columns.map((c) => (
                 <Th key={c.key}>{c.name || c.key}</Th>
               ))}

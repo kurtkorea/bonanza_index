@@ -55,40 +55,44 @@ const columns = [
   },
   {
     title: 'BITTHUMB',
-    dataIndex: 'expected_status.102.price',
-    key: 'expected_status.102.price',
+    dataIndex: 'BITTHUMB',
+    key: 'BITTHUMB',
     width: 120,
     align: 'right',
     fixed: 'left',
-    render: (text, record) => record.expected_status.map(item => item.exchange == "102" ? item.reason == "ok" ? common.pricisionFormat_Precision(item.price, 0) : item.reason : ''),
+    render: (text, record) => common.pricisionFormat_Precision(text, 0),
+    // render: (text, record) => record.expected_status.map(item => item.exchange == "102" ? item.reason == "ok" ? common.pricisionFormat_Precision(item.price, 0) : item.reason : ''),
   },
 
   {
     title: 'COINONE',
-    dataIndex: 'expected_status.104.price',
-    key: 'expected_status.104.price',
+    dataIndex: 'COINONE',
+    key: 'COINONE',
     width: 120,
     align: 'right',
     fixed: 'left',
-    render: (text, record) => record.expected_status.map(item => item.exchange == "104" ? item.reason == "ok" ? common.pricisionFormat_Precision(item.price, 0) : item.reason : ''),
+    render: (text, record) => common.pricisionFormat_Precision(text, 0),
+    // render: (text, record) => record.expected_status.map(item => item.exchange == "104" ? item.reason == "ok" ? common.pricisionFormat_Precision(item.price, 0) : item.reason : ''),
   },
   {
     title: 'KORBIT',
-    dataIndex: 'expected_status.103.price',
-    key: 'expected_status.103.price',
+    dataIndex: 'KORBIT',
+    key: 'KORBIT',
     width: 120,
     align: 'right',
     fixed: 'left',
-    render: (text, record) => record.expected_status.map(item => item.exchange == "103" ? item.reason == "ok" ? common.pricisionFormat_Precision(item.price, 0) : item.reason : ''),
+    render: (text, record) => common.pricisionFormat_Precision(text, 0),
+    // render: (text, record) => record.expected_status.map(item => item.exchange == "103" ? item.reason == "ok" ? common.pricisionFormat_Precision(item.price, 0) : item.reason : ''),
   },
   {
     title: 'UPBIT',
-    dataIndex: 'expected_status.101.price',
-    key: 'expected_status.101.price',
+    dataIndex: 'UPBIT',
+    key: 'UPBIT',
     width: 120,
     align: 'center',
     fixed: 'left',
-    render: (text, record) => record.expected_status.map(item => item.exchange == "101" ? item.reason == "ok" ? common.pricisionFormat_Precision(item.price, 0) : item.reason : ''),
+    render: (text, record) => common.pricisionFormat_Precision(text, 0),
+    // render: (text, record) => record.expected_status.map(item => item.exchange == "101" ? item.reason == "ok" ? common.pricisionFormat_Precision(item.price, 0) : item.reason : ''),
   },
   {
     title: 'ACTUAL-AVG',
@@ -471,7 +475,7 @@ const IndexCalcTable = () => {
             height: "100%",
             alignItems: "center",
             overflowY: "hidden",
-            marginTop: "150px",
+            marginTop: "100px",
           }}
         >
           <div
@@ -512,7 +516,7 @@ const IndexCalcTable = () => {
             height: "100%",
             alignItems: "center",
             overflowY: "hidden",
-            marginTop: "-50px",
+            marginTop: "-65px",
           }}
         >
           <div
