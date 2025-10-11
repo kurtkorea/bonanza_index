@@ -3,10 +3,30 @@ import { produce } from 'immer';
 const initState = {
   index_data: [],
   current_page: 1,
+  MIN_MAX_INFO : {
+    MIN_DIFF_1: 0,
+    MIN_DIFF_2: 0,
+    MIN_DIFF_3: 0,
+    MAX_DIFF_1: 0,
+    MAX_DIFF_2: 0,
+    MAX_DIFF_3: 0,
+    MIN_RATIO_1: 0,
+    MIN_RATIO_2: 0,
+    MIN_RATIO_3: 0,
+    MAX_RATIO_1: 0,
+    MAX_RATIO_2: 0,
+    MAX_RATIO_3: 0,
+    MIN_ACTUAL_AVG: 0,
+    MAX_ACTUAL_AVG: 0,
+  }
 };
 
 export default (state = initState, { type, payload }) => {
   switch (type) {   
+    case 'fkbrti/update_min_max_info':
+      return produce(state, draft => {
+        draft.MIN_MAX_INFO = payload;
+      });
     case 'fkbrti/init':
       return produce(state, draft => {
         // console.log("fkbrti/init", payload);
@@ -35,7 +55,13 @@ export default (state = initState, { type, payload }) => {
               COINONE: item.expected_status.find(item => item.exchange == "104")?.price,
               KORBIT: item.expected_status.find(item => item.exchange == "103")?.price,
               UPBIT: item.expected_status.find(item => item.exchange == "101")?.price,
-
+              DIFF_1: 0,
+              DIFF_2: 0,
+              DIFF_3: 0,
+              RATIO_1: 0,
+              RATIO_2: 0,
+              RATIO_3: 0,
+              ACTUAL_AVG: 0,
             };
 
             let sum = 0;
@@ -47,6 +73,95 @@ export default (state = initState, { type, payload }) => {
               }
             }
             new_item.ACTUAL_AVG = sum / count;
+
+            let colF = new_item.BITTHUMB;
+            let colI = new_item.UPBIT;
+    
+            if (!colI && colI !== 0) {
+              new_item.DIFF_1 = colF - new_item.fkbrti_1s;
+            } else {
+              new_item.DIFF_1 = colI - new_item.fkbrti_1s;
+            }
+    
+            if (!colI && colI !== 0) {
+              new_item.DIFF_2 = colF - new_item.fkbrti_5s;
+            } else {
+              new_item.DIFF_2 = colI - new_item.fkbrti_5s;
+            }
+    
+            if (!colI && colI !== 0) {
+              new_item.DIFF_3 = colF - new_item.fkbrti_10s;
+            } else {
+              new_item.DIFF_3 = colI - new_item.fkbrti_10s;
+            }
+    
+            if (!colI && colI !== 0) {
+              new_item.RATIO_1 = Math.abs(new_item.DIFF_1 / colF);
+            } else {
+              new_item.RATIO_1 = Math.abs(new_item.DIFF_1 / colI);
+            }
+            new_item.RATIO_1 = new_item.RATIO_1 * 100;
+    
+            if (!colI && colI !== 0) {
+              new_item.RATIO_2 = Math.abs(new_item.DIFF_2 / colF);
+            } else {
+              new_item.RATIO_2 = Math.abs(new_item.DIFF_2 / colI);
+            }
+            new_item.RATIO_2 = new_item.RATIO_2 * 100;
+    
+            if (!colI && colI !== 0) {
+              new_item.RATIO_3 = Math.abs(new_item.DIFF_3 / colF);
+            } else {
+              new_item.RATIO_3 = Math.abs(new_item.DIFF_3 / colI);
+            }
+            new_item.RATIO_3 = new_item.RATIO_3 * 100;
+
+            if (new_item.DIFF_1 < draft.MIN_MAX_INFO.MIN_DIFF_1) {
+              draft.MIN_MAX_INFO.MIN_DIFF_1 = new_item.DIFF_1;
+            }
+            if (new_item.DIFF_1 > draft.MIN_MAX_INFO.MAX_DIFF_1) {
+              draft.MIN_MAX_INFO.MAX_DIFF_1 = new_item.DIFF_1;
+            }
+            if (new_item.DIFF_2 < draft.MIN_MAX_INFO.MIN_DIFF_2) {
+              draft.MIN_MAX_INFO.MIN_DIFF_2 = new_item.DIFF_2;
+            }
+            if (new_item.DIFF_2 > draft.MIN_MAX_INFO.MAX_DIFF_2) {
+              draft.MIN_MAX_INFO.MAX_DIFF_2 = new_item.DIFF_2;
+            }
+            if (new_item.DIFF_3 < draft.MIN_MAX_INFO.MIN_DIFF_3) {
+              draft.MIN_MAX_INFO.MIN_DIFF_3 = new_item.DIFF_3;
+            }
+            if (new_item.DIFF_3 > draft.MIN_MAX_INFO.MAX_DIFF_3) {
+              draft.MIN_MAX_INFO.MAX_DIFF_3 = new_item.DIFF_3;
+            }
+
+            if (new_item.RATIO_1 < draft.MIN_MAX_INFO.MIN_RATIO_1) {
+              draft.MIN_MAX_INFO.MIN_RATIO_1 = new_item.RATIO_1;
+            }
+            if (new_item.RATIO_1 > draft.MIN_MAX_INFO.MAX_RATIO_1) {
+              draft.MIN_MAX_INFO.MAX_RATIO_1 = new_item.RATIO_1;
+            }
+
+            if (new_item.RATIO_2 < draft.MIN_MAX_INFO.MIN_RATIO_2) {
+              draft.MIN_MAX_INFO.MIN_RATIO_2 = new_item.RATIO_2;
+            }
+            if (new_item.RATIO_2 > draft.MIN_MAX_INFO.MAX_RATIO_2) {
+              draft.MIN_MAX_INFO.MAX_RATIO_2 = new_item.RATIO_2;
+            }
+
+            if (new_item.RATIO_3 < draft.MIN_MAX_INFO.MIN_RATIO_3) {
+              draft.MIN_MAX_INFO.MIN_RATIO_3 = new_item.RATIO_3;
+            }
+            if (new_item.RATIO_3 > draft.MIN_MAX_INFO.MAX_RATIO_3) {
+              draft.MIN_MAX_INFO.MAX_RATIO_3 = new_item.RATIO_3;
+            }
+
+            if (new_item.ACTUAL_AVG < draft.MIN_MAX_INFO.MIN_ACTUAL_AVG) {
+              draft.MIN_MAX_INFO.MIN_ACTUAL_AVG = new_item.ACTUAL_AVG;
+            }
+            if (new_item.ACTUAL_AVG > draft.MIN_MAX_INFO.MAX_ACTUAL_AVG) {
+              draft.MIN_MAX_INFO.MAX_ACTUAL_AVG = new_item.ACTUAL_AVG;
+            }
 
             new_datalist.push(new_item);
           }

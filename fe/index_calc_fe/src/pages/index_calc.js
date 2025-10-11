@@ -10,7 +10,7 @@ import { useQuery, useQueryClient } from 'react-query';
 import { DatePicker } from 'antd';
 const { RangePicker } = DatePicker;
 import moment from 'moment';
-import { Table } from "antd";
+import { Table, Tag, Tooltip } from "antd";
 
 import MultiExchangeChart from "./index_chart";
 import CorrelationTable from "./index_correlation";
@@ -30,7 +30,7 @@ const columns = [
     title: 'fkbrti-1s',
     dataIndex: 'fkbrti_1s',
     key: 'fkbrti_1s',
-    width: 120,
+    width: 100,
     align: 'right',
     fixed: 'left',
     render: (text, record) => common.pricisionFormat_Precision(text, 0),
@@ -39,7 +39,7 @@ const columns = [
     title: 'fkbrti-5s',
     dataIndex: 'fkbrti_5s',
     key: 'fkbrti_5s',
-    width: 120,
+    width: 100,
     align: 'center',
     fixed: 'left',
     render: (text, record) => common.pricisionFormat_Precision(text, 0),
@@ -48,7 +48,7 @@ const columns = [
     title: 'fkbrti-10s',
     dataIndex: 'fkbrti_10s',
     key: 'fkbrti_10s',
-    width: 120,
+    width: 100,
     align: 'center',
     fixed: 'left',
     render: (text, record) => common.pricisionFormat_Precision(text, 0),
@@ -57,7 +57,7 @@ const columns = [
     title: 'BITTHUMB',
     dataIndex: 'BITTHUMB',
     key: 'BITTHUMB',
-    width: 120,
+    width: 100,
     align: 'right',
     fixed: 'left',
     render: (text, record) => common.pricisionFormat_Precision(text, 0),
@@ -68,7 +68,7 @@ const columns = [
     title: 'COINONE',
     dataIndex: 'COINONE',
     key: 'COINONE',
-    width: 120,
+    width: 100,
     align: 'right',
     fixed: 'left',
     render: (text, record) => common.pricisionFormat_Precision(text, 0),
@@ -78,7 +78,7 @@ const columns = [
     title: 'KORBIT',
     dataIndex: 'KORBIT',
     key: 'KORBIT',
-    width: 120,
+    width: 100,
     align: 'right',
     fixed: 'left',
     render: (text, record) => common.pricisionFormat_Precision(text, 0),
@@ -88,7 +88,7 @@ const columns = [
     title: 'UPBIT',
     dataIndex: 'UPBIT',
     key: 'UPBIT',
-    width: 120,
+    width: 100,
     align: 'center',
     fixed: 'left',
     render: (text, record) => common.pricisionFormat_Precision(text, 0),
@@ -98,7 +98,7 @@ const columns = [
     title: 'ACTUAL-AVG',
     dataIndex: 'expected_status.105.price',
     key: 'expected_status.105.price',
-    width: 120,
+    width: 100,
     align: 'right',
     fixed: 'left',
     render: (text, record) => {
@@ -113,38 +113,109 @@ const columns = [
       return common.pricisionFormat_Precision(sum / count, 0);
     },
   },
-  // {
-  //   title: 'DIFF-1',
-  //   dataIndex: 'expected_status.106.price',
-  //   key: 'expected_status.106.price',
-  //   width: 120,
-  //   align: 'right',
-  //   fixed: 'left',
-  // },
-  // {
-  //   title: 'DIFF-2',
-  //   dataIndex: 'expected_status.107.price',
-  //   key: 'expected_status.107.price',
-  //   width: 120,
-  //   align: 'right',
-  //   fixed: 'left',
-  // },
-  // {
-  //   title: 'DIFF-3',
-  //   dataIndex: 'expected_status.108.price',
-  //   key: 'expected_status.108.price',
-  //   width: 120,
-  //   align: 'right',
-  //   fixed: 'left',
-  // },
-  // {
-  //   title: 'DIFF-3',
-  //   dataIndex: 'expected_status.108.price',
-  //   key: 'expected_status.108.price',
-  //   width: 120,
-  //   align: 'right',
-  //   fixed: 'left',
-  // },
+  {
+    title: 'DIFF-1s',
+    dataIndex: 'DIFF_1',
+    key: 'DIFF_1',
+    width: 100,
+    align: 'right',
+    fixed: 'left',
+    render: (text, record) => {
+      let color = record.DIFF_1 === 0 ? 'black' : record.DIFF_1 < 0 ? 'blue' : 'red';
+      return (
+        <span style={{ color }}>
+          {common.pricisionFormat_Precision(record.DIFF_1, 0)}
+        </span>
+      );
+    },
+  },
+  {
+    title: 'DIFF-5s',
+    dataIndex: 'DIFF_2',
+    key: 'DIFF_2',
+    width: 100,
+    align: 'right',
+    fixed: 'left',
+    render: (text, record) => {
+      let color = record.DIFF_1 === 0 ? 'black' : record.DIFF_1 < 0 ? 'blue' : 'red';
+      return (
+        <span style={{ color }}>
+          {common.pricisionFormat_Precision(record.DIFF_2, 0)}
+        </span>
+      );
+    },
+  },
+  {
+    title: 'DIFF-10s',
+    dataIndex: 'DIFF_3',
+    key: 'DIFF_3',
+    width: 100,
+    align: 'right',
+    fixed: 'left',
+    render: (text, record) => {
+      let color = record.DIFF_1 === 0 ? 'black' : record.DIFF_1 < 0 ? 'blue' : 'red';
+      return (
+        <span style={{ color }}>
+          {common.pricisionFormat_Precision(record.DIFF_3, 0)}
+        </span>
+      );
+    },
+  },
+  {
+    title: 'RATIO-1s',
+    dataIndex: 'RATIO_1',
+    key: 'RATIO_1',
+    width: 100,
+    align: 'right',
+    fixed: 'left',
+    render: (text, record) => {
+      let color = record.RATIO_1 === 0 ? 'black' : record.RATIO_1 < 0 ? 'blue' : 'red';
+      return (
+        <span style={{ color }}>
+          {common.pricisionFormat_Precision(record.RATIO_1, 4)}
+        </span>
+      );
+    },
+  },
+  {
+    title: 'RATIO-5s',
+    dataIndex: 'RATIO_2',
+    key: 'RATIO_2',
+    width: 100,
+    align: 'right',
+    fixed: 'left',
+    render: (text, record) => {
+      let color = record.RATIO_2 === 0 ? 'black' : record.RATIO_2 < 0 ? 'blue' : 'red';
+      return (
+        <span style={{ color }}>
+          {common.pricisionFormat_Precision(record.RATIO_2, 4)}
+        </span>
+      );
+    },
+  },
+  {
+    title: 'RATIO-10s',
+    dataIndex: 'RATIO_3',
+    key: 'RATIO_3',
+    width: 100,
+    align: 'right',
+    fixed: 'left',
+    render: (text, record) => {
+      let color = record.RATIO_3 === 0 ? 'black' : record.RATIO_3 < 0 ? 'blue' : 'red';
+      return (
+        <span style={{ color }}>
+          {common.pricisionFormat_Precision(record.RATIO_3, 4)}
+        </span>
+      );
+    },
+  },
+  {
+    title: '',
+    dataIndex: 'SCROLL',
+    key: 'SCROLL',
+    width: 5,
+    align: 'center',
+  },
 ];
 
 const columns_excel = [
@@ -248,6 +319,7 @@ const IndexCalcTable = () => {
   const [loading, setLoading] = useState(false);
 
   const index_list = useSelector(state => state.IndexReducer.index_data);
+  const min_max_info = useSelector(state => state.IndexReducer.MIN_MAX_INFO);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(500);
@@ -270,6 +342,23 @@ const IndexCalcTable = () => {
       setTotalCount(res.data.totalCount || res.data.total_count || 0);
       setCurrentPage(page);
 
+      let min_max_info_tmp = {
+        MIN_DIFF_1: 0,
+        MIN_DIFF_2: 0,
+        MIN_DIFF_3: 0,
+        MAX_DIFF_1: 0,
+        MAX_DIFF_2: 0,
+        MAX_DIFF_3: 0,
+        MIN_RATIO_1: 0,
+        MIN_RATIO_2: 0,
+        MIN_RATIO_3: 0,
+        MAX_RATIO_1: 0,
+        MAX_RATIO_2: 0,
+        MAX_RATIO_3: 0,
+        MIN_ACTUAL_AVG: 0,
+        MAX_ACTUAL_AVG: 0,
+      }
+
       let new_datalist = [];
       for (const item of res.data.datalist) {
         let new_item = {
@@ -288,6 +377,12 @@ const IndexCalcTable = () => {
           COINONE: item.expected_status.find(item => item.exchange == "104")?.price,
           KORBIT: item.expected_status.find(item => item.exchange == "103")?.price,
           UPBIT: item.expected_status.find(item => item.exchange == "101")?.price,
+          DIFF_1: 0,
+          DIFF_2: 0,
+          DIFF_3: 0,
+          RATIO_1: 0,
+          RATIO_2: 0,
+          RATIO_3: 0,
           ACTUAL_AVG: 0,
         };
 
@@ -300,8 +395,96 @@ const IndexCalcTable = () => {
           }
         }
         new_item.ACTUAL_AVG = sum / count;
+
+        let colF = new_item.BITTHUMB;
+        let colI = new_item.UPBIT;
+
+        if (!colI && colI !== 0) {
+          new_item.DIFF_1 = colF - new_item.fkbrti_1s;
+        } else {
+          new_item.DIFF_1 = colI - new_item.fkbrti_1s;
+        }
+
+        if (!colI && colI !== 0) {
+          new_item.DIFF_2 = colF - new_item.fkbrti_5s;
+        } else {
+          new_item.DIFF_2 = colI - new_item.fkbrti_5s;
+        }
+
+        if (!colI && colI !== 0) {
+          new_item.DIFF_3 = colF - new_item.fkbrti_10s;
+        } else {
+          new_item.DIFF_3 = colI - new_item.fkbrti_10s;
+        }
+
+        if (!colI && colI !== 0) {
+          new_item.RATIO_1 = Math.abs(new_item.DIFF_1 / colF);
+        } else {
+          new_item.RATIO_1 = Math.abs(new_item.DIFF_1 / colI);
+        }
+        new_item.RATIO_1 = new_item.RATIO_1 * 100;
+
+        if (!colI && colI !== 0) {
+          new_item.RATIO_2 = Math.abs(new_item.DIFF_2 / colF);
+        } else {
+          new_item.RATIO_2 = Math.abs(new_item.DIFF_2 / colI);
+        }
+        new_item.RATIO_2 = new_item.RATIO_2 * 100;
+
+        if (!colI && colI !== 0) {
+          new_item.RATIO_3 = Math.abs(new_item.DIFF_3 / colF);
+        } else {
+          new_item.RATIO_3 = Math.abs(new_item.DIFF_3 / colI);
+        }
+        new_item.RATIO_3 = new_item.RATIO_3 * 100;
+
+        if (new_item.DIFF_1 < min_max_info_tmp.MIN_DIFF_1) {
+          min_max_info_tmp.MIN_DIFF_1 = new_item.DIFF_1;
+        }
+        if (new_item.DIFF_1 > min_max_info_tmp.MAX_DIFF_1) {
+          min_max_info_tmp.MAX_DIFF_1 = new_item.DIFF_1;
+        }
+        if (new_item.DIFF_2 < min_max_info_tmp.MIN_DIFF_2) {
+          min_max_info_tmp.MIN_DIFF_2 = new_item.DIFF_2;
+        }
+        if (new_item.DIFF_2 > min_max_info_tmp.MAX_DIFF_2) {
+          min_max_info_tmp.MAX_DIFF_2 = new_item.DIFF_2;
+        }
+        if (new_item.DIFF_3 < min_max_info_tmp.MIN_DIFF_3) {
+          min_max_info_tmp.MIN_DIFF_3 = new_item.DIFF_3;
+        }
+        if (new_item.DIFF_3 > min_max_info_tmp.MAX_DIFF_3) {
+          min_max_info_tmp.MAX_DIFF_3 = new_item.DIFF_3;
+        }
+        if (new_item.RATIO_1 < min_max_info_tmp.MIN_RATIO_1) {
+          min_max_info_tmp.MIN_RATIO_1 = new_item.RATIO_1;
+        }
+        if (new_item.RATIO_1 > min_max_info_tmp.MAX_RATIO_1) {
+          min_max_info_tmp.MAX_RATIO_1 = new_item.RATIO_1;
+        }
+        if (new_item.RATIO_2 < min_max_info_tmp.MIN_RATIO_2) {
+          min_max_info_tmp.MIN_RATIO_2 = new_item.RATIO_2;
+        }
+        if (new_item.RATIO_2 > min_max_info_tmp.MAX_RATIO_2) {
+          min_max_info_tmp.MAX_RATIO_2 = new_item.RATIO_2;
+        }
+        if (new_item.RATIO_3 < min_max_info_tmp.MIN_RATIO_3) {
+          min_max_info_tmp.MIN_RATIO_3 = new_item.RATIO_3;
+        }
+        if (new_item.RATIO_3 > min_max_info_tmp.MAX_RATIO_3) {
+          min_max_info_tmp.MAX_RATIO_3 = new_item.RATIO_3;
+        }
+        if (new_item.ACTUAL_AVG < min_max_info_tmp.MIN_ACTUAL_AVG) {
+          min_max_info_tmp.MIN_ACTUAL_AVG = new_item.ACTUAL_AVG;
+        }
+        if (new_item.ACTUAL_AVG > min_max_info_tmp.MAX_ACTUAL_AVG) {
+          min_max_info_tmp.MAX_ACTUAL_AVG = new_item.ACTUAL_AVG;
+        }
         new_datalist.push(new_item);
       }
+
+      // for 루프 밖에서 min_max_info 업데이트
+      dispatch({ type: "fkbrti/update_min_max_info", payload : min_max_info_tmp });
 
       if ( page == 1 ) {
         dispatch({ type: "fkbrti/init", payload : { current_page: page, datalist: new_datalist } }); // maintain for Excel export
@@ -337,16 +520,7 @@ const IndexCalcTable = () => {
         <div className="thbit-trade-inlineform antd-style" style={{ height: "50px", padding: "5px" }}>
           {/* 날짜 선택기 추가 */}
           <div style={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
-            <div style={{ flex: 0, display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <span style={{ fontSize: "16px" }}>
-                total : {index_list?.length}
-              </span>
-            </div>
-            <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <span style={{ fontSize: "16px" }}>
-                거래소 표기규칙 : no_data(데이터없음) stale(30초간 변동없음) crossed(매수호가/매도호가 역전)
-              </span>
-            </div>
+
             {/* <RangePicker className="inp date" style={{ width: "220px", marginRight: "15px" }} defaultValue={range} inputreadOnly={true} onCalendarChange={setRange} /> */}
             <button type="button" className="btn"  
               style={{ height: "40px", lineHeight: "40px", marginRight: "5px" }}
@@ -458,6 +632,89 @@ const IndexCalcTable = () => {
             loading={loading}
             scroll={{ y: 740, x: 'max-content' }}
             style={{ height: "100%" }}
+            summary={() => (
+              <Table.Summary fixed="top">
+                {/* 여러 줄도 가능: Summary.Row를 여러 개 리턴 */}
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0} rowSpan={2} align="center">
+                      ROWS : {index_list?.length}
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={1} colSpan={7} rowSpan={2} align="center">
+                      <Tag color="processing">표기규칙</Tag>
+                      no_data(데이터없음) stale(30초간 변동없음) crossed(매수호가/매도호가 역전)
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={8} align="center">
+                      <Tag color="processing">MIN</Tag>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={9} align="right">
+                      <span style={{ color: min_max_info.MIN_DIFF_1 === 0 ? 'black' : min_max_info.MIN_DIFF_1 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MIN_DIFF_1, 0)}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={10} align="right">
+                      <span style={{ color: min_max_info.MIN_DIFF_2 === 0 ? 'black' : min_max_info.MIN_DIFF_2 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MIN_DIFF_2, 0)}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={11} align="right">
+                      <span style={{ color: min_max_info.MIN_DIFF_3 === 0 ? 'black' : min_max_info.MIN_DIFF_3 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MIN_DIFF_3, 0)}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={12} align="right">
+                      <span style={{ color: min_max_info.MIN_RATIO_1 === 0 ? 'black' : min_max_info.MIN_RATIO_1 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MIN_RATIO_1, 4)}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={13} align="right">
+                      <span style={{ color: min_max_info.MIN_RATIO_2 === 0 ? 'black' : min_max_info.MIN_RATIO_2 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MIN_RATIO_2, 4)}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={14} align="right">
+                      <span style={{ color: min_max_info.MIN_RATIO_3 === 0 ? 'black' : min_max_info.MIN_RATIO_3 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MIN_RATIO_3, 4)}
+                      </span>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={8} align="center">
+                      <Tag color="processing">MAX</Tag>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={9} align="right">
+                      <span style={{ color: min_max_info.MAX_DIFF_1 === 0 ? 'black' : min_max_info.MAX_DIFF_1 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MAX_DIFF_1, 0)}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={10} align="right">
+                      <span style={{ color: min_max_info.MAX_DIFF_2 === 0 ? 'black' : min_max_info.MAX_DIFF_2 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MAX_DIFF_2, 0)}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={11} align="right">
+                      <span style={{ color: min_max_info.MAX_DIFF_3 === 0 ? 'black' : min_max_info.MAX_DIFF_3 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MAX_DIFF_3, 0)}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={12} align="right">
+                      <span style={{ color: min_max_info.MAX_RATIO_1 === 0 ? 'black' : min_max_info.MAX_RATIO_1 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MAX_RATIO_1, 4)}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={13} align="right">
+                      <span style={{ color: min_max_info.MAX_RATIO_2 === 0 ? 'black' : min_max_info.MAX_RATIO_2 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MAX_RATIO_2, 4)}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={14} align="right">
+                      <span style={{ color: min_max_info.MAX_RATIO_3 === 0 ? 'black' : min_max_info.MAX_RATIO_3 < 0 ? 'blue' : 'red' }}>
+                        {common.pricisionFormat_Precision(min_max_info.MAX_RATIO_3, 4)}
+                      </span>
+                    </Table.Summary.Cell>
+                    
+                  </Table.Summary.Row>
+              </Table.Summary>
+            )}
           />
         </div>
       </>
