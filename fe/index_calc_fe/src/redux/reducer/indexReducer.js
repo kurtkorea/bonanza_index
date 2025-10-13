@@ -10,9 +10,9 @@ const initState = {
     MAX_DIFF_1: 0,
     MAX_DIFF_2: 0,
     MAX_DIFF_3: 0,
-    MIN_RATIO_1: 0,
-    MIN_RATIO_2: 0,
-    MIN_RATIO_3: 0,
+    AVG_RATIO_1: 0,
+    AVG_RATIO_2: 0,
+    AVG_RATIO_3: 0,
     MAX_RATIO_1: 0,
     MAX_RATIO_2: 0,
     MAX_RATIO_3: 0,
@@ -135,23 +135,14 @@ export default (state = initState, { type, payload }) => {
               draft.MIN_MAX_INFO.MAX_DIFF_3 = new_item.DIFF_3;
             }
 
-            if (new_item.RATIO_1 < draft.MIN_MAX_INFO.MIN_RATIO_1) {
-              draft.MIN_MAX_INFO.MIN_RATIO_1 = new_item.RATIO_1;
-            }
             if (new_item.RATIO_1 > draft.MIN_MAX_INFO.MAX_RATIO_1) {
               draft.MIN_MAX_INFO.MAX_RATIO_1 = new_item.RATIO_1;
             }
 
-            if (new_item.RATIO_2 < draft.MIN_MAX_INFO.MIN_RATIO_2) {
-              draft.MIN_MAX_INFO.MIN_RATIO_2 = new_item.RATIO_2;
-            }
             if (new_item.RATIO_2 > draft.MIN_MAX_INFO.MAX_RATIO_2) {
               draft.MIN_MAX_INFO.MAX_RATIO_2 = new_item.RATIO_2;
             }
 
-            if (new_item.RATIO_3 < draft.MIN_MAX_INFO.MIN_RATIO_3) {
-              draft.MIN_MAX_INFO.MIN_RATIO_3 = new_item.RATIO_3;
-            }
             if (new_item.RATIO_3 > draft.MIN_MAX_INFO.MAX_RATIO_3) {
               draft.MIN_MAX_INFO.MAX_RATIO_3 = new_item.RATIO_3;
             }
@@ -161,6 +152,26 @@ export default (state = initState, { type, payload }) => {
             }
             if (new_item.ACTUAL_AVG > draft.MIN_MAX_INFO.MAX_ACTUAL_AVG) {
               draft.MIN_MAX_INFO.MAX_ACTUAL_AVG = new_item.ACTUAL_AVG;
+            }
+
+            if (!isNaN(new_item.RATIO_2)) {
+              if (!draft.MIN_MAX_INFO._ratio2_sum_count) {
+                draft.MIN_MAX_INFO._ratio2_sum_count = { sum: 0, count: 0 };
+              }
+              draft.MIN_MAX_INFO._ratio2_sum_count.sum += new_item.RATIO_2;
+              draft.MIN_MAX_INFO._ratio2_sum_count.count += 1;
+              draft.MIN_MAX_INFO.AVG_RATIO_2 = draft.MIN_MAX_INFO._ratio2_sum_count.sum / draft.MIN_MAX_INFO._ratio2_sum_count.count;
+            }
+    
+            // RATIO_3 의 평균값을 구하라
+    
+            if (!isNaN(new_item.RATIO_3)) {
+                if (!draft.MIN_MAX_INFO._ratio3_sum_count) {
+                draft.MIN_MAX_INFO._ratio3_sum_count = { sum: 0, count: 0 };
+              }
+              draft.MIN_MAX_INFO._ratio3_sum_count.sum += new_item.RATIO_3;
+              draft.MIN_MAX_INFO._ratio3_sum_count.count += 1;
+              draft.MIN_MAX_INFO.AVG_RATIO_3 = draft.MIN_MAX_INFO._ratio3_sum_count.sum / draft.MIN_MAX_INFO._ratio3_sum_count.count;
             }
 
             new_datalist.push(new_item);

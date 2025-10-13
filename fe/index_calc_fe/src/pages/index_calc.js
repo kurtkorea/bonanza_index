@@ -349,9 +349,9 @@ const IndexCalcTable = () => {
         MAX_DIFF_1: 0,
         MAX_DIFF_2: 0,
         MAX_DIFF_3: 0,
-        MIN_RATIO_1: 0,
-        MIN_RATIO_2: 0,
-        MIN_RATIO_3: 0,
+        AVG_RATIO_1: 0,
+        AVG_RATIO_2: 0,
+        AVG_RATIO_3: 0,
         MAX_RATIO_1: 0,
         MAX_RATIO_2: 0,
         MAX_RATIO_3: 0,
@@ -456,20 +456,11 @@ const IndexCalcTable = () => {
         if (new_item.DIFF_3 > min_max_info_tmp.MAX_DIFF_3) {
           min_max_info_tmp.MAX_DIFF_3 = new_item.DIFF_3;
         }
-        if (new_item.RATIO_1 < min_max_info_tmp.MIN_RATIO_1) {
-          min_max_info_tmp.MIN_RATIO_1 = new_item.RATIO_1;
-        }
         if (new_item.RATIO_1 > min_max_info_tmp.MAX_RATIO_1) {
           min_max_info_tmp.MAX_RATIO_1 = new_item.RATIO_1;
         }
-        if (new_item.RATIO_2 < min_max_info_tmp.MIN_RATIO_2) {
-          min_max_info_tmp.MIN_RATIO_2 = new_item.RATIO_2;
-        }
         if (new_item.RATIO_2 > min_max_info_tmp.MAX_RATIO_2) {
           min_max_info_tmp.MAX_RATIO_2 = new_item.RATIO_2;
-        }
-        if (new_item.RATIO_3 < min_max_info_tmp.MIN_RATIO_3) {
-          min_max_info_tmp.MIN_RATIO_3 = new_item.RATIO_3;
         }
         if (new_item.RATIO_3 > min_max_info_tmp.MAX_RATIO_3) {
           min_max_info_tmp.MAX_RATIO_3 = new_item.RATIO_3;
@@ -480,6 +471,39 @@ const IndexCalcTable = () => {
         if (new_item.ACTUAL_AVG > min_max_info_tmp.MAX_ACTUAL_AVG) {
           min_max_info_tmp.MAX_ACTUAL_AVG = new_item.ACTUAL_AVG;
         }
+
+        // RATIO_1 의 평균값을 구하라
+        if (!isNaN(new_item.RATIO_1)) {
+          if (!min_max_info_tmp._ratio1_sum_count) {
+            min_max_info_tmp._ratio1_sum_count = { sum: 0, count: 0 };
+          }
+          min_max_info_tmp._ratio1_sum_count.sum += new_item.RATIO_1;
+          min_max_info_tmp._ratio1_sum_count.count += 1;
+          min_max_info_tmp.AVG_RATIO_1 = min_max_info_tmp._ratio1_sum_count.sum / min_max_info_tmp._ratio1_sum_count.count;
+        }
+
+        // RATIO_2 의 평균값을 구하라
+
+        if (!isNaN(new_item.RATIO_2)) {
+          if (!min_max_info_tmp._ratio2_sum_count) {
+            min_max_info_tmp._ratio2_sum_count = { sum: 0, count: 0 };
+          }
+          min_max_info_tmp._ratio2_sum_count.sum += new_item.RATIO_2;
+          min_max_info_tmp._ratio2_sum_count.count += 1;
+          min_max_info_tmp.AVG_RATIO_2 = min_max_info_tmp._ratio2_sum_count.sum / min_max_info_tmp._ratio2_sum_count.count;
+        }
+
+        // RATIO_3 의 평균값을 구하라
+
+        if (!isNaN(new_item.RATIO_3)) {
+          if (!min_max_info_tmp._ratio3_sum_count) {
+            min_max_info_tmp._ratio3_sum_count = { sum: 0, count: 0 };
+          }
+          min_max_info_tmp._ratio3_sum_count.sum += new_item.RATIO_3;
+          min_max_info_tmp._ratio3_sum_count.count += 1;
+          min_max_info_tmp.AVG_RATIO_3 = min_max_info_tmp._ratio3_sum_count.sum / min_max_info_tmp._ratio3_sum_count.count;
+        }
+
         new_datalist.push(new_item);
       }
 
@@ -643,70 +667,76 @@ const IndexCalcTable = () => {
                       <Tag color="processing">표기규칙</Tag>
                       no_data(데이터없음) stale(30초간 변동없음) crossed(매수호가/매도호가 역전)
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={8} align="center">
-                      <Tag color="processing">MIN</Tag>
-                    </Table.Summary.Cell>
                     <Table.Summary.Cell index={9} align="right">
+                      <Tag color="blue">MIN</Tag>
                       <span style={{ color: min_max_info.MIN_DIFF_1 === 0 ? 'black' : min_max_info.MIN_DIFF_1 < 0 ? 'blue' : 'red' }}>
                         {common.pricisionFormat_Precision(min_max_info.MIN_DIFF_1, 0)}
                       </span>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={10} align="right">
+                      <Tag color="blue">MIN</Tag>
                       <span style={{ color: min_max_info.MIN_DIFF_2 === 0 ? 'black' : min_max_info.MIN_DIFF_2 < 0 ? 'blue' : 'red' }}>
                         {common.pricisionFormat_Precision(min_max_info.MIN_DIFF_2, 0)}
                       </span>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={11} align="right">
+                      <Tag color="blue">MIN</Tag>
                       <span style={{ color: min_max_info.MIN_DIFF_3 === 0 ? 'black' : min_max_info.MIN_DIFF_3 < 0 ? 'blue' : 'red' }}>
                         {common.pricisionFormat_Precision(min_max_info.MIN_DIFF_3, 0)}
                       </span>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={12} align="right">
-                      <span style={{ color: min_max_info.MIN_RATIO_1 === 0 ? 'black' : min_max_info.MIN_RATIO_1 < 0 ? 'blue' : 'red' }}>
-                        {common.pricisionFormat_Precision(min_max_info.MIN_RATIO_1, 4)}
+                      <Tag color="green">AVG</Tag>
+                      <span style={{ color: min_max_info.AVG_RATIO_1 === 0 ? 'black' : min_max_info.AVG_RATIO_1 < 0 ? 'blue' : 'green' }}>
+                        {common.pricisionFormat_Precision(min_max_info.AVG_RATIO_1, 4)}
                       </span>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={13} align="right">
-                      <span style={{ color: min_max_info.MIN_RATIO_2 === 0 ? 'black' : min_max_info.MIN_RATIO_2 < 0 ? 'blue' : 'red' }}>
-                        {common.pricisionFormat_Precision(min_max_info.MIN_RATIO_2, 4)}
+                      <Tag color="green">AVG</Tag>
+                      <span style={{ color: min_max_info.AVG_RATIO_2 === 0 ? 'black' : min_max_info.AVG_RATIO_2 < 0 ? 'blue' : 'green' }}>
+                        {common.pricisionFormat_Precision(min_max_info.AVG_RATIO_2, 4)}
                       </span>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={14} align="right">
-                      <span style={{ color: min_max_info.MIN_RATIO_3 === 0 ? 'black' : min_max_info.MIN_RATIO_3 < 0 ? 'blue' : 'red' }}>
-                        {common.pricisionFormat_Precision(min_max_info.MIN_RATIO_3, 4)}
+                      <Tag color="green">AVG</Tag>
+                      <span style={{ color: min_max_info.AVG_RATIO_3 === 0 ? 'black' : min_max_info.AVG_RATIO_3 < 0 ? 'blue' : 'green' }}>
+                        {common.pricisionFormat_Precision(min_max_info.AVG_RATIO_3, 4)}
                       </span>
                     </Table.Summary.Cell>
                   </Table.Summary.Row>
                   <Table.Summary.Row>
-                    <Table.Summary.Cell index={8} align="center">
-                      <Tag color="processing">MAX</Tag>
-                    </Table.Summary.Cell>
                     <Table.Summary.Cell index={9} align="right">
+                      <Tag color="red">MAX</Tag>
                       <span style={{ color: min_max_info.MAX_DIFF_1 === 0 ? 'black' : min_max_info.MAX_DIFF_1 < 0 ? 'blue' : 'red' }}>
                         {common.pricisionFormat_Precision(min_max_info.MAX_DIFF_1, 0)}
                       </span>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={10} align="right">
+                      <Tag color="red">MAX</Tag>
                       <span style={{ color: min_max_info.MAX_DIFF_2 === 0 ? 'black' : min_max_info.MAX_DIFF_2 < 0 ? 'blue' : 'red' }}>
                         {common.pricisionFormat_Precision(min_max_info.MAX_DIFF_2, 0)}
                       </span>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={11} align="right">
+                      <Tag color="red">MAX</Tag>
                       <span style={{ color: min_max_info.MAX_DIFF_3 === 0 ? 'black' : min_max_info.MAX_DIFF_3 < 0 ? 'blue' : 'red' }}>
                         {common.pricisionFormat_Precision(min_max_info.MAX_DIFF_3, 0)}
                       </span>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={12} align="right">
+                      <Tag color="red">MAX</Tag>
                       <span style={{ color: min_max_info.MAX_RATIO_1 === 0 ? 'black' : min_max_info.MAX_RATIO_1 < 0 ? 'blue' : 'red' }}>
                         {common.pricisionFormat_Precision(min_max_info.MAX_RATIO_1, 4)}
                       </span>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={13} align="right">
+                      <Tag color="red">MAX</Tag>
                       <span style={{ color: min_max_info.MAX_RATIO_2 === 0 ? 'black' : min_max_info.MAX_RATIO_2 < 0 ? 'blue' : 'red' }}>
                         {common.pricisionFormat_Precision(min_max_info.MAX_RATIO_2, 4)}
                       </span>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={14} align="right">
+                      <Tag color="red">MAX</Tag>
                       <span style={{ color: min_max_info.MAX_RATIO_3 === 0 ? 'black' : min_max_info.MAX_RATIO_3 < 0 ? 'blue' : 'red' }}>
                         {common.pricisionFormat_Precision(min_max_info.MAX_RATIO_3, 4)}
                       </span>
