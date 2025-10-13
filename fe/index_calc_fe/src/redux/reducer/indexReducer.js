@@ -32,6 +32,76 @@ export default (state = initState, { type, payload }) => {
         // console.log("fkbrti/init", payload);
         draft.current_page = 1;
         draft.index_data = payload.datalist;
+
+        for (const new_item of payload.datalist) {
+          if (new_item.DIFF_1 < draft.MIN_MAX_INFO.MIN_DIFF_1) {
+            draft.MIN_MAX_INFO.MIN_DIFF_1 = new_item.DIFF_1;
+          }
+          if (new_item.DIFF_1 > draft.MIN_MAX_INFO.MAX_DIFF_1) {
+            draft.MIN_MAX_INFO.MAX_DIFF_1 = new_item.DIFF_1;
+          }
+          if (new_item.DIFF_2 < draft.MIN_MAX_INFO.MIN_DIFF_2) {
+            draft.MIN_MAX_INFO.MIN_DIFF_2 = new_item.DIFF_2;
+          }
+          if (new_item.DIFF_2 > draft.MIN_MAX_INFO.MAX_DIFF_2) {
+            draft.MIN_MAX_INFO.MAX_DIFF_2 = new_item.DIFF_2;
+          }
+          if (new_item.DIFF_3 < draft.MIN_MAX_INFO.MIN_DIFF_3) {
+            draft.MIN_MAX_INFO.MIN_DIFF_3 = new_item.DIFF_3;
+          }
+          if (new_item.DIFF_3 > draft.MIN_MAX_INFO.MAX_DIFF_3) {
+            draft.MIN_MAX_INFO.MAX_DIFF_3 = new_item.DIFF_3;
+          }
+
+          if (new_item.RATIO_1 > draft.MIN_MAX_INFO.MAX_RATIO_1) {
+            draft.MIN_MAX_INFO.MAX_RATIO_1 = new_item.RATIO_1;
+          }
+
+          if (new_item.RATIO_2 > draft.MIN_MAX_INFO.MAX_RATIO_2) {
+            draft.MIN_MAX_INFO.MAX_RATIO_2 = new_item.RATIO_2;
+          }
+
+          if (new_item.RATIO_3 > draft.MIN_MAX_INFO.MAX_RATIO_3) {
+            draft.MIN_MAX_INFO.MAX_RATIO_3 = new_item.RATIO_3;
+          }
+
+          if (new_item.ACTUAL_AVG < draft.MIN_MAX_INFO.MIN_ACTUAL_AVG) {
+            draft.MIN_MAX_INFO.MIN_ACTUAL_AVG = new_item.ACTUAL_AVG;
+          }
+          if (new_item.ACTUAL_AVG > draft.MIN_MAX_INFO.MAX_ACTUAL_AVG) {
+            draft.MIN_MAX_INFO.MAX_ACTUAL_AVG = new_item.ACTUAL_AVG;
+          }
+
+          if (!isNaN(new_item.RATIO_1)) {
+            if (!draft.MIN_MAX_INFO._ratio1_sum_count) {
+              draft.MIN_MAX_INFO._ratio1_sum_count = { sum: 0, count: 0 };
+            }
+            draft.MIN_MAX_INFO._ratio1_sum_count.sum += new_item.RATIO_1;
+            draft.MIN_MAX_INFO._ratio1_sum_count.count += 1;
+            draft.MIN_MAX_INFO.AVG_RATIO_1 = draft.MIN_MAX_INFO._ratio1_sum_count.sum / draft.MIN_MAX_INFO._ratio1_sum_count.count;
+          }
+
+          if (!isNaN(new_item.RATIO_2)) {
+            if (!draft.MIN_MAX_INFO._ratio2_sum_count) {
+              draft.MIN_MAX_INFO._ratio2_sum_count = { sum: 0, count: 0 };
+            }
+            draft.MIN_MAX_INFO._ratio2_sum_count.sum += new_item.RATIO_2;
+            draft.MIN_MAX_INFO._ratio2_sum_count.count += 1;
+            draft.MIN_MAX_INFO.AVG_RATIO_2 = draft.MIN_MAX_INFO._ratio2_sum_count.sum / draft.MIN_MAX_INFO._ratio2_sum_count.count;
+          }
+  
+          // RATIO_3 의 평균값을 구하라
+  
+          if (!isNaN(new_item.RATIO_3)) {
+              if (!draft.MIN_MAX_INFO._ratio3_sum_count) {
+              draft.MIN_MAX_INFO._ratio3_sum_count = { sum: 0, count: 0 };
+            }
+            draft.MIN_MAX_INFO._ratio3_sum_count.sum += new_item.RATIO_3;
+            draft.MIN_MAX_INFO._ratio3_sum_count.count += 1;
+            draft.MIN_MAX_INFO.AVG_RATIO_3 = draft.MIN_MAX_INFO._ratio3_sum_count.sum / draft.MIN_MAX_INFO._ratio3_sum_count.count;
+          }
+        }
+
       });
     case 'fkbrti/update':
       return produce(state, draft => {
@@ -154,6 +224,15 @@ export default (state = initState, { type, payload }) => {
               draft.MIN_MAX_INFO.MAX_ACTUAL_AVG = new_item.ACTUAL_AVG;
             }
 
+            if (!isNaN(new_item.RATIO_1)) {
+              if (!draft.MIN_MAX_INFO._ratio1_sum_count) {
+                draft.MIN_MAX_INFO._ratio1_sum_count = { sum: 0, count: 0 };
+              }
+              draft.MIN_MAX_INFO._ratio1_sum_count.sum += new_item.RATIO_1;
+              draft.MIN_MAX_INFO._ratio1_sum_count.count += 1;
+              draft.MIN_MAX_INFO.AVG_RATIO_1 = draft.MIN_MAX_INFO._ratio1_sum_count.sum / draft.MIN_MAX_INFO._ratio1_sum_count.count;
+            }
+
             if (!isNaN(new_item.RATIO_2)) {
               if (!draft.MIN_MAX_INFO._ratio2_sum_count) {
                 draft.MIN_MAX_INFO._ratio2_sum_count = { sum: 0, count: 0 };
@@ -179,11 +258,7 @@ export default (state = initState, { type, payload }) => {
 
           new_datalist = new_datalist.filter(item => !draft.index_data.some(existingItem => existingItem.createdAt === item.createdAt));
 
-          if ( process.env.IS_DEBUG == "true" ) {
-            draft.index_data = [...new_datalist, ...draft.index_data].slice(0, 5000);
-          } else {
-            draft.index_data = [...new_datalist, ...draft.index_data].slice(0, 10000);
-          }
+          draft.index_data = [...new_datalist, ...draft.index_data];
         }
       });
     case 'fkbrti/append':
@@ -225,11 +300,81 @@ export default (state = initState, { type, payload }) => {
             new_datalist.push(new_item);
           }
 
-          if ( process.env.IS_DEBUG == "true" ) {
-            draft.index_data = [...draft.index_data, ...new_datalist].slice(0, 5000);
-          } else {
-            draft.index_data = [...draft.index_data, ...new_datalist].slice(0, 10000);
+          draft.index_data = [...draft.index_data, ...new_datalist];
+
+          // console.log("fkbrti/append", draft.index_data.length);
+
+          for (const new_item of draft.index_data) {
+            if (new_item.DIFF_1 < draft.MIN_MAX_INFO.MIN_DIFF_1) {
+              draft.MIN_MAX_INFO.MIN_DIFF_1 = new_item.DIFF_1;
+            }
+            if (new_item.DIFF_1 > draft.MIN_MAX_INFO.MAX_DIFF_1) {
+              draft.MIN_MAX_INFO.MAX_DIFF_1 = new_item.DIFF_1;
+            }
+            if (new_item.DIFF_2 < draft.MIN_MAX_INFO.MIN_DIFF_2) {
+              draft.MIN_MAX_INFO.MIN_DIFF_2 = new_item.DIFF_2;
+            }
+            if (new_item.DIFF_2 > draft.MIN_MAX_INFO.MAX_DIFF_2) {
+              draft.MIN_MAX_INFO.MAX_DIFF_2 = new_item.DIFF_2;
+            }
+            if (new_item.DIFF_3 < draft.MIN_MAX_INFO.MIN_DIFF_3) {
+              draft.MIN_MAX_INFO.MIN_DIFF_3 = new_item.DIFF_3;
+            }
+            if (new_item.DIFF_3 > draft.MIN_MAX_INFO.MAX_DIFF_3) {
+              draft.MIN_MAX_INFO.MAX_DIFF_3 = new_item.DIFF_3;
+            }
+  
+            if (new_item.RATIO_1 > draft.MIN_MAX_INFO.MAX_RATIO_1) {
+              draft.MIN_MAX_INFO.MAX_RATIO_1 = new_item.RATIO_1;
+            }
+  
+            if (new_item.RATIO_2 > draft.MIN_MAX_INFO.MAX_RATIO_2) {
+              draft.MIN_MAX_INFO.MAX_RATIO_2 = new_item.RATIO_2;
+            }
+  
+            if (new_item.RATIO_3 > draft.MIN_MAX_INFO.MAX_RATIO_3) {
+              draft.MIN_MAX_INFO.MAX_RATIO_3 = new_item.RATIO_3;
+            }
+  
+            if (new_item.ACTUAL_AVG < draft.MIN_MAX_INFO.MIN_ACTUAL_AVG) {
+              draft.MIN_MAX_INFO.MIN_ACTUAL_AVG = new_item.ACTUAL_AVG;
+            }
+            if (new_item.ACTUAL_AVG > draft.MIN_MAX_INFO.MAX_ACTUAL_AVG) {
+              draft.MIN_MAX_INFO.MAX_ACTUAL_AVG = new_item.ACTUAL_AVG;
+            }
+
+            if (!isNaN(new_item.RATIO_1)) {
+              if (!draft.MIN_MAX_INFO._ratio1_sum_count) {
+                draft.MIN_MAX_INFO._ratio1_sum_count = { sum: 0, count: 0 };
+              }
+              draft.MIN_MAX_INFO._ratio1_sum_count.sum += new_item.RATIO_1;
+              draft.MIN_MAX_INFO._ratio1_sum_count.count += 1;
+              draft.MIN_MAX_INFO.AVG_RATIO_1 = draft.MIN_MAX_INFO._ratio1_sum_count.sum / draft.MIN_MAX_INFO._ratio1_sum_count.count;
+            }
+  
+            if (!isNaN(new_item.RATIO_2)) {
+              if (!draft.MIN_MAX_INFO._ratio2_sum_count) {
+                draft.MIN_MAX_INFO._ratio2_sum_count = { sum: 0, count: 0 };
+              }
+              draft.MIN_MAX_INFO._ratio2_sum_count.sum += new_item.RATIO_2;
+              draft.MIN_MAX_INFO._ratio2_sum_count.count += 1;
+              draft.MIN_MAX_INFO.AVG_RATIO_2 = draft.MIN_MAX_INFO._ratio2_sum_count.sum / draft.MIN_MAX_INFO._ratio2_sum_count.count;
+            }
+    
+            // RATIO_3 의 평균값을 구하라
+    
+            if (!isNaN(new_item.RATIO_3)) {
+                if (!draft.MIN_MAX_INFO._ratio3_sum_count) {
+                draft.MIN_MAX_INFO._ratio3_sum_count = { sum: 0, count: 0 };
+              }
+              draft.MIN_MAX_INFO._ratio3_sum_count.sum += new_item.RATIO_3;
+              draft.MIN_MAX_INFO._ratio3_sum_count.count += 1;
+              draft.MIN_MAX_INFO.AVG_RATIO_3 = draft.MIN_MAX_INFO._ratio3_sum_count.sum / draft.MIN_MAX_INFO._ratio3_sum_count.count;
+            }
           }
+
+          // console.log("fkbrti/append", JSON.stringify(draft.MIN_MAX_INFO, null, 2));
+
         }
       });
 

@@ -1,7 +1,7 @@
 import { Divider, message, Modal, Popconfirm, Switch } from "antd";
 import axios from "axios";
 import classNames from "classnames";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import common from "../common";
 import { isUndefined } from "lodash";
@@ -15,6 +15,8 @@ import { Table, Tag, Tooltip } from "antd";
 import MultiExchangeChart from "./index_chart";
 import CorrelationTable from "./index_correlation";
 import VolatilityTable from "./index_volatility";
+import { optimizedColumns } from "./index_calc_optimized_columns";
+import VirtualTable from "./VirtualTable";
 
 const columns = [
   {
@@ -322,7 +324,7 @@ const IndexCalcTable = () => {
   const min_max_info = useSelector(state => state.IndexReducer.MIN_MAX_INFO);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(500);
+  const [pageSize, setPageSize] = useState(10000);
   const [totalCount, setTotalCount] = useState(0);
   const [pagination, setPagination] = useState({hasNext: false, hasPrev: false, page: 1, size: 500, totalCount: 0, totalPages: 0});
 
@@ -438,72 +440,6 @@ const IndexCalcTable = () => {
         }
         new_item.RATIO_3 = new_item.RATIO_3 * 100;
 
-        if (new_item.DIFF_1 < min_max_info_tmp.MIN_DIFF_1) {
-          min_max_info_tmp.MIN_DIFF_1 = new_item.DIFF_1;
-        }
-        if (new_item.DIFF_1 > min_max_info_tmp.MAX_DIFF_1) {
-          min_max_info_tmp.MAX_DIFF_1 = new_item.DIFF_1;
-        }
-        if (new_item.DIFF_2 < min_max_info_tmp.MIN_DIFF_2) {
-          min_max_info_tmp.MIN_DIFF_2 = new_item.DIFF_2;
-        }
-        if (new_item.DIFF_2 > min_max_info_tmp.MAX_DIFF_2) {
-          min_max_info_tmp.MAX_DIFF_2 = new_item.DIFF_2;
-        }
-        if (new_item.DIFF_3 < min_max_info_tmp.MIN_DIFF_3) {
-          min_max_info_tmp.MIN_DIFF_3 = new_item.DIFF_3;
-        }
-        if (new_item.DIFF_3 > min_max_info_tmp.MAX_DIFF_3) {
-          min_max_info_tmp.MAX_DIFF_3 = new_item.DIFF_3;
-        }
-        if (new_item.RATIO_1 > min_max_info_tmp.MAX_RATIO_1) {
-          min_max_info_tmp.MAX_RATIO_1 = new_item.RATIO_1;
-        }
-        if (new_item.RATIO_2 > min_max_info_tmp.MAX_RATIO_2) {
-          min_max_info_tmp.MAX_RATIO_2 = new_item.RATIO_2;
-        }
-        if (new_item.RATIO_3 > min_max_info_tmp.MAX_RATIO_3) {
-          min_max_info_tmp.MAX_RATIO_3 = new_item.RATIO_3;
-        }
-        if (new_item.ACTUAL_AVG < min_max_info_tmp.MIN_ACTUAL_AVG) {
-          min_max_info_tmp.MIN_ACTUAL_AVG = new_item.ACTUAL_AVG;
-        }
-        if (new_item.ACTUAL_AVG > min_max_info_tmp.MAX_ACTUAL_AVG) {
-          min_max_info_tmp.MAX_ACTUAL_AVG = new_item.ACTUAL_AVG;
-        }
-
-        // RATIO_1 의 평균값을 구하라
-        if (!isNaN(new_item.RATIO_1)) {
-          if (!min_max_info_tmp._ratio1_sum_count) {
-            min_max_info_tmp._ratio1_sum_count = { sum: 0, count: 0 };
-          }
-          min_max_info_tmp._ratio1_sum_count.sum += new_item.RATIO_1;
-          min_max_info_tmp._ratio1_sum_count.count += 1;
-          min_max_info_tmp.AVG_RATIO_1 = min_max_info_tmp._ratio1_sum_count.sum / min_max_info_tmp._ratio1_sum_count.count;
-        }
-
-        // RATIO_2 의 평균값을 구하라
-
-        if (!isNaN(new_item.RATIO_2)) {
-          if (!min_max_info_tmp._ratio2_sum_count) {
-            min_max_info_tmp._ratio2_sum_count = { sum: 0, count: 0 };
-          }
-          min_max_info_tmp._ratio2_sum_count.sum += new_item.RATIO_2;
-          min_max_info_tmp._ratio2_sum_count.count += 1;
-          min_max_info_tmp.AVG_RATIO_2 = min_max_info_tmp._ratio2_sum_count.sum / min_max_info_tmp._ratio2_sum_count.count;
-        }
-
-        // RATIO_3 의 평균값을 구하라
-
-        if (!isNaN(new_item.RATIO_3)) {
-          if (!min_max_info_tmp._ratio3_sum_count) {
-            min_max_info_tmp._ratio3_sum_count = { sum: 0, count: 0 };
-          }
-          min_max_info_tmp._ratio3_sum_count.sum += new_item.RATIO_3;
-          min_max_info_tmp._ratio3_sum_count.count += 1;
-          min_max_info_tmp.AVG_RATIO_3 = min_max_info_tmp._ratio3_sum_count.sum / min_max_info_tmp._ratio3_sum_count.count;
-        }
-
         new_datalist.push(new_item);
       }
 
@@ -537,6 +473,32 @@ const IndexCalcTable = () => {
   const onClickTab = ({ currentTarget }) => {
     setTabIdx(parseInt(currentTarget.getAttribute("data")));
   };
+
+  const summaryComponent = useMemo(() => {
+    return () => (
+      <>
+        <div>
+          <Tag color="blue">MIN</Tag>
+          <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>
+            {common.pricisionFormat_Precision(min_max_info.MIN_DIFF_1, 0)}
+          </span>
+        </div>
+        <div>
+          <Tag color="red">MAX</Tag>
+          <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>
+            {common.pricisionFormat_Precision(min_max_info.MAX_DIFF_1, 0)}
+          </span>
+        </div>
+        <div>
+          <Tag color="green">AVG</Tag>
+          <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>
+            {common.pricisionFormat_Precision(min_max_info.AVG_RATIO_1, 4)}%
+          </span>
+        </div>
+      </>
+    );
+  }, [min_max_info]);
+
 
   return (
     <>
@@ -639,26 +601,24 @@ const IndexCalcTable = () => {
       {tab_idx === 0 && (
       <>
         <div className="thbit-trade-table-container" data-simplebar style={{ height: "100%" }}>
-          <Table 
+        {/* <VirtualTable
+          columns={optimizedColumns}
+          dataSource={index_list.slice(0, 30)}
+          rowKey="createdAt"
+          loading={loading}
+          scroll={{ y: 740, x: "max-content" }}
+          summary={summaryComponent}
+        /> */}
+           <Table 
             columns={columns}
-            dataSource={index_list}
+            dataSource={index_list.slice(0, 100)}
             rowKey={(record) => `${record.createdAt}`}
             pagination={false}
-            // pagination={{
-            //   position: ['bottomCenter'], // pagination이 항상 보이도록 위치를 명시적으로 지정
-            //   current: currentPage,
-            //   pageSize: 10,
-            //   total: totalCount,
-            //   // showSizeChanger: true,
-            //   pageSizeOptions: ['20', '50', '100', '200', '500'],
-            //   showTotal: (total, range) => `${range[0]}-${range[1]} / ${total}`,
-            // }}
             loading={loading}
             scroll={{ y: 740, x: 'max-content' }}
             style={{ height: "100%" }}
             summary={() => (
               <Table.Summary fixed="top">
-                {/* 여러 줄도 가능: Summary.Row를 여러 개 리턴 */}
                   <Table.Summary.Row>
                     <Table.Summary.Cell index={0} rowSpan={2} align="center">
                       ROWS : {index_list?.length}
@@ -745,7 +705,7 @@ const IndexCalcTable = () => {
                   </Table.Summary.Row>
               </Table.Summary>
             )}
-          />
+          /> 
         </div>
       </>
       )}
