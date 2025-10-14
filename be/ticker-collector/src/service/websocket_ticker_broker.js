@@ -11,7 +11,7 @@
 
 const WebSocket = require("ws");
 const winston = require("winston");
-const { MARKET_NO_ENUM, MARKET_NAME_ENUM } = require("../utils/common.js");
+const { MARKET_NO_ENUM, MARKET_NAME_ENUM, RECONNECT_INTERVAL } = require("../utils/common.js");
 const { send_push } = require("../utils/zmq-sender-push.js");
 const { send_publisher } = require("../utils/zmq-sender-pub.js");
 
@@ -85,7 +85,7 @@ class UpbitClientTicker {
     });
     this.ws.on("close", () => {
       this._reconnecting = true;
-      setTimeout(() => this.start(cb), common.RECONNECT_INTERVAL);
+      setTimeout(() => this.start(), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
         sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
         this._closeNotified = true;
@@ -156,7 +156,7 @@ class BithumbClientTicker {
     });
     this.ws.on("close", () => {
       this._reconnecting = true;
-      setTimeout(() => this.start(cb), common.RECONNECT_INTERVAL);
+      setTimeout(() => this.start(), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
         sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
         this._closeNotified = true;
@@ -223,7 +223,7 @@ class KorbitClientTicker {
     });
     this.ws.on("close", () => {
       this._reconnecting = true;
-      setTimeout(() => this.start(cb), common.RECONNECT_INTERVAL);
+      setTimeout(() => this.start(), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
         sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
         this._closeNotified = true;
@@ -301,7 +301,7 @@ class CoinoneClientTicker {
     this.ws.on("close", () => {
       if (this.pingInterval) clearInterval(this.pingInterval);
       this._reconnecting = true;
-      setTimeout(() => this.start(cb), common.RECONNECT_INTERVAL);
+      setTimeout(() => this.start(), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
         sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
         this._closeNotified = true;
