@@ -9,7 +9,7 @@ const log = require('./utils/logger');
 const { connect, db } = require('./db/db.js');
 const { systemlog_schema } = require('./ddl/systemlog_ddl.js');
 
-const  { sendTelegramMessage, init_system_bot_log } = require('./utils/telegram_push.js')
+const  { sendTelegramMessage } = require('./utils/telegram_push.js')
 
 const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
 
@@ -72,11 +72,7 @@ async function initializeApp() {
 	try {
 		await connect(process.env.QDB_HOST, process.env.QDB_PORT);
 		await systemlog_schema(db);
-
-		if ( process.env.TELEGRAM_IS_SEND === 'true' ) {
-			init_system_bot_log();
-			sendTelegramMessage ( "OrderBook-Collector Initialization.");
-		}
+		await sendTelegramMessage("system", "OrderBook-Collector Initialization.");
 	} catch (error) {
 		console.error('Application initialization failed:', error);
 		process.exit(1);
@@ -85,9 +81,9 @@ async function initializeApp() {
 
 initializeApp();
 
-function handleAppShutdown(signal) {
+async function handleAppShutdown(signal) {
 	try {
-		sendTelegramMessage(`[${signal}] OrderBook-Collector shutting down.`);
+		await sendTelegramMessage("system", `[${signal}] OrderBook-Collector shutting down.`);
 	} catch (e) {
 		console.error('Failed to send shutdown telegram notification:', e);
 	}

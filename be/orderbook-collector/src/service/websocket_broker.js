@@ -15,7 +15,7 @@ const { execAvgBuyFromAsk, execAvgSellFromBid } = require("../utils/vwap_exec");
 const { MARKET_NO_ENUM, MARKET_NAME_ENUM } = require("../utils/common");
 const { send_push } = require("../utils/zmq-sender-push.js");
 const { send_publisher } = require("../utils/zmq-sender-pub.js");
-const  { sendTelegramMessageSource } = require('../utils/telegram_push.js')
+const  { sendTelegramMessage } = require('../utils/telegram_push.js')
 
 // ===== 설정 =====
 const DEPTH    = 15;
@@ -200,6 +200,7 @@ class UpbitClient {
     this.code = code;
     this.ws   = null;
     this._reconnecting = false;
+    this._closeNotified = false;
   }
   start(cb) {
     this.ws = new WebSocket(this.url);
@@ -212,11 +213,12 @@ class UpbitClient {
       this.ws.send(Buffer.from(JSON.stringify(req), "utf8"));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
       if (this._reconnecting) {
-        sendTelegramMessageSource(this.name, `${this.name} WebSocket reopened (reconnected).`);
+        sendTelegramMessage(this.name, `${this.name} OrderBook-Collector WebSocket reopened (reconnected).`);
       } else {
-        sendTelegramMessageSource(this.name, `${this.name} WebSocket opened (initial connect).`);
+        sendTelegramMessage(this.name, `${this.name} OrderBook-Collector WebSocket opened (initial connect).`, false);
       }
       this._reconnecting = false;
+      this._closeNotified = false;
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -252,11 +254,14 @@ class UpbitClient {
     this.ws.on("close", () => {
       this._reconnecting = true;
       setTimeout(() => this.start(cb), 200);
-      sendTelegramMessageSource(this.name, `${this.name} WebSocket closed.`);
+      if (!this._closeNotified) {
+        sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
+        this._closeNotified = true;
+      }
     });
     this.ws.on("error", (e) => { 
       logger.error({ ex: this.name, err: String(e) }, "ws error");
-      sendTelegramMessageSource(this.name, `${this.name} WebSocket error: ${String(e)}`);
+      sendTelegramMessage(this.name, `${this.name} WebSocket error: ${String(e)}`);
     });
   }
 }
@@ -270,6 +275,7 @@ class BithumbClient {
     this.code = code;
     this.ws   = null;
     this._reconnecting = false;
+    this._closeNotified = false;
   }
   start(cb) {
     this.ws = new WebSocket(this.url);
@@ -282,11 +288,12 @@ class BithumbClient {
       this.ws.send(JSON.stringify(req));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
       if (this._reconnecting) {
-        sendTelegramMessageSource(this.name, `${this.name} WebSocket reopened (reconnected).`);
+        sendTelegramMessage(this.name, `${this.name} OrderBook-Collector WebSocket reopened (reconnected).`);
       } else {
-        sendTelegramMessageSource(this.name, `${this.name} WebSocket opened (initial connect).`);
+        sendTelegramMessage(this.name, `${this.name} OrderBook-Collector WebSocket opened (initial connect).`, false);
       }
       this._reconnecting = false;
+      this._closeNotified = false;
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -322,11 +329,14 @@ class BithumbClient {
     this.ws.on("close", () => {
       this._reconnecting = true;
       setTimeout(() => this.start(cb), 200);
-      sendTelegramMessage(`${this.name} WebSocket closed.`);
+      if (!this._closeNotified) {
+        sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
+        this._closeNotified = true;
+      }
     });
     this.ws.on("error", (e) => { 
       logger.error({ ex: this.name, err: String(e) }, "ws error");
-      sendTelegramMessage(`${this.name} WebSocket error: ${String(e)}`);
+      sendTelegramMessage(this.name, `${this.name} WebSocket error: ${String(e)}`);
     });
   }
 }
@@ -340,6 +350,7 @@ class KorbitClient {
     this.symbol = symbol;
     this.ws   = null;
     this._reconnecting = false;
+    this._closeNotified = false;
   }
   start(cb) {
     this.ws = new WebSocket(this.url);
@@ -348,11 +359,12 @@ class KorbitClient {
       this.ws.send(req);
       logger.info({ ex: this.name, msg: "subscribed", symbol: this.symbol });
       if (this._reconnecting) {
-        sendTelegramMessageSource(this.name, `${this.name} WebSocket reopened (reconnected).`);
+        sendTelegramMessage(this.name, `${this.name} OrderBook-Collector WebSocket reopened (reconnected).`);
       } else {
-        sendTelegramMessageSource(this.name, `${this.name} WebSocket opened (initial connect).`);
+        sendTelegramMessage(this.name, `${this.name} OrderBook-Collector WebSocket opened (initial connect).`, false);
       }
       this._reconnecting = false;
+      this._closeNotified = false;
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -386,11 +398,14 @@ class KorbitClient {
     this.ws.on("close", () => {
       this._reconnecting = true;
       setTimeout(() => this.start(cb), 200);
-      sendTelegramMessage(`${this.name} WebSocket closed.`);
+      if (!this._closeNotified) {
+        sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
+        this._closeNotified = true;
+      }
     });
     this.ws.on("error", (e) => { 
       logger.error({ ex: this.name, err: String(e) }, "ws error");
-      sendTelegramMessage(`${this.name} WebSocket error: ${String(e)}`);
+      sendTelegramMessage(this.name, `${this.name} WebSocket error: ${String(e)}`);
     });
   }
 }
@@ -405,6 +420,7 @@ class CoinoneClient {
     this.ws   = null;
     this.pingInterval = null;
     this._reconnecting = false;
+    this._closeNotified = false;
   }
   start(cb) {
     this.ws = new WebSocket(this.url);
@@ -423,11 +439,12 @@ class CoinoneClient {
         try { this.ws?.send(JSON.stringify({ request_type: "PING" })); } catch {}
       }, 20 * 60 * 1000);
       if (this._reconnecting) {
-        sendTelegramMessageSource(this.name, `${this.name} WebSocket reopened (reconnected).`);
+        sendTelegramMessage(this.name, `${this.name} OrderBook-Collector WebSocket reopened (reconnected).`);
       } else {
-        sendTelegramMessageSource(this.name,`${this.name} WebSocket opened (initial connect).`);
+        sendTelegramMessage(this.name,`${this.name} OrderBook-Collector WebSocket opened (initial connect).`, false);
       }
       this._reconnecting = false;
+      this._closeNotified = false;
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -436,8 +453,6 @@ class CoinoneClient {
           const d = msg.d || msg.data;
           const marketAt = d.t;
           const coollectorAt = new Date(Date.now()).getTime();
-
-
           //코인원은 String 타입이다.
           // 15개까지만 자르기
           const bids = (d.b || d.bids || []).map(u => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, 15);
@@ -464,11 +479,14 @@ class CoinoneClient {
       if (this.pingInterval) clearInterval(this.pingInterval);
       this._reconnecting = true;
       setTimeout(() => this.start(cb), 200);
-      sendTelegramMessage(`${this.name} WebSocket closed.`);
+      if (!this._closeNotified) {
+        sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
+        this._closeNotified = true;
+      }
     });
     this.ws.on("error", (e) => { 
       logger.error({ ex: this.name, err: String(e) }, "ws error");
-      sendTelegramMessage(`${this.name} WebSocket error: ${String(e)}`);
+      sendTelegramMessage(this.name, `${this.name} WebSocket error: ${String(e)}`);
     });
   }
 }

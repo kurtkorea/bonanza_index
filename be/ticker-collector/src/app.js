@@ -6,11 +6,14 @@ const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
 const log = require('./utils/logger');
-// const { send_push, getZMQStatus, healthCheckZMQ } = require("./utils/zmq-sender-push.js");
+
+const { connect, db } = require('./db/db.js');
+const { systemlog_schema } = require('./ddl/systemlog_ddl.js');
+const  { sendTelegramMessage } = require('./utils/telegram_push.js')
+
 
 const { UpbitClientTrade, BithumbClientTrade, KorbitClientTrade, CoinoneClientTrade } = require('./service/websocket_trade_broker.js');
 const { UpbitClientTicker, BithumbClientTicker, KorbitClientTicker, CoinoneClientTicker } = require('./service/websocket_ticker_broker.js');
-
 
 // Start of Selection
 global.logging = false;
@@ -76,10 +79,9 @@ app.use((err, req, res, next) => {
 
 async function initializeApp() {
 	try {
-		// servier 초기화
-		// (await Message.findAll({ where: { message_use: true }, attributes: { exclude: ["message_desc", "createdAt", "updatedAt"] }, logging, raw: true })).forEach(
-		// 	(row) => (message[row.message_key] = { msg: row.message_msg, code: row.message_code }),
-		// );
+		await connect(process.env.QDB_HOST, process.env.QDB_PORT);
+		await systemlog_schema(db);
+		await sendTelegramMessage ( "SYSTEM", "Ticker-Collector Initialization.");
 	} catch (error) {
 		console.error('Application initialization failed:', error);
 		process.exit(1);
@@ -88,8 +90,14 @@ async function initializeApp() {
 
 initializeApp();
 
-// 서버 시작
-// const PORT = process.env.PORT || 3000;
-// app.listen(PORT, () => {
-// 	console.log(`Server is running on port ${PORT}`);
-// });
+async function handleAppShutdown(signal) {
+	try {
+		await sendTelegramMessage( "SYSTEM", `[${signal}] Ticker-Collector shutting down.`);
+	} catch (e) {
+		console.error('Failed to send shutdown telegram notification:', e);
+	}
+	process.exit(0);
+}
+
+process.on('SIGINT', () => handleAppShutdown('SIGINT'));
+process.on('SIGTERM', () => handleAppShutdown('SIGTERM'));

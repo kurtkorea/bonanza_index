@@ -1,54 +1,46 @@
-const TelegramBot = require('node-telegram-bot-api');
-const { db } = require('../db/db.js');
 
-let system_bot_log = null;
+const axios = require('axios');
 
-// 텔레그램 알림 함수
-function sendTelegramMessage(text) {
-  if ( !system_bot_log ) {
-    init_system_bot_log();
-  }
-  if ( process.env.TELEGRAM_IS_SEND === 'true' ) {
-    system_bot_log.sendMessage(process.env.TELEGRAM_CHAT_ID, text);
-  }
-}
+// 텔레그램 알림 SEND
+async function sendTelegramMessage(source_name, text, is_send = true) {
 
-// 텔레그램 알림 함수
-async function sendTelegramMessageSource(source_name, text) {
-  if ( !system_bot_log ) {
-    init_system_bot_log();
+  // is_send가 false이거나 텔레그램 서비스 URL이 없으면 전송하지 않음
+  if (!process.env.TELEGRAM_SERVICE_URL) {
+    console.log(`[Telegram] Skipped (no telegram service URL)`);
+    return;
   }
 
-  const log_data = {
+  const payload = {
     source: source_name,
     content: text,
+    is_send: is_send,
   }
 
-  await db.sequelize.query(
-    `INSERT INTO tb_system_log (content, createdAt) VALUES (?, NOW())`,
-    {
-      replacements: [ JSON.stringify(log_data) ],
-      type: db.sequelize.QueryTypes.INSERT,
+  try {
+    console.log(`[Telegram] Sending: [${source_name}] ${text}`);
+
+    const response = await axios.post(
+      process.env.TELEGRAM_SERVICE_URL || 'http://127.0.0.1:3109/v1/telegram',
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 5000 // 5초 타임아웃
+      }
+    );
+    
+    if (response.status === 200) {
+      console.log(`[Telegram] Message sent successfully`);
+    } else {
+      console.error(`[Telegram] Failed: ${response.status} ${response.statusText}`);
     }
-  );
-
-  if ( process.env.TELEGRAM_IS_SEND === 'true' ) {
-    system_bot_log.sendMessage(process.env.TELEGRAM_CHAT_ID, text);
+  } catch (error) {
+    // 텔레그램 전송 실패는 앱 실행을 막지 않음
+    console.error(`[Telegram] Error (continuing anyway):`, error.message);
   }
-}
-
-function init_system_bot_log() {
-  if (!system_bot_log) {
-    system_bot_log = new TelegramBot(process.env.TELEGRAM_LOG_TOKEN, { polling: true });
-    system_bot_log.on('message', (msg) => {
-      // console.log('Chat ID:', msg);
-    });
-  }
-  return system_bot_log;
 }
 
 module.exports = {
   sendTelegramMessage,
-  sendTelegramMessageSource,
-  init_system_bot_log,
 }

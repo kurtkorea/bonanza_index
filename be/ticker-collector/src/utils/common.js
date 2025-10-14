@@ -79,6 +79,8 @@ const MARKET_NAME_ENUM = Object.freeze({
 	COINONE: "COINONE"
 });
 
+const RECONNECT_INTERVAL = 200;
+
 function gzipCompressToBase64(str, callback) {
 	zlib.gzip(Buffer.from(str, 'utf8'), (err, buf) => {
 	  if (err) return callback(err);
@@ -107,4 +109,5 @@ module.exports = {
 	message,
 	MARKET_NO_ENUM,
 	MARKET_NAME_ENUM,
+	RECONNECT_INTERVAL,
 };
