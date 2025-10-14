@@ -1,0 +1,47 @@
+const TelegramBot = require('node-telegram-bot-api');
+const { db } = require('../db/db.js');
+
+let system_bot_log = null;
+
+// 텔레그램 알림 함수
+async function sendTelegramMessageSource(source_name, text, is_send = true) {
+  
+  if ( !system_bot_log ) {
+    init_system_bot_log();
+  }
+
+  const log_data = {
+    source: source_name,
+    content: text,
+  }
+
+  await db.sequelize.query(
+    `INSERT INTO tb_system_log (content, createdAt) VALUES (?, NOW())`,
+    {
+      replacements: [ JSON.stringify(log_data) ],
+      type: db.sequelize.QueryTypes.INSERT,
+    }
+  );
+
+  if ( is_send ) {
+    if ( process.env.TELEGRAM_IS_SEND === 'true' ) {
+        system_bot_log.sendMessage(process.env.TELEGRAM_CHAT_ID, text);
+      }
+  }
+}
+
+function init_system_bot_log() {
+  if (!system_bot_log) {
+    // console.log("[TELEGRAM LOG PUSH] init_system_bot_log");
+    system_bot_log = new TelegramBot(process.env.TELEGRAM_LOG_TOKEN, { polling: true });
+    system_bot_log.on('message', (msg) => {
+      // console.log('Chat ID:', msg);
+    });
+  }
+  return system_bot_log;
+}
+
+module.exports = {
+  sendTelegramMessageSource,
+  init_system_bot_log,
+}
