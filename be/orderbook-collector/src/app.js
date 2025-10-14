@@ -6,6 +6,8 @@ const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
 const log = require('./utils/logger');
+const { connect, db } = require('./db/db.js');
+const { systemlog_schema } = require('./ddl/systemlog_ddl.js');
 
 const  { sendTelegramMessage, init_system_bot_log } = require('./utils/telegram_push.js')
 
@@ -26,14 +28,8 @@ const express = require("express");
 const app = express();
 // const server = require("http").createServer(app);
 app.set("port", process.env.PORT || 3000);
-var message = {};
 
-const cors = require("cors");
 const morgan = require("morgan");
-
-
-//cors setting
-app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
 
 //console log middleware
 app.use(morgan("dev", { skip: (req, resp) => resp.statusCode < 400 }));
@@ -74,12 +70,13 @@ app.use((err, req, res, next) => {
 
 async function initializeApp() {
 	try {
-		// servier 초기화
-		// (await Message.findAll({ where: { message_use: true }, attributes: { exclude: ["message_desc", "createdAt", "updatedAt"] }, logging, raw: true })).forEach(
-		// 	(row) => (message[row.message_key] = { msg: row.message_msg, code: row.message_code }),
-		// );
-		init_system_bot_log();
-		sendTelegramMessage ( "OrderBook-Collector Initialization.");
+		await connect(process.env.QDB_HOST, process.env.QDB_PORT);
+		await systemlog_schema(db);
+
+		if ( process.env.TELEGRAM_IS_SEND === 'true' ) {
+			init_system_bot_log();
+			sendTelegramMessage ( "OrderBook-Collector Initialization.");
+		}
 	} catch (error) {
 		console.error('Application initialization failed:', error);
 		process.exit(1);
