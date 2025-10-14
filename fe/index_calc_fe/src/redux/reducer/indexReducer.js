@@ -18,7 +18,8 @@ const initState = {
     MAX_RATIO_3: 0,
     MIN_ACTUAL_AVG: 0,
     MAX_ACTUAL_AVG: 0,
-  }
+  },
+  total_count: 0,
 };
 
 export default (state = initState, { type, payload }) => {
@@ -26,6 +27,11 @@ export default (state = initState, { type, payload }) => {
     case 'fkbrti/update_min_max_info':
       return produce(state, draft => {
         draft.MIN_MAX_INFO = payload;
+        draft.total_count = payload.total_count;
+      });
+    case 'fkbrti/update_total_count':
+      return produce(state, draft => {
+        draft.total_count = payload;
       });
     case 'fkbrti/init':
       return produce(state, draft => {
@@ -100,13 +106,16 @@ export default (state = initState, { type, payload }) => {
             draft.MIN_MAX_INFO._ratio3_sum_count.count += 1;
             draft.MIN_MAX_INFO.AVG_RATIO_3 = draft.MIN_MAX_INFO._ratio3_sum_count.sum / draft.MIN_MAX_INFO._ratio3_sum_count.count;
           }
+
+          draft.total_count = payload.total_count;
         }
 
       });
     case 'fkbrti/update':
       return produce(state, draft => {
         // console.log("fkbrti/update", draft.current_page);
-        if (Array.isArray(draft.index_data)) {
+        if (Array.isArray(draft.index_data) && draft.index_data.length > 0) 
+        {
           let new_datalist = [];
           for (const item of payload.datalist) {
             let new_item = {
@@ -259,11 +268,13 @@ export default (state = initState, { type, payload }) => {
           new_datalist = new_datalist.filter(item => !draft.index_data.some(existingItem => existingItem.createdAt === item.createdAt));
 
           draft.index_data = [...new_datalist, ...draft.index_data];
+
+          draft.total_count ++;
         }
       });
     case 'fkbrti/append':
       return produce(state, draft => {
-        if (Array.isArray(draft.index_data)) {
+        if (Array.isArray(draft.index_data) && draft.index_data.length > 0) {
           draft.current_page = payload.current_page + 1;
 
           let new_datalist = [];
@@ -376,6 +387,8 @@ export default (state = initState, { type, payload }) => {
           // console.log("fkbrti/append", JSON.stringify(draft.MIN_MAX_INFO, null, 2));
 
         }
+
+        draft.total_count = payload.total_count;
       });
 
     default:

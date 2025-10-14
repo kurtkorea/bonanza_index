@@ -322,6 +322,7 @@ const IndexCalcTable = () => {
 
   const index_list = useSelector(state => state.IndexReducer.index_data);
   const min_max_info = useSelector(state => state.IndexReducer.MIN_MAX_INFO);
+  const total_count = useSelector(state => state.IndexReducer.total_count);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10000);
@@ -341,7 +342,9 @@ const IndexCalcTable = () => {
         }
       });
       setPagination ( res.data.pagination );
-      setTotalCount(res.data.totalCount || res.data.total_count || 0);
+      setTotalCount(res.data.pagination.totalCount);
+
+      console.log("total_count", res.data.pagination.totalCount);
       setCurrentPage(page);
 
       let min_max_info_tmp = {
@@ -447,9 +450,9 @@ const IndexCalcTable = () => {
       dispatch({ type: "fkbrti/update_min_max_info", payload : min_max_info_tmp });
 
       if ( page == 1 ) {
-        dispatch({ type: "fkbrti/init", payload : { current_page: page, datalist: new_datalist } }); // maintain for Excel export
+        dispatch({ type: "fkbrti/init", payload : { current_page: page, datalist: new_datalist, total_count: res.data.pagination.totalCount } }); // maintain for Excel export
       } else {
-        dispatch({ type: "fkbrti/append", payload : { current_page: page, datalist: new_datalist } }); // maintain for Excel export
+        dispatch({ type: "fkbrti/append", payload : { current_page: page, datalist: new_datalist, total_count: res.data.pagination.totalCount } }); // maintain for Excel export
       }
     } catch (err) {
       console.error("조회 실패:", err);
@@ -621,7 +624,13 @@ const IndexCalcTable = () => {
               <Table.Summary fixed="top">
                   <Table.Summary.Row>
                     <Table.Summary.Cell index={0} rowSpan={2} align="center">
-                      ROWS : {index_list?.length}
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <Tag color="blue" style={{ fontSize: "14px", marginBottom: "10px" }}>ROWCOUNT</Tag>
+                      </div>
+                      {/* <br /> */}
+                      <span style={{ fontSize: "14px", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                        {index_list?.length} / {total_count}
+                      </span>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={1} colSpan={7} rowSpan={2} align="center">
                       <Tag color="processing">표기규칙</Tag>

@@ -6,7 +6,9 @@ const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
 const log = require('./utils/logger');
-// const { send_push, getZMQStatus, healthCheckZMQ } = require("./utils/zmq-sender-push.js");
+
+const  { sendTelegramMessage } = require('./utils/telegram_push.js')
+
 
 const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
 
@@ -77,6 +79,8 @@ async function initializeApp() {
 		// (await Message.findAll({ where: { message_use: true }, attributes: { exclude: ["message_desc", "createdAt", "updatedAt"] }, logging, raw: true })).forEach(
 		// 	(row) => (message[row.message_key] = { msg: row.message_msg, code: row.message_code }),
 		// );
+
+		sendTelegramMessage ( "OrderBook-Collectior Initialization.");
 	} catch (error) {
 		console.error('Application initialization failed:', error);
 		process.exit(1);
