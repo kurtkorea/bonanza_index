@@ -10,3 +10,6 @@
 /be/index-endpoint/package-lock.json
 /be/orderbook-storage-worker/logs/*.log
 /be/ticker-storage-worker/logs/*.log
+/be/telegram_log/.gitignore
+/be/telegram_log/logs
+/be/telegram_log/package-lock.json
