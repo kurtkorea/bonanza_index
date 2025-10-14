@@ -15,6 +15,7 @@ const { execAvgBuyFromAsk, execAvgSellFromBid } = require("../utils/vwap_exec");
 const { MARKET_NO_ENUM, MARKET_NAME_ENUM } = require("../utils/common");
 const { send_push } = require("../utils/zmq-sender-push.js");
 const { send_publisher } = require("../utils/zmq-sender-pub.js");
+const  { sendTelegramMessage } = require('../utils/telegram_push.js')
 
 // ===== 설정 =====
 const DEPTH    = 15;
@@ -198,6 +199,7 @@ class UpbitClient {
     this.url  = "wss://api.upbit.com/websocket/v1";
     this.code = code;
     this.ws   = null;
+    this._reconnecting = false;
   }
   start(cb) {
     this.ws = new WebSocket(this.url);
@@ -209,6 +211,12 @@ class UpbitClient {
       ];
       this.ws.send(Buffer.from(JSON.stringify(req), "utf8"));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
+      if (this._reconnecting) {
+        sendTelegramMessage(`${this.name} WebSocket reopened (reconnected).`);
+      } else {
+        sendTelegramMessage(`${this.name} WebSocket opened (initial connect).`);
+      }
+      this._reconnecting = false;
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -234,19 +242,22 @@ class UpbitClient {
             coollectorAt: coollectorAt,
             diff_ms: (coollectorAt - marketAt) / 1000,
           };
-
-          // console.log(orderbook_item);
-
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
-
           cb(this.market_no, normalize(bids, asks));
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
       }
     });
-    this.ws.on("close", () => setTimeout(() => this.start(cb), 1500));
-    this.ws.on("error", (e) => logger.error({ ex: this.name, err: String(e) }, "ws error"));
+    this.ws.on("close", () => {
+      this._reconnecting = true;
+      setTimeout(() => this.start(cb), 200);
+      sendTelegramMessage(`${this.name} WebSocket closed.`);
+    });
+    this.ws.on("error", (e) => { 
+      logger.error({ ex: this.name, err: String(e) }, "ws error");
+      sendTelegramMessage(`${this.name} WebSocket error: ${String(e)}`);
+    });
   }
 }
 
@@ -258,6 +269,7 @@ class BithumbClient {
     this.url  = "wss://ws-api.bithumb.com/websocket/v1";
     this.code = code;
     this.ws   = null;
+    this._reconnecting = false;
   }
   start(cb) {
     this.ws = new WebSocket(this.url);
@@ -269,6 +281,12 @@ class BithumbClient {
       ];
       this.ws.send(JSON.stringify(req));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
+      if (this._reconnecting) {
+        sendTelegramMessage(`${this.name} WebSocket reopened (reconnected).`);
+      } else {
+        sendTelegramMessage(`${this.name} WebSocket opened (initial connect).`);
+      }
+      this._reconnecting = false;
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -305,8 +323,15 @@ class BithumbClient {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
       }
     });
-    this.ws.on("close", () => setTimeout(() => this.start(cb), 1700));
-    this.ws.on("error", (e) => logger.error({ ex: this.name, err: String(e) }, "ws error"));
+    this.ws.on("close", () => {
+      this._reconnecting = true;
+      setTimeout(() => this.start(cb), 200);
+      sendTelegramMessage(`${this.name} WebSocket closed.`);
+    });
+    this.ws.on("error", (e) => { 
+      logger.error({ ex: this.name, err: String(e) }, "ws error");
+      sendTelegramMessage(`${this.name} WebSocket error: ${String(e)}`);
+    });
   }
 }
 
@@ -318,6 +343,7 @@ class KorbitClient {
     this.url  = "wss://ws-api.korbit.co.kr/v2/public";
     this.symbol = symbol;
     this.ws   = null;
+    this._reconnecting = false;
   }
   start(cb) {
     this.ws = new WebSocket(this.url);
@@ -325,6 +351,12 @@ class KorbitClient {
       const req = JSON.stringify([{ method: "subscribe", type: "orderbook", symbols: [this.symbol] }]);
       this.ws.send(req);
       logger.info({ ex: this.name, msg: "subscribed", symbol: this.symbol });
+      if (this._reconnecting) {
+        sendTelegramMessage(`${this.name} WebSocket reopened (reconnected).`);
+      } else {
+        sendTelegramMessage(`${this.name} WebSocket opened (initial connect).`);
+      }
+      this._reconnecting = false;
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -359,8 +391,15 @@ class KorbitClient {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
       }
     });
-    this.ws.on("close", () => setTimeout(() => this.start(cb), 2000));
-    this.ws.on("error", (e) => logger.error({ ex: this.name, err: String(e) }, "ws error"));
+    this.ws.on("close", () => {
+      this._reconnecting = true;
+      setTimeout(() => this.start(cb), 200);
+      sendTelegramMessage(`${this.name} WebSocket closed.`);
+    });
+    this.ws.on("error", (e) => { 
+      logger.error({ ex: this.name, err: String(e) }, "ws error");
+      sendTelegramMessage(`${this.name} WebSocket error: ${String(e)}`);
+    });
   }
 }
 
@@ -373,6 +412,7 @@ class CoinoneClient {
     this.tc   = tc;
     this.ws   = null;
     this.pingInterval = null;
+    this._reconnecting = false;
   }
   start(cb) {
     this.ws = new WebSocket(this.url);
@@ -390,6 +430,12 @@ class CoinoneClient {
       this.pingInterval = setInterval(() => {
         try { this.ws?.send(JSON.stringify({ request_type: "PING" })); } catch {}
       }, 20 * 60 * 1000);
+      if (this._reconnecting) {
+        sendTelegramMessage(`${this.name} WebSocket reopened (reconnected).`);
+      } else {
+        sendTelegramMessage(`${this.name} WebSocket opened (initial connect).`);
+      }
+      this._reconnecting = false;
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -415,11 +461,7 @@ class CoinoneClient {
             coollectorAt: coollectorAt,
             diff_ms: (coollectorAt - marketAt) / 1000,
           };
-
-          // console.log(orderbook_item);
-
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
-
           cb(this.market_no, normalize(bids, asks));
         }
       } catch (e) {
@@ -428,9 +470,14 @@ class CoinoneClient {
     });
     this.ws.on("close", () => {
       if (this.pingInterval) clearInterval(this.pingInterval);
-      setTimeout(() => this.start(cb), 2200);
+      this._reconnecting = true;
+      setTimeout(() => this.start(cb), 200);
+      sendTelegramMessage(`${this.name} WebSocket closed.`);
     });
-    this.ws.on("error", (e) => logger.error({ ex: this.name, err: String(e) }, "ws error"));
+    this.ws.on("error", (e) => { 
+      logger.error({ ex: this.name, err: String(e) }, "ws error");
+      sendTelegramMessage(`${this.name} WebSocket error: ${String(e)}`);
+    });
   }
 }
 

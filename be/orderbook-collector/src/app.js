@@ -7,8 +7,7 @@ const dotenv = require("dotenv");
 const http = require('http');
 const log = require('./utils/logger');
 
-const  { sendTelegramMessage } = require('./utils/telegram_push.js')
-
+const  { sendTelegramMessage, init_system_bot_log } = require('./utils/telegram_push.js')
 
 const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
 
@@ -79,8 +78,8 @@ async function initializeApp() {
 		// (await Message.findAll({ where: { message_use: true }, attributes: { exclude: ["message_desc", "createdAt", "updatedAt"] }, logging, raw: true })).forEach(
 		// 	(row) => (message[row.message_key] = { msg: row.message_msg, code: row.message_code }),
 		// );
-
-		sendTelegramMessage ( "OrderBook-Collectior Initialization.");
+		init_system_bot_log();
+		sendTelegramMessage ( "OrderBook-Collector Initialization.");
 	} catch (error) {
 		console.error('Application initialization failed:', error);
 		process.exit(1);
@@ -89,10 +88,16 @@ async function initializeApp() {
 
 initializeApp();
 
-// Start the server
-// const server = app.listen(app.get("port"), () => {
-// 	console.log(`Server is running on port ${app.get("port")}`);
-// });
+function handleAppShutdown(signal) {
+	try {
+		sendTelegramMessage(`[${signal}] OrderBook-Collector shutting down.`);
+	} catch (e) {
+		console.error('Failed to send shutdown telegram notification:', e);
+	}
+	process.exit(0);
+}
 
+process.on('SIGINT', () => handleAppShutdown('SIGINT'));
+process.on('SIGTERM', () => handleAppShutdown('SIGTERM'));
 
 
