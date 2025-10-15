@@ -11,7 +11,7 @@
 
 const WebSocket = require("ws");
 const winston = require("winston");
-const { MARKET_NO_ENUM, MARKET_NAME_ENUM, RECONNECT_INTERVAL } = require("../utils/common.js");
+const { MARKET_NO_ENUM, MARKET_NAME_ENUM, RECONNECT_INTERVAL, isJsonValue, PING_INTERVAL } = require("../utils/common.js");
 const { send_push } = require("../utils/zmq-sender-push.js");
 const { send_publisher } = require("../utils/zmq-sender-pub.js");
 
@@ -35,6 +35,7 @@ class UpbitClientTicker {
     this.ws   = null;
     this._reconnecting = false;
     this._closeNotified = false;  
+    this.pingInterval = null;
   }
   start() {
     this.ws = new WebSocket(this.url);
@@ -44,6 +45,7 @@ class UpbitClientTicker {
         { type: "ticker", codes: [this.code] },
         { format: "SIMPLE" },
       ];
+      // try { this.ws?.send("PING"); } catch {}
       this.ws.send(Buffer.from(JSON.stringify(req), "utf8"));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
       if (this._reconnecting) {
@@ -53,15 +55,16 @@ class UpbitClientTicker {
       }
       this._reconnecting = false;
       this._closeNotified = false;
+      // this.pingInterval = setInterval(() => {
+      //   try { this.ws?.send("PING"); } catch {}
+      // }, PING_INTERVAL);
     });
     this.ws.on("message", async (raw) => {
       try {
         const msg = JSON.parse(raw.toString());
         if ((msg.ty || msg.type) === "ticker") {
-
           const marketAt = msg.tms;
           const coollectorAt = new Date(Date.now()).getTime();
-
           const ticker_item = {
             symbol: process.env.SYMBOL ?? "KRW-BTC",
             exchange_no: this.market_no,
@@ -78,6 +81,10 @@ class UpbitClientTicker {
           // console.log( new Date(ticker_item.marketAt).toISOString(), new Date(ticker_item.collectorAt).toISOString() );
           // console.log( JSON.stringify(ticker_item, null, 2) );
           await SendToTicker_ZMQ(ticker_item, msg);
+        } else {
+          if ( msg.status === "UP" ) {
+            console.log( `${this.name} Ticker PONG`, msg );
+          }
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
@@ -87,13 +94,13 @@ class UpbitClientTicker {
       this._reconnecting = true;
       setTimeout(() => this.start(), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
-        sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
+        sendTelegramMessage(this.name, `${this.name} Ticker-CollectorWebSocket closed.`);
         this._closeNotified = true;
       }
     });
     this.ws.on("error", (e) => {
       logger.error({ ex: this.name, err: String(e) }, "ws error");
-      sendTelegramMessage( "SYSTEM", `[${this.name}] Ticker-Collector error.`);
+      sendTelegramMessage( this.name, `[${this.name}] Ticker-Collector WebSocket error.`);
     });
   }
 }
@@ -108,6 +115,7 @@ class BithumbClientTicker {
     this.ws   = null;
     this._reconnecting = false;
     this._closeNotified = false;  
+    this.pingInterval = null;
   }
   start() {
     this.ws = new WebSocket(this.url);
@@ -117,6 +125,7 @@ class BithumbClientTicker {
         { type: "ticker", codes: [this.code] },
         { format: "SIMPLE" },
       ];
+      try { this.ws?.send("PING"); } catch {}
       this.ws.send(JSON.stringify(req));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
       if (this._reconnecting) {
@@ -126,6 +135,9 @@ class BithumbClientTicker {
       }
       this._reconnecting = false;
       this._closeNotified = false;
+      this.pingInterval = setInterval(() => {
+        try { this.ws?.send("PING"); } catch {}
+      }, PING_INTERVAL);
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -149,6 +161,10 @@ class BithumbClientTicker {
           // console.log( new Date(ticker_item.marketAt).toISOString(), new Date(ticker_item.collectorAt).toISOString() );
           // console.log( JSON.stringify(ticker_item, null, 2) );
           await SendToTicker_ZMQ(ticker_item, msg);
+        } else {
+          if ( msg.status === "UP" ) {
+            console.log( `${this.name} Ticker PONG`, msg );
+          }
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
@@ -158,13 +174,13 @@ class BithumbClientTicker {
       this._reconnecting = true;
       setTimeout(() => this.start(), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
-        sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
+        sendTelegramMessage(this.name, `${this.name} Ticker-Collector WebSocket closed.`);
         this._closeNotified = true;
       }
     });
     this.ws.on("error", (e) => {
       logger.error({ ex: this.name, err: String(e) }, "ws error");
-      sendTelegramMessage( "SYSTEM", `[${this.name}] Ticker-Collector error.`);
+      sendTelegramMessage( this.name, `[${this.name}] Ticker-Collector WebSocket error.`);
     });
   }
 }
@@ -179,6 +195,7 @@ class KorbitClientTicker {
     this.ws   = null;
     this._reconnecting = false;
     this._closeNotified = false;  
+    this.pingInterval = null;
   }
   start() {
     this.ws = new WebSocket(this.url);
@@ -193,29 +210,36 @@ class KorbitClientTicker {
       }
       this._reconnecting = false;
       this._closeNotified = false;
+      this.pingInterval = setInterval(() => {
+        try { this.ws?.send("PING"); } catch {}
+      }, PING_INTERVAL);
     });
     this.ws.on("message", async (raw) => {
       try {
-        const msg = JSON.parse(raw.toString());
-        if (msg.type === "ticker" && msg.data) {
-          const marketAt = msg.timestamp;
-          const coollectorAt = new Date(Date.now()).getTime();
-          const ticker_item = {
-            symbol: process.env.SYMBOL ?? "KRW-BTC",
-            exchange_no: this.market_no,
-            exchange_name: this.name,
-            marketAt: marketAt,
-            collectorAt: coollectorAt,
-            diff_ms: (coollectorAt - marketAt) / 1000,
-            open: Number(msg.data.open),
-            high: Number(msg.data.high),
-            low: Number(msg.data.low),
-            close: Number(msg.data.close),
-            volume: Number(msg.data.volume),
-          };
-          //console.log( new Date(ticker_item.marketAt).toISOString(), new Date(ticker_item.collectorAt).toISOString() );
-          // console.log( JSON.stringify(ticker_item, null, 2) );
-          await SendToTicker_ZMQ(ticker_item, msg);
+        if ( !isJsonValue(raw.toString()) ) {
+          console.log( `${this.name} Ticker PONG`, raw.toString() );
+        } else {
+          const msg = JSON.parse(raw.toString());
+          if (msg.type === "ticker" && msg.data) {
+            const marketAt = msg.timestamp;
+            const coollectorAt = new Date(Date.now()).getTime();
+            const ticker_item = {
+              symbol: process.env.SYMBOL ?? "KRW-BTC",
+              exchange_no: this.market_no,
+              exchange_name: this.name,
+              marketAt: marketAt,
+              collectorAt: coollectorAt,
+              diff_ms: (coollectorAt - marketAt) / 1000,
+              open: Number(msg.data.open),
+              high: Number(msg.data.high),
+              low: Number(msg.data.low),
+              close: Number(msg.data.close),
+              volume: Number(msg.data.volume),
+            };
+            //console.log( new Date(ticker_item.marketAt).toISOString(), new Date(ticker_item.collectorAt).toISOString() );
+            // console.log( JSON.stringify(ticker_item, null, 2) );
+            await SendToTicker_ZMQ(ticker_item, msg);
+          }
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
@@ -225,13 +249,13 @@ class KorbitClientTicker {
       this._reconnecting = true;
       setTimeout(() => this.start(), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
-        sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
+        sendTelegramMessage(this.name, `${this.name} Ticker-Collector WebSocket closed.`);
         this._closeNotified = true;
       }
     });
     this.ws.on("error", (e) => {
       logger.error({ ex: this.name, err: String(e) }, "ws error");
-      sendTelegramMessage( "SYSTEM", `[${this.name}] Ticker-Collector error.`);
+      sendTelegramMessage( this.name, `[${this.name}] Ticker-Collector WebSocket error.`);
     });
   }
 }
@@ -268,7 +292,7 @@ class CoinoneClientTicker {
       this._closeNotified = false;
       this.pingInterval = setInterval(() => {
         try { this.ws?.send(JSON.stringify({ request_type: "PING" })); } catch {}
-      }, 20 * 60 * 1000);
+      }, PING_INTERVAL);
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -293,6 +317,8 @@ class CoinoneClientTicker {
           // console.log( new Date(ticker_item.marketAt).toISOString(), new Date(ticker_item.collectorAt).toISOString() );
           // console.log( JSON.stringify(ticker_item, null, 2) );
           await SendToTicker_ZMQ(ticker_item, msg);
+        } else {
+          console.log( `${this.name} Ticker PONG`, msg );
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
@@ -303,13 +329,13 @@ class CoinoneClientTicker {
       this._reconnecting = true;
       setTimeout(() => this.start(), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
-        sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
+        sendTelegramMessage(this.name, `${this.name} Ticker-Collector WebSocket closed.`);
         this._closeNotified = true;
       }
     });
     this.ws.on("error", (e) => {
       logger.error({ ex: this.name, err: String(e) }, "ws error");
-      sendTelegramMessage( "SYSTEM", `[${this.name}] Ticker-Collector error.`);
+      sendTelegramMessage( this.name, `[${this.name}] Ticker-Collector WebSocket error.`);
     });
   }
 }

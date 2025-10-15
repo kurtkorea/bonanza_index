@@ -82,6 +82,21 @@ function gzipCompressToBase64(str, callback) {
 	});
   }
 
+  function isJsonValue(str) {
+	if (typeof str !== "string") return false;
+	str = str.trim();
+	if (str === "") return false;
+	try {
+	  JSON.parse(str);
+	  return true;
+	} catch {
+	  return false;
+	}
+  }
+
+  const RECONNECT_INTERVAL = 200;
+  const PING_INTERVAL = 30000;
+
 module.exports = {
 	gzipCompressToBase64,
 	gzipDecompressFromBase64,
@@ -89,10 +104,13 @@ module.exports = {
 	respMsg,
 	respData,
 	respMsgStr,
+	isJsonValue,
 	symbolMap,
 	open_orders,
 	positions,
 	message,
 	MARKET_NO_ENUM,
 	MARKET_NAME_ENUM,
+	RECONNECT_INTERVAL,
+	PING_INTERVAL,
 };

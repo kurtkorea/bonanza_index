@@ -80,6 +80,7 @@ const MARKET_NAME_ENUM = Object.freeze({
 });
 
 const RECONNECT_INTERVAL = 200;
+const PING_INTERVAL = 1 * 60 * 1000;
 
 function gzipCompressToBase64(str, callback) {
 	zlib.gzip(Buffer.from(str, 'utf8'), (err, buf) => {
@@ -94,7 +95,20 @@ function gzipCompressToBase64(str, callback) {
 	  if (err) return callback(err);
 	  callback(null, out.toString('utf8'));
 	});
+}
+
+function isJsonValue(str) {
+	if (typeof str !== "string") return false;
+	str = str.trim();
+	if (str === "") return false;
+	try {
+	  JSON.parse(str);
+	  return true;
+	} catch {
+	  return false;
+	}
   }
+  
 
 module.exports = {
 	gzipCompressToBase64,
@@ -103,6 +117,7 @@ module.exports = {
 	respMsg,
 	respData,
 	respMsgStr,
+	isJsonValue,
 	symbolMap,
 	open_orders,
 	positions,
@@ -110,4 +125,5 @@ module.exports = {
 	MARKET_NO_ENUM,
 	MARKET_NAME_ENUM,
 	RECONNECT_INTERVAL,
+	PING_INTERVAL,
 };

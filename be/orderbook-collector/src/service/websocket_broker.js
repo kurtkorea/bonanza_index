@@ -12,7 +12,7 @@
 const WebSocket = require("ws");
 const winston = require("winston");
 const { execAvgBuyFromAsk, execAvgSellFromBid } = require("../utils/vwap_exec");
-const { MARKET_NO_ENUM, MARKET_NAME_ENUM } = require("../utils/common");
+const { MARKET_NO_ENUM, MARKET_NAME_ENUM, RECONNECT_INTERVAL, PING_INTERVAL, isJsonValue } = require("../utils/common");
 const { send_push } = require("../utils/zmq-sender-push.js");
 const { send_publisher } = require("../utils/zmq-sender-pub.js");
 const  { sendTelegramMessage } = require('../utils/telegram_push.js')
@@ -201,6 +201,7 @@ class UpbitClient {
     this.ws   = null;
     this._reconnecting = false;
     this._closeNotified = false;
+    this.pingInterval = null;
   }
   start(cb) {
     this.ws = new WebSocket(this.url);
@@ -210,6 +211,7 @@ class UpbitClient {
         { type: "orderbook", codes: [this.code] },
         { format: "SIMPLE" },
       ];
+      // try { this.ws?.send("PING"); } catch {}
       this.ws.send(Buffer.from(JSON.stringify(req), "utf8"));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
       if (this._reconnecting) {
@@ -219,6 +221,9 @@ class UpbitClient {
       }
       this._reconnecting = false;
       this._closeNotified = false;
+      // this.pingInterval = setInterval(() => {
+      //   try { this.ws?.send("PING"); } catch {}
+      // }, PING_INTERVAL);
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -246,6 +251,8 @@ class UpbitClient {
           };
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
           cb(this.market_no, normalize(bids, asks));
+        } else {
+          console.log( `${this.name} PONG`, raw.toString() );
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
@@ -253,7 +260,7 @@ class UpbitClient {
     });
     this.ws.on("close", () => {
       this._reconnecting = true;
-      setTimeout(() => this.start(cb), 200);
+      setTimeout(() => this.start(cb), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
         sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
         this._closeNotified = true;
@@ -276,6 +283,7 @@ class BithumbClient {
     this.ws   = null;
     this._reconnecting = false;
     this._closeNotified = false;
+    this.pingInterval = null;
   }
   start(cb) {
     this.ws = new WebSocket(this.url);
@@ -285,6 +293,7 @@ class BithumbClient {
         { type: "orderbook", codes: [this.code] },
         { format: "SIMPLE" },
       ];
+      // try { this.ws?.send("PING"); } catch {}
       this.ws.send(JSON.stringify(req));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
       if (this._reconnecting) {
@@ -294,6 +303,9 @@ class BithumbClient {
       }
       this._reconnecting = false;
       this._closeNotified = false;
+      // this.pingInterval = setInterval(() => {
+      //   try { this.ws?.send("PING"); } catch {}
+      // }, PING_INTERVAL);
     });
     this.ws.on("message", async (raw) => {
       try {
@@ -321,6 +333,8 @@ class BithumbClient {
           };
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
           cb(this.market_no, normalize(bids, asks));
+        } else {
+          console.log( `${this.name} PONG`, raw.toString() );
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
@@ -328,7 +342,7 @@ class BithumbClient {
     });
     this.ws.on("close", () => {
       this._reconnecting = true;
-      setTimeout(() => this.start(cb), 200);
+      setTimeout(() => this.start(cb), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
         sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
         this._closeNotified = true;
@@ -351,6 +365,7 @@ class KorbitClient {
     this.ws   = null;
     this._reconnecting = false;
     this._closeNotified = false;
+    this.pingInterval = null;
   }
   start(cb) {
     this.ws = new WebSocket(this.url);
@@ -365,31 +380,38 @@ class KorbitClient {
       }
       this._reconnecting = false;
       this._closeNotified = false;
+      this.pingInterval = setInterval(() => {
+        try { this.ws?.send("PING"); } catch {}
+      }, PING_INTERVAL);
     });
     this.ws.on("message", async (raw) => {
       try {
-        const msg = JSON.parse(raw.toString());
-        if (msg.type === "orderbook" && msg.data) {
-          const marketAt = msg.timestamp;
-          const coollectorAt = new Date(Date.now()).getTime();
-
-          // console.log(marketAt);
-          // 15개까지만 추출
-          const bids = (msg.data.bids || []).slice(0, 15).map(x => [Number(x.price), Number(x.qty)]);
-          const asks = (msg.data.asks || []).slice(0, 15).map(x => [Number(x.price), Number(x.qty)]);
-
-          const orderbook_item = {
-            symbol: process.env.SYMBOL ?? "KRW-BTC",
-            exchange_no: this.market_no,
-            exchange_name: this.name,
-            bid: bids,  
-            ask: asks,
-            marketAt: marketAt,
-            coollectorAt: coollectorAt,
-            diff_ms: (coollectorAt - marketAt) / 1000,
-          };
-          await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
-          cb(this.market_no, normalize(bids, asks));
+        if ( !isJsonValue(raw.toString()) ) {
+          console.log( `${this.name} PONG`, raw.toString() );
+        } else {
+          const msg = JSON.parse(raw.toString());
+          if (msg.type === "orderbook" && msg.data) {
+            const marketAt = msg.timestamp;
+            const coollectorAt = new Date(Date.now()).getTime();
+  
+            // console.log(marketAt);
+            // 15개까지만 추출
+            const bids = (msg.data.bids || []).slice(0, 15).map(x => [Number(x.price), Number(x.qty)]);
+            const asks = (msg.data.asks || []).slice(0, 15).map(x => [Number(x.price), Number(x.qty)]);
+  
+            const orderbook_item = {
+              symbol: process.env.SYMBOL ?? "KRW-BTC",
+              exchange_no: this.market_no,
+              exchange_name: this.name,
+              bid: bids,  
+              ask: asks,
+              marketAt: marketAt,
+              coollectorAt: coollectorAt,
+              diff_ms: (coollectorAt - marketAt) / 1000,
+            };
+            await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
+            cb(this.market_no, normalize(bids, asks));
+          }
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
@@ -397,7 +419,7 @@ class KorbitClient {
     });
     this.ws.on("close", () => {
       this._reconnecting = true;
-      setTimeout(() => this.start(cb), 200);
+      setTimeout(() => this.start(cb), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
         sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
         this._closeNotified = true;
@@ -470,6 +492,8 @@ class CoinoneClient {
           };
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
           cb(this.market_no, normalize(bids, asks));
+        } else {
+          console.log( `${this.name} PONG`, raw.toString() );
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
@@ -478,7 +502,7 @@ class CoinoneClient {
     this.ws.on("close", () => {
       if (this.pingInterval) clearInterval(this.pingInterval);
       this._reconnecting = true;
-      setTimeout(() => this.start(cb), 200);
+      setTimeout(() => this.start(cb), RECONNECT_INTERVAL);
       if (!this._closeNotified) {
         sendTelegramMessage(this.name, `${this.name} WebSocket closed.`);
         this._closeNotified = true;
