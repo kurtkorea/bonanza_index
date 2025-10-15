@@ -45,7 +45,12 @@ class UpbitClientTicker {
         { type: "ticker", codes: [this.code] },
         { format: "SIMPLE" },
       ];
-      // try { this.ws?.send("PING"); } catch {}
+      // try {
+      //   console.log( `${this.name} Ticker PING` );
+      //   this.ws?.send("PING"); 
+      // } catch {
+
+      // }
       this.ws.send(Buffer.from(JSON.stringify(req), "utf8"));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
       if (this._reconnecting) {
@@ -125,7 +130,10 @@ class BithumbClientTicker {
         { type: "ticker", codes: [this.code] },
         { format: "SIMPLE" },
       ];
-      try { this.ws?.send("PING"); } catch {}
+      try {
+        console.log( `${this.name} Ticker PING` );
+        this.ws?.send("PING"); 
+      } catch {}
       this.ws.send(JSON.stringify(req));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
       if (this._reconnecting) {

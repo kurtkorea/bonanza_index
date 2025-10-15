@@ -211,7 +211,10 @@ class UpbitClient {
         { type: "orderbook", codes: [this.code] },
         { format: "SIMPLE" },
       ];
-      // try { this.ws?.send("PING"); } catch {}
+      // try { 
+      //   this.ws?.send("PING"); 
+      //   console.log( `${this.name} ORDERBOOK PING` );
+      // } catch {}
       this.ws.send(Buffer.from(JSON.stringify(req), "utf8"));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
       if (this._reconnecting) {
@@ -252,7 +255,7 @@ class UpbitClient {
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
           cb(this.market_no, normalize(bids, asks));
         } else {
-          console.log( `${this.name} PONG`, raw.toString() );
+          console.log( `${this.name} ORDERBOOK PONG`, raw.toString() );
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
@@ -293,7 +296,12 @@ class BithumbClient {
         { type: "orderbook", codes: [this.code] },
         { format: "SIMPLE" },
       ];
-      // try { this.ws?.send("PING"); } catch {}
+      try { 
+        this.ws?.send("PING"); 
+        console.log( `${this.name} ORDERBOOK PING` );
+      } catch {
+
+      }
       this.ws.send(JSON.stringify(req));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
       if (this._reconnecting) {
@@ -334,7 +342,7 @@ class BithumbClient {
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
           cb(this.market_no, normalize(bids, asks));
         } else {
-          console.log( `${this.name} PONG`, raw.toString() );
+          console.log( `${this.name} ORDERBOOK PONG`, raw.toString() );
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");
@@ -381,13 +389,16 @@ class KorbitClient {
       this._reconnecting = false;
       this._closeNotified = false;
       this.pingInterval = setInterval(() => {
-        try { this.ws?.send("PING"); } catch {}
+        try { 
+          this.ws?.send("PING"); 
+          console.log( `${this.name} ORDERBOOK PING` );
+        } catch {}
       }, PING_INTERVAL);
     });
     this.ws.on("message", async (raw) => {
       try {
         if ( !isJsonValue(raw.toString()) ) {
-          console.log( `${this.name} PONG`, raw.toString() );
+          console.log( `${this.name} ORDERBOOK PONG`, raw.toString() );
         } else {
           const msg = JSON.parse(raw.toString());
           if (msg.type === "orderbook" && msg.data) {
@@ -458,7 +469,10 @@ class CoinoneClient {
 
       // 권장: 주기적 PING
       this.pingInterval = setInterval(() => {
-        try { this.ws?.send(JSON.stringify({ request_type: "PING" })); } catch {}
+        try { 
+          console.log( `${this.name} ORDERBOOK PING` );
+          this.ws?.send(JSON.stringify({ request_type: "PING" })); 
+        } catch {}
       }, 20 * 60 * 1000);
       if (this._reconnecting) {
         sendTelegramMessage(this.name, `${this.name} OrderBook-Collector WebSocket reopened (reconnected).`);
@@ -493,7 +507,7 @@ class CoinoneClient {
           await SendToOrderBook_ZMQ(orderbook_item, raw.toString());
           cb(this.market_no, normalize(bids, asks));
         } else {
-          console.log( `${this.name} PONG`, raw.toString() );
+          console.log( `${this.name} ORDERBOOK PONG`, raw.toString() );
         }
       } catch (e) {
         logger.warn({ ex: this.name, err: String(e) }, "parse error");

@@ -95,7 +95,7 @@ function gzipCompressToBase64(str, callback) {
   }
 
   const RECONNECT_INTERVAL = 200;
-  const PING_INTERVAL = 30000;
+  const PING_INTERVAL = 3 * 60 * 1000;
 
 module.exports = {
 	gzipCompressToBase64,
