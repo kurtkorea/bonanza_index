@@ -1,0 +1,25 @@
+flowchart TB
+  subgraph NET["VPC/Subnet"]
+    subgraph K8S["Kubernetes / VM Cluster"]
+      ING["WS Collectors (per exchange)\nport 3000+ (Node.js)"]
+      Z["ZMQ Bus (tcp://*:5555 / 5556)"]
+      W1["orderbook-storage-worker\n(tcp:9009 ILP)"]
+      W2["ticker-storage-worker\n(tcp:9009 ILP)"]
+      AG["orderbook-aggregator"]
+      IC["index-calculator"]
+      API["index-endpoint (HTTPS:443)"]
+      QDB[("QuestDB\nILP:9009 / REST:9000 / PGWire:8812")]
+    end
+  end
+
+  EXT["Exchanges"] --> ING
+  ING --> Z
+  Z --> W1
+  Z --> W2
+  Z --> AG
+  W1 -->|ILP 9009| QDB
+  W2 -->|ILP 9009| QDB
+  AG --> IC
+  IC --> QDB
+  CLIENT["Client/Dashboard"] -->|443| API
+  API -->|SQL/REST| QDB
