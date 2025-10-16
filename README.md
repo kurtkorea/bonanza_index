@@ -4,7 +4,7 @@
 
 ---
 
-## 📖 개요
+## 개요
 
 **Bonanza Index**는 각 거래소의 WebSocket 데이터를 Collector가 받아 **ZeroMQ Bus**로 발행하고,  
 Storage Worker가 **QuestDB(ILP)** 에 시계열로 적재합니다.  
@@ -12,7 +12,7 @@ Storage Worker가 **QuestDB(ILP)** 에 시계열로 적재합니다.
 
 ---
 
-## 🧩 구성 요소
+## 구성 요소
 
 | 모듈 | 설명 |
 |---|---|
@@ -27,7 +27,7 @@ Storage Worker가 **QuestDB(ILP)** 에 시계열로 적재합니다.
 
 ---
 
-## 🧱 1) 아키텍처 개요 (Overview)
+## 1) 아키텍처 개요 (Overview)
 
 ```mermaid
 flowchart LR
