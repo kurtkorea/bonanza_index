@@ -79,3 +79,37 @@ flowchart LR
   %% 조회
   USER -->|HTTPS| API
   API -->|SQL/REST| QDB
+
+
+sequenceDiagram
+  participant EX1 as Exchange (e.g., Upbit)
+  participant OBC as orderbook-collector-*
+  participant TKC as ticker-collector-*
+  participant ZOB as ZMQ orderbook-topic
+  participant ZTK as ZMQ ticker-topic
+  participant WOB as orderbook-storage-worker
+  participant WTK as ticker-storage-worker
+  participant AGG as orderbook-aggregator
+  participant CAL as index-calculator
+  participant QDB as QuestDB (ILP/SQL)
+  participant API as index-endpoint
+  participant UI as Client/Dashboard
+
+  EX1->>OBC: WS 호가 스트림
+  EX1->>TKC: WS 체결/티커 스트림
+
+  OBC-->>ZOB: publish (symbol별)
+  TKC-->>ZTK: publish (symbol별)
+
+  ZOB-->>WOB: subscribe
+  ZTK-->>WTK: subscribe
+  WOB->>QDB: ILP batch insert
+  WTK->>QDB: ILP batch insert
+
+  ZOB-->>AGG: subscribe (multi-exchange)
+  AGG->>CAL: 합산 orderbook 전달
+  CAL->>QDB: index upsert
+
+  UI->>API: GET /index
+  API->>QDB: SQL 조회
+  API-->>UI: 지수 데이터 JSON 반환
