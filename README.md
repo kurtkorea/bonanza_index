@@ -65,8 +65,7 @@ flowchart LR
   USER -->|HTTPS| API
   API -->|SQL/REST| QDB
 
-파이프라인 상세 (메시지 흐름)
-```mermaid
+
 sequenceDiagram
   participant EX1 as Exchange (e.g., Upbit)
   participant OBC as orderbook-collector-*
