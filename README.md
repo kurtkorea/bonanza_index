@@ -1,20 +1,33 @@
 # 🪙 Bonanza Index Realtime Architecture
 
-> 거래소별 실시간 시세·호가 데이터를 수집하여 QuestDB에 저장하고,  
-> 집계 지수를 산출·제공하는 **Bonanza Index** 실시간 파이프라인
+> 거래소별 실시간 시세·호가를 수집·저장하고, 집계 지수를 계산해 API로 제공하는 **Bonanza Index** 파이프라인
 
 ---
 
-## 📖 시스템 개요
+## 📖 개요
 
-**Bonanza Index** 시스템은 각 거래소의 WebSocket 데이터를 수집하고,  
-ZeroMQ Bus로 전송하여 QuestDB에 저장한 후  
-Orderbook Aggregator와 Index Calculator를 통해  
-지수를 계산하고 API로 제공합니다.
+**Bonanza Index**는 각 거래소의 WebSocket 데이터를 Collector가 받아 **ZeroMQ Bus**로 발행하고,  
+Storage Worker가 **QuestDB(ILP)** 에 시계열로 적재합니다.  
+적재된 호가를 **Aggregator → Index Calculator** 가 처리해 **지수**를 만들고, **API**에서 제공합니다.
 
 ---
 
-## 🧱 1️⃣ 아키텍처 개요 (Architecture Overview)
+## 🧩 구성 요소
+
+| 모듈 | 설명 |
+|---|---|
+| **orderbook-collector-\*** | 거래소별 호가 수집 (Upbit/Bithumb/Binance…) |
+| **ticker-collector-\*** | 거래소별 현재가·체결 수집 |
+| **orderbook-storage-worker** | ZMQ 호가 구독 → QuestDB ILP 저장 |
+| **ticker-storage-worker** | ZMQ 티커 구독 → QuestDB ILP 저장 |
+| **orderbook-aggregator** | 거래소별 호가 합산(확장성 위해 Collector와 분리) |
+| **index-calculator** | 합산 호가 기반 지수 계산/저장 |
+| **index-endpoint** | 지수 조회 API (REST) |
+| **QuestDB** | 시계열 DB (ILP 9009 / REST 9000 / PGWire 8812) |
+
+---
+
+## 🧱 1) 아키텍처 개요 (Overview)
 
 ```mermaid
 flowchart LR
