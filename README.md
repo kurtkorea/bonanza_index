@@ -1,5 +1,20 @@
+# 🪙 Bonanza index Realtime Architecture
 
-# 시스템 구조도
+> 거래소별 실시간 시세·호가 데이터를 수집하여 QuestDB에 저장하고,  
+> 집계 지수를 산출·제공하는 실시간 데이터 파이프라인
+
+---
+
+## 📖 시스템 개요
+
+Bonanza index Realtime System은 각 거래소의 WebSocket 데이터를 수집하고,  
+ZeroMQ Bus로 전송하여 QuestDB에 저장한 후  
+Orderbook Aggregator와 Index Calculator를 통해  
+지수를 계산하고 API로 제공합니다.
+
+---
+
+## 🧱 1️⃣ 아키텍처 개요 (Architecture Overview)
 
 ```mermaid
 flowchart LR
@@ -9,7 +24,7 @@ flowchart LR
     BN[Binance WS/REST]
   end
 
-  subgraph CS["CoinSpace - Realtime Platform"]
+  subgraph CS["Bonanza - Realtime Platform"]
     subgraph COL["Collectors (per Exchange)"]
       COL_OB_UP["orderbook-collector-upbit"]
       COL_TK_UP["ticker-collector-upbit"]
@@ -64,6 +79,3 @@ flowchart LR
   %% 조회
   USER -->|HTTPS| API
   API -->|SQL/REST| QDB
-
-
-
