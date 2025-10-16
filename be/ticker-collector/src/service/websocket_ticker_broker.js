@@ -205,6 +205,11 @@ class KorbitClientTicker {
     this._closeNotified = false;  
     this.pingInterval = null;
   }
+
+  /* 
+  Korbit이 유난히 Reconnect가 많이 일어난다. 이유를 찾아야될듯
+  */
+
   start() {
     this.ws = new WebSocket(this.url);
     this.ws.on("open", () => {

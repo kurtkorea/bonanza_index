@@ -1,12 +1,14 @@
 "use strict";
 
-const zlib = require('zlib');
-
 // 메시지 객체 정의
 const message = {
 	missing_request: {
 		code: 400,
 		msg: "Missing request parameters"
+	},
+	server_error: {
+		code: 500,
+		msg: "Internal server error"
 	},
 	token_expire: {
 		code: 420,
@@ -20,15 +22,14 @@ const message = {
 		code: 403,
 		msg: "Insufficient permissions"
 	},
-	param_require: {
-		code: 400,
-		msg: "Required parameters missing"
+	validation_error: {
+		code: 422,
+		msg: "Validation error"
 	},
-	server_error: {
-		code: 500,
-		msg: "Internal server error"
+	not_found: {
+		code: 404,
+		msg: "Resource not found"
 	}
-	// 다른 메시지들도 여기에 추가 가능
 };
 
 function isEmpty(str) {
@@ -60,11 +61,35 @@ const respMsgStr = (msg_key = "missing_request") => {
 	return message["missing_request"].msg;
 };
 
+/**
+ * JSON 문자열 파싱 헬퍼 메서드
+ * @param {string} value - JSON 문자열
+ * @returns {Object|null} 파싱된 객체 또는 null
+ */
+const parseJSON = (value) => {
+	if (!value || typeof value !== 'string') {
+	  return value;
+	}
+	try {
+	  return JSON.parse(value);
+	} catch (e) {
+	  return null;
+	}
+  }
+
 // 전역 상태 관리
 var symbolMap = new Map();
 var open_orders = new Map();
 var positions = new Map();
 
+const MARKET_NO = Object.freeze({
+	UPBIT: 101,
+	BITHUMB: 102,
+	KORBIT: 103,
+	COINONE: 104
+});
+
+// enum 형태로 변경 (ES6의 객체 freeze를 활용한 유사 enum)
 const MARKET_NO_ENUM = Object.freeze({
 	UPBIT: 101,
 	BITHUMB: 102,
@@ -79,51 +104,23 @@ const MARKET_NAME_ENUM = Object.freeze({
 	COINONE: "COINONE"
 });
 
-const RECONNECT_INTERVAL = 200;
-const PING_INTERVAL = 15 * 1000;
-
-function gzipCompressToBase64(str, callback) {
-	zlib.gzip(Buffer.from(str, 'utf8'), (err, buf) => {
-	  if (err) return callback(err);
-	  callback(null, buf.toString('base64'));
-	});
-  }
-  
-  function gzipDecompressFromBase64(b64, callback) {
-	const buf = Buffer.from(b64, 'base64');
-	zlib.gunzip(buf, (err, out) => {
-	  if (err) return callback(err);
-	  callback(null, out.toString('utf8'));
-	});
-}
-
-function isJsonValue(str) {
-	if (typeof str !== "string") return false;
-	str = str.trim();
-	if (str === "") return false;
-	try {
-	  JSON.parse(str);
-	  return true;
-	} catch {
-	  return false;
-	}
-  }
-  
+let latestTickerByExchange = new Map();
+let latestTradeByExchange = new Map();
+let latestDepthByExchange = new Map();
 
 module.exports = {
-	gzipCompressToBase64,
-	gzipDecompressFromBase64,
 	isEmpty,
 	respMsg,
 	respData,
 	respMsgStr,
-	isJsonValue,
 	symbolMap,
 	open_orders,
 	positions,
 	message,
 	MARKET_NO_ENUM,
 	MARKET_NAME_ENUM,
-	RECONNECT_INTERVAL,
-	PING_INTERVAL,
+	latestTickerByExchange,
+	latestDepthByExchange,
+	latestTradeByExchange,
+	parseJSON,
 };
