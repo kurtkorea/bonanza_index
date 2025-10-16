@@ -1,0 +1,108 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Debug Index Calculator",
+				"type": "node",
+				"request": "launch",
+				"program": "${workspaceFolder}/index-calculator/src/app.js",
+				"cwd": "${workspaceFolder}/index-calculator",
+				"envFile": "${workspaceFolder}/index-calculator/env/dev.env",
+				"console": "integratedTerminal",
+				"restart": true,
+				"runtimeExecutable": "node",
+				"skipFiles": ["<node_internals>/**"]
+			},
+			{
+				"name": "Debug Index Endpoint",
+				"type": "node",
+				"request": "launch",
+				"program": "${workspaceFolder}/index-endpoint/src/app.js",
+				"cwd": "${workspaceFolder}/index-endpoint",
+				"envFile": "${workspaceFolder}/index-endpoint/env/dev.env",
+				"console": "integratedTerminal",
+				"restart": true,
+				"runtimeExecutable": "node",
+				"skipFiles": ["<node_internals>/**"]
+			},
+			{
+				"name": "Debug Orderbook Aggregator",
+				"type": "node",
+				"request": "launch",
+				"program": "${workspaceFolder}/orderbook-aggregator/src/app.js",
+				"cwd": "${workspaceFolder}/orderbook-aggregator",
+				"envFile": "${workspaceFolder}/orderbook-aggregator/env/dev.env",
+				"console": "integratedTerminal",
+				"restart": true,
+				"runtimeExecutable": "node",
+				"skipFiles": ["<node_internals>/**"]
+			},
+			{
+				"name": "Debug Orderbook Collector",
+				"type": "node",
+				"request": "launch",
+				"program": "${workspaceFolder}/orderbook-collector/src/app.js",
+				"cwd": "${workspaceFolder}/orderbook-collector",
+				"envFile": "${workspaceFolder}/orderbook-collector/env/dev.env",
+				"console": "integratedTerminal",
+				"restart": true,
+				"runtimeExecutable": "node",
+				"skipFiles": ["<node_internals>/**"]
+			},
+			{
+				"name": "Debug Orderbook Storage Worker",
+				"type": "node",
+				"request": "launch",
+				"program": "${workspaceFolder}/orderbook-storage-worker/src/app.js",
+				"cwd": "${workspaceFolder}/orderbook-storage-worker",
+				"envFile": "${workspaceFolder}/orderbook-storage-worker/env/dev.env",
+				"console": "integratedTerminal",
+				"restart": true,
+				"runtimeExecutable": "node",
+				"skipFiles": ["<node_internals>/**"]
+			},
+			{
+				"name": "Debug Ticker Collector",
+				"type": "node",
+				"request": "launch",
+				"program": "${workspaceFolder}/ticker-collector/src/app.js",
+				"cwd": "${workspaceFolder}/ticker-collector",
+				"envFile": "${workspaceFolder}/ticker-collector/env/dev.env",
+				"console": "integratedTerminal",
+				"restart": true,
+				"runtimeExecutable": "node",
+				"skipFiles": ["<node_internals>/**"]
+			},
+			{
+				"name": "Debug Ticker Storage Worker",
+				"type": "node",
+				"request": "launch",
+				"program": "${workspaceFolder}/ticker-storage-worker/src/app.js",
+				"cwd": "${workspaceFolder}/ticker-storage-worker",
+				"envFile": "${workspaceFolder}/ticker-storage-worker/env/dev.env",
+				"console": "integratedTerminal",
+				"restart": true,
+				"runtimeExecutable": "node",
+				"skipFiles": ["<node_internals>/**"]
+			},
+			{
+				"name": "Debug Telegram Log",
+				"type": "node",
+				"request": "launch",
+				"program": "${workspaceFolder}/telegram_log/src/app.js",
+				"cwd": "${workspaceFolder}/telegram_log",
+				"envFile": "${workspaceFolder}/telegram_log/env/dev.env",
+				"console": "integratedTerminal",
+				"restart": true,
+				"runtimeExecutable": "node",
+				"skipFiles": ["<node_internals>/**"]
+			}
+		]
+	}
+}
