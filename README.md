@@ -1,7 +1,3 @@
-# bonanza_index
-bonanza index
-
-
 flowchart LR
   subgraph EX["외부 거래소"]
     UP[Upbit WS/REST]
