@@ -17,7 +17,6 @@ import common from "../common/index";
 import StockChartProgram from "../components/trade/stock/chart_program";
 
 import IndexCalcTable from "./index_calc";
-import IndexCalcTableOptimized from "./index_calc_optimized_example";
 
 const TradePage = () => {
 	const dispatch = useDispatch();

@@ -15,8 +15,6 @@ import { Table, Tag, Tooltip } from "antd";
 import MultiExchangeChart from "./index_chart";
 import CorrelationTable from "./index_correlation";
 import VolatilityTable from "./index_volatility";
-import { optimizedColumns } from "./index_calc_optimized_columns";
-import VirtualTable from "./VirtualTable";
 
 const columns = [
   {
@@ -604,14 +602,7 @@ const IndexCalcTable = () => {
       {tab_idx === 0 && (
       <>
         <div className="thbit-trade-table-container" data-simplebar style={{ height: "100%" }}>
-        {/* <VirtualTable
-          columns={optimizedColumns}
-          dataSource={index_list.slice(0, 30)}
-          rowKey="createdAt"
-          loading={loading}
-          scroll={{ y: 740, x: "max-content" }}
-          summary={summaryComponent}
-        /> */}
+
            <Table 
             columns={columns}
             dataSource={index_list.slice(0, 100)}
