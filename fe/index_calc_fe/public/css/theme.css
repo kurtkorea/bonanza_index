@@ -1,0 +1,2340 @@
+@charset "utf-8";
+/* 다크모드 =============================================================== */
+
+/* 레이아웃 공통 */
+.trading-theme-dark {
+  background-color: #282e33;
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-trade-container .container.coinlist .list-search {
+  background-color: #1a1f2c;
+}
+.trading-theme-dark .thbit-section-topic {
+  background-color: #1a1f2c;
+}
+
+.trading-theme-dark a:link,
+.trading-theme-dark a:visited {
+  color: #e9e9e9;
+}
+.trading-theme-dark a:active,
+.trading-theme-dark a:hover {
+  color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-header:after {
+  background-color: #1e2326 !important;
+  box-shadow: none;
+  border-bottom: 1px solid #101011;
+}
+.trading-theme-dark .bify-header.header-fixed:after {
+  border-color: #101011 !important;
+}
+
+.trading-theme-dark .bify-header .header-logo .logo:before {
+  background-image: url(/images/common/logo-white-origin.png);
+}
+
+.trading-theme-dark .bify-menu > nav > ul > li > a:hover {
+  color: #b0b9c2;
+}
+.trading-theme-dark .bify-menu > nav > ul > li.line > a:after {
+  border-color: #3a3f45;
+}
+.trading-theme-dark .bify-menu > nav > ul > li.box > a:after {
+  background-color: #3a3f45;
+}
+.trading-theme-dark .bify-menu > nav > ul > li.user > a:after {
+  background-color: #3a3f45;
+}
+
+.trading-theme-dark .bify-header.header-fixed .bify-menu > nav > ul > li.box > a:after {
+  background-color: #3a3f45;
+}
+.trading-theme-dark .bify-header.header-fixed .bify-menu > nav > ul > li.line > a:after {
+  border-color: #3a3f45;
+}
+.trading-theme-dark .bify-header.header-fixed .bify-menu > nav > ul > li.user > a:after {
+  background-color: #3a3f45;
+}
+
+.trading-theme-dark .bify-menu > nav > ul > li > ul {
+  background-color: #1a1e21;
+  box-shadow: none;
+}
+.trading-theme-dark .bify-menu > nav > ul > li > ul > li > a > i {
+  color: #b0b9c2;
+}
+.trading-theme-dark .bify-menu > nav > ul > li > ul > li > a:hover {
+  background-color: #282e33;
+  color: #b0b9c2;
+}
+.trading-theme-dark .bify-menu > nav > ul > li > ul > li > a:hover > i {
+  color: #b0b9c2;
+}
+/* 레이아웃 공통 */
+
+/* 모바일 헤더 부분 */
+.trading-theme-dark .bify-mobile-menu > i:before,
+.trading-theme-dark .bify-mobile-menu > i:after {
+  background-color: #e9e9e9;
+}
+.trading-theme-dark .bify-mobile-menu > i {
+  background-color: #e9e9e9;
+}
+
+.trading-theme-dark .bify-header.open .bify-mobile-menu > i:before {
+  background-color: #e9e9e9;
+}
+.trading-theme-dark .bify-header.open .bify-mobile-menu > i:after {
+  background-color: #e9e9e9;
+}
+
+.trading-theme-dark .bify-header.header-fixed .bify-mobile-menu > i:before,
+.trading-theme-dark .bify-header.header-fixed .bify-mobile-menu > i:after {
+  background-color: #e9e9e9;
+}
+.trading-theme-dark .bify-header.header-fixed .bify-mobile-menu > i {
+  background-color: #e9e9e9;
+}
+
+.trading-theme-dark .bify-menu-mobile {
+  background-color: #1e2326;
+}
+.trading-theme-dark .bify-menu-mobile .gnb {
+  background-color: #282e33;
+}
+.trading-theme-dark .bify-menu-mobile .gnb > ul > li {
+  border-color: #101011;
+}
+.trading-theme-dark .bify-menu-mobile .gnb > ul > li > ul > li {
+  border-color: #101011;
+}
+.trading-theme-dark .bify-menu-mobile .gnb > ul > li > ul > li > a {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bify-menu-mobile .gnb > ul > li > ul > li > a > i {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bify-header.header-fixed .bify-menu-mobile:after {
+  background-color: #1e2326;
+}
+
+.trading-theme-dark .bify-menu-mobile .snb {
+  background-color: #1e2326;
+  box-shadow: none;
+}
+
+.trading-theme-dark .bify-side-stat .user-icon {
+  color: #b0b9c2;
+}
+.trading-theme-dark .bify-side-stat .user-icon > i {
+  background-color: #282e33;
+  border-color: #101011;
+  color: #b0b9c2;
+}
+
+/* 모바일 헤더 부분 */
+
+/* 레이아웃 공통 */
+.trading-theme-dark .bify-footer {
+  background-color: #1e2326;
+  border-color: #101011;
+}
+.trading-theme-dark .bify-footer .info {
+  color: #b0b9c2;
+  border-color: #101011;
+}
+
+.trading-theme-dark .bify-footer .fnb > ul > li > ul > li > a {
+  color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-sns-ico > ul > li > a {
+  color: #b0b9c2;
+  background-color: #282e33;
+  border-color: #101011;
+}
+
+.trading-theme-dark .bify-paging .pg,
+.trading-theme-dark .bify-paging .pa {
+  border-color: #151516;
+}
+
+.trading-theme-dark .bify-chat {
+  background-color: #313940;
+}
+.trading-theme-dark .bify-chat .chat-input {
+  background-color: #313940;
+  border-color: #151516;
+}
+.trading-theme-dark .bify-chat .chat-input .inp {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bify-chat .chat-input .btn {
+  color: #fff;
+}
+.trading-theme-dark .bify-chat .chat-input .btn:hover {
+  background-color: #1a1e21;
+}
+
+.trading-theme-dark .bify-chat .chat-message .bub {
+  background-color: #3d4750;
+}
+.trading-theme-dark .bify-chat .chat-message.me .bub {
+  background-color: #444f5a;
+}
+
+.trading-theme-dark .bify-chat .chat-message.other .message:after {
+  border-color: #3d4750 #3d4750 transparent transparent;
+}
+.trading-theme-dark .bify-chat .chat-message.me .message:after {
+  border-color: #444f5a transparent transparent #444f5a;
+}
+
+.trading-theme-dark .bify-notice-list .notice-list {
+  border-color: #151516;
+  background-color: #313940;
+}
+.trading-theme-dark .bify-notice-list .notice-list .list-title {
+  color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-notice-list .notice-list.open {
+  background-color: #2c3339;
+}
+.trading-theme-dark .bify-notice-list .notice-list.open .list-title {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bify-notice-list .notice-list .list-content {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bify-modal-wrapper:after {
+  background-color: #181a1d;
+}
+
+.trading-theme-dark .bify-modal {
+  background-color: #2c3339;
+  box-shadow: none;
+  border-color: #181a1d;
+}
+
+.trading-theme-dark .bify-modal .modal-head {
+  background-color: #282e33;
+}
+
+.trading-theme-dark .bify-popover {
+  background: #2c3339;
+  border-color: #0a0a0a;
+}
+
+.trading-theme-dark .bify-popover:before {
+  border-color: #0a0a0a transparent transparent transparent;
+}
+.trading-theme-dark .bify-popover:after {
+  border-color: #333b42 transparent transparent transparent;
+}
+
+.trading-theme-dark .bify-popover .btn-wrap {
+  border-color: #151516;
+}
+.trading-theme-dark .bify-popover .btn {
+  border-color: #454f59;
+  color: #fff;
+}
+/* 레이아웃 공통 */
+
+/* trade */
+
+.trading-theme-dark .bify-trade-header {
+  border-color: #151516;
+}
+.trading-theme-dark .bify-trade-header .item:first-of-type {
+  border-color: #151516;
+}
+.trading-theme-dark .bify-trade-header .item-exp {
+  color: #b0b9c2;
+}
+.trading-theme-dark .bify-trade-header .item-cate {
+  color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-trade-notice .ctr:before {
+  color: #b0b9c2;
+}
+.trading-theme-dark .bify-trade-side-ctr > i {
+  color: #b0b9c2;
+}
+.trading-theme-dark .bify-trade-side-ctr .ctr-item {
+  background-color: #454f59;
+  border-color: #101011;
+  box-shadow: none;
+}
+
+.trading-theme-dark .bify-trade-notice-wrapper.more .bify-trade-notice .notice {
+  background-color: #282e33;
+}
+
+.trading-theme-dark .bify-trade-notice-wrapper.close .bify-trade-notice .ctr.close:after {
+  border-color: #151516;
+}
+
+.trading-theme-dark .bify-trade-notice .notice > ul > li > a:before {
+  background-color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-trade-container .container {
+  border-color: #151516;
+}
+
+.trading-theme-dark .bify-trade-price-list .list-ctr {
+  border-color: #151516;
+}
+.trading-theme-dark .bify-trade-price-list .list-wrap .list .col {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bify-trade-price-list .list-wrap.list-header .list .col {
+  color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-trade-price-list .list-wrap .list .bar {
+  opacity: 0.5;
+}
+
+.trading-theme-dark .bify-trade-price-list .list-sum {
+  border-color: #151516;
+}
+.trading-theme-dark .bify-trade-price-list .list-sum .more {
+  color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-trade-price-list .list-search .inp {
+  color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-trade-price-list .list-search {
+  border-color: #151516;
+}
+.trading-theme-dark .bify-trade-price-list.coin-list .list-search .label {
+  border-color: #151516;
+}
+
+.trading-theme-dark .bify-trade-tab {
+  border-color: #151516;
+}
+
+.trading-theme-dark .bify-trade-form .form-fld {
+  border-color: #454f59;
+}
+.trading-theme-dark .bify-trade-form .label {
+  color: #b0b9c2;
+}
+.trading-theme-dark .bify-trade-form .form-fld .inp::placeholder {
+  color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-trade-form .form-fld .inp {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bify-trade-form .form-row .btn {
+  border-color: #454f59;
+}
+.trading-theme-dark .bify-trade-form .form-row .btn .updn:last-child {
+  border-color: #454f59;
+}
+
+.trading-theme-dark .bify-trade-form .form-row .btn:before {
+  color: #b0b9c2;
+}
+.trading-theme-dark .bify-trade-form .form-row .btn .updn:before {
+  color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-trade-form .form-button .button {
+  border-color: #454f59;
+  color: #fff;
+}
+
+.trading-theme-dark .bify-trade-form .chkwrap > label:before {
+  border-color: #454f59;
+}
+
+.trading-theme-dark .bify-trade-asset {
+  color: #b0b9c2;
+}
+.trading-theme-dark .bify-trade-asset .asset-title {
+  border-color: #151516;
+}
+
+.trading-theme-dark .bify-trade-asset.short .asset-item {
+  border-color: #151516;
+}
+.trading-theme-dark .bify-trade-asset.short .btn {
+  border-color: #454f59;
+  color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-trade-order-range-slider .range-pointer {
+  border-color: #454f59;
+}
+.trading-theme-dark .bify-trade-order-range-slider .range-pointer .pointer {
+  border-color: #454f59;
+  color: #b0b9c2;
+}
+
+.trading-theme-dark .bify-range-slider {
+  background-color: #151516;
+}
+
+.trading-theme-dark .bify-trade-table > thead > tr > th {
+  color: #b0b9c2;
+  background-color: #31373c;
+}
+.trading-theme-dark .bify-trade-table > tbody > tr > td {
+  border-color: #151516;
+}
+
+.trading-theme-dark .bify-trade-table .btn {
+  border-color: #151516;
+  background-color: #31373c;
+  color: #fff;
+}
+
+.trading-theme-dark .bify-trade-table .sticky {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+}
+.trading-theme-dark .bify-trade-table th.sticky {
+  background-color: #31373c;
+}
+.trading-theme-dark .bify-trade-table td.sticky {
+  background-color: #282e33;
+}
+
+.trading-theme-dark .bify-trade-table > tbody > tr:hover > td {
+  background: #31373c;
+}
+
+.trading-theme-dark .bify-trade-inlineform .fld {
+  border-color: #454f59;
+  background-color: transparent;
+}
+.trading-theme-dark .bify-trade-inlineform .fld .inp {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bify-trade-inlineform label {
+  color: #b0b9c2;
+}
+
+@media all and (max-width: 768px) {
+  .trading-theme-dark .bify-trade-foot {
+    background-color: #282e33;
+    border-color: #000;
+  }
+  .trading-theme-dark .bify-trade-container .container.orderform {
+    background-color: #21272a;
+    border-color: #101011;
+    box-shadow: none;
+  }
+  .trading-theme-dark .bify-trade-container .container.orderform .bify-trade-form .form-button {
+    background-color: #21272a;
+    border-color: #101011;
+  }
+} /* @media end */
+
+/* trade */
+
+/* 다크모드 =============================================================== */
+
+/* @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@비트원@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ */
+
+/* 다크모드 =============================================================== */
+
+/* common */
+.trading-theme-dark a:link,
+.trading-theme-dark a:visited {
+  color: #e9e9e9;
+}
+.trading-theme-dark a:active,
+.trading-theme-dark a:hover {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark ::selection {
+  background: #4f525b;
+  color: #e9e9e9;
+}
+.trading-theme-dark ::-moz-selection {
+  background: #4f525b;
+  color: #e9e9e9;
+}
+.trading-theme-dark ::-webkit-selection {
+  background: #4f525b;
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-tooltip .tip {
+  background-color: #35373c;
+  color: #e9e9e9;
+  box-shadow: 0 0 5px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .bione-tooltip .tip:after {
+  border-color: #35373c transparent transparent transparent;
+}
+.trading-theme-dark .bione-tooltip .tip.bt:after {
+  border-color: transparent transparent #35373c transparent;
+}
+.trading-theme-dark .bione-tooltip .tip.lf:after {
+  border-color: transparent transparent transparent #35373c;
+}
+.trading-theme-dark .bione-tooltip .tip.ri:after {
+  border-color: transparent #35373c transparent transparent;
+}
+
+.trading-theme-dark input {
+  color: #e9e9e9;
+}
+.trading-theme-dark button {
+  color: #e9e9e9;
+}
+.trading-theme-dark .inp {
+  color: #e9e9e9;
+}
+
+/* common */
+
+/* layout 공통 헤더 푸터 */
+.trading-theme-dark {
+  background-color: #1c202a;
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-header .header-logo .logo:before {
+  background-image: url(../images/common/logo-white.png);
+}
+.trading-theme-dark .bione-header.open .header-logo .logo:before {
+  background-image: url(../images/common/logo-white2.png);
+}
+.trading-theme-dark .bione-menu > nav > ul > li > a:hover {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-menu > nav > ul > li.box > a {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-menu > nav > ul > li.box > a:after {
+  background-color: #45474d;
+}
+
+.trading-theme-dark .bione-menu > nav > ul > li.line > a {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-menu > nav > ul > li.line > a:after {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .bione-menu > nav > ul > li > ul {
+  background-color: #292e3a;
+  box-shadow: 0 0 10px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .bione-menu > nav > ul > li > ul > li > a > i {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-menu > nav > ul > li > ul > li > a:hover {
+  background-color: #1c202a;
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-menu > nav > ul > li > ul > li.on > a {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-header.header-fixed:after {
+  background-color: #30333e;
+  box-shadow: 0 0 19px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .bione-footer {
+  background-color: #1c202a;
+  border-color: #050507;
+}
+.trading-theme-dark .bione-sns-ico > ul > li > a {
+  background-color: #2e323b;
+  box-shadow: 0 0 6px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .bione-sns-ico > ul > li > a > i {
+  color: #7e7e7e;
+}
+
+/* layout responsive */
+.trading-theme-dark .bione-mobile-menu > i:before {
+  background-color: #e9e9e9;
+}
+.trading-theme-dark .bione-mobile-menu > i:after {
+  background-color: #e9e9e9;
+}
+.trading-theme-dark .bione-mobile-menu > i {
+  background-color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-header.open .bione-mobile-menu > i:before {
+  background-color: #7e7e7e;
+}
+.trading-theme-dark .bione-header.open .bione-mobile-menu > i:after {
+  background-color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-menu-mobile {
+  background-color: #1c202a;
+}
+
+.trading-theme-dark .bione-menu-mobile .gnb {
+  background-color: #1c202a;
+}
+.trading-theme-dark .bione-menu-mobile .gnb > ul > li {
+  border-color: #070707;
+}
+
+.trading-theme-dark .bione-menu-mobile .new {
+  border-color: #45474d;
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-menu-mobile .gnb > ul > li > ul > li > a > i {
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-menu-mobile .gnb > ul > li > ul > li.on > a {
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-menu-mobile .gnb > ul > li > ul > li.on > a > i {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-menu-mobile .snb {
+  background-color: #1c202a;
+  border-color: #070707;
+}
+
+.trading-theme-dark .bione-menu-mobile .mem > li.line > a {
+  border-color: #45474d;
+}
+.trading-theme-dark .bione-menu-mobile .mem > li.box > a {
+  background-color: #45474d;
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-menu-mobile .snb > ul > li > ul {
+  background-color: #292e3a;
+  box-shadow: 0 0 5px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .bione-menu-mobile .snb > ul > li > ul > li > a > i {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-menu-mobile .snb > ul > li > ul > li > a:hover {
+  background-color: #1c202a;
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-menu-mobile .snb > ul > li > ul > li.on > a {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-side-stat {
+  border-color: #070707;
+}
+.trading-theme-dark .bione-side-stat .stat .label {
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-side-stat .btn {
+  background-color: #45474d;
+}
+
+@media all and (max-width: 768px) {
+  .trading-theme-dark .bione-header.open:before {
+    background-color: #070707;
+  }
+} /* @media end */
+
+/* layout responsive */
+
+/* layout 공통 헤더 푸터 */
+
+/* trade */
+.trading-theme-dark .bione-trade-section {
+  background-color: #070707;
+}
+.trading-theme-dark .bione-trade-section input {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-trade-section button {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-trade-item .trade-item-list {
+  background-color: #070707;
+}
+.trading-theme-dark .bione-trade-item .item {
+  border-color: #1c202a;
+  background-color: #1c202a;
+}
+.trading-theme-dark .bione-trade-item .item.on {
+  background-color: #070707;
+}
+.trading-theme-dark .bione-trade-item .item .sym {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-trade-item .item-ctr {
+  background-color: #070707;
+}
+.trading-theme-dark .bione-trade-item .item-ctr .ctr {
+  background-color: #1c202a;
+}
+.trading-theme-dark .bione-trade-item .item-ctr .ctr > i {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-trade-item.open .item-ctr .ctr > i {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-trade-side-ctr > i {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-trade-side-ctr .ctr-item {
+  background-color: #292e3a;
+  box-shadow: 0 10px 10px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .bione-trade-header {
+  background-color: #1c202a;
+  border-color: #070707;
+}
+
+.trading-theme-dark .bione-trade-header .item-label {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-trade-header .item-exp {
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-trade-header .item-cate {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-trade-header .coin-lists {
+  background-color: #292e3a;
+  border-color: #070707;
+  box-shadow: 0 0 9px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .bione-trade-container .container {
+  background-color: #1c202a;
+  border-color: #1c202a;
+}
+
+.trading-theme-dark .bione-trade-price-list .list-ctr {
+  border-color: #050507;
+}
+.trading-theme-dark .bione-trade-price-list .list-ctr .sort:before {
+  background-color: #2e323b;
+  border-color: #050507;
+}
+.trading-theme-dark .bione-trade-price-list[data-sort="sort-orderbook"] .list-ctr .sort[data-sort="orderbook"]:before {
+  background-color: #14161d;
+  border-color: #050507;
+}
+.trading-theme-dark .bione-trade-price-list[data-sort="sort-orderbuy"] .list-ctr .sort[data-sort="orderbuy"]:before {
+  background-color: #14161d;
+  border-color: #050507;
+}
+.trading-theme-dark .bione-trade-price-list[data-sort="sort-ordersell"] .list-ctr .sort[data-sort="ordersell"]:before {
+  background-color: #14161d;
+  border-color: #050507;
+}
+
+.trading-theme-dark .bione-trade-price-list .list-wrap .list .col {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-trade-price-list.coin-list .list-wrap .list .col .on[data-wish-coin] {
+  color: #3f77cd;
+}
+
+.trading-theme-dark .bione-trade-price-list .list-wrap.list-header .list .col {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-trade-price-list .list-sum {
+  border-color: #050507;
+}
+.trading-theme-dark .bione-trade-price-list .list-sum .more {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-trade-price-list .list-comparison {
+  background-color: #1c202a;
+  border-color: #050507;
+}
+
+.trading-theme-dark .bione-trade-price-list .list-wrap .list .bar {
+  opacity: 0.2;
+}
+
+.trading-theme-dark .bione-trade-tab {
+  border-color: #050507;
+}
+.trading-theme-dark .bione-trade-tab .tab:after {
+  background: #45474d;
+}
+
+.trading-theme-dark .bione-line-tab {
+  border-color: #050507;
+}
+.trading-theme-dark .bione-line-tab .tab:after {
+  background: #45474d;
+}
+
+.trading-theme-dark .bione-trade-form .form-fld {
+  border-color: #45474d;
+}
+.trading-theme-dark .bione-trade-form .form-fld.disabled {
+  background-color: #45474d;
+  border-color: #45474d;
+}
+
+.trading-theme-dark .bione-trade-form .form-fld:hover {
+  border-color: #5d6068;
+}
+.trading-theme-dark .bione-trade-form .form-fld:hover * {
+  border-color: #5d6068 !important;
+}
+
+.trading-theme-dark .bione-trade-form .form-row .label {
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-trade-form .form-fld input.inp {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-trade-form .form-row .btn {
+  border-color: #45474d;
+}
+.trading-theme-dark .bione-trade-form .form-row .btn .updn:last-child {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .bione-trade-form .form-row .btn:before {
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-trade-form .form-row .btn .updn:before {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-trade-form .form-row .btn:hover:before {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-trade-form .form-row .btn .updn:hover:before {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-trade-form .pick {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .bione-trade-form .chkwrap > label:before {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .bione-trade-section .dropdown-wrap .dropdown {
+  background-color: #292e3a;
+  box-shadow: 0 0 10px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .bione-trade-section .dropdown-wrap .dropdown .item:hover {
+  background-color: #1c202a;
+}
+.trading-theme-dark .bione-trade-section .dropdown-wrap .dropdown .item.on {
+  background-color: #1c202a;
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-trade-form .form-button .button:hover {
+  box-shadow: 0 7px 7px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .bione-trade-asset {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-trade-asset .asset-title {
+  border-color: #050507;
+}
+.trading-theme-dark .bione-trade-asset .label {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-trade-asset .btn {
+  background-color: #45474d;
+}
+
+.trading-theme-dark .bione-trade-order-range-slider .range-ruler .pointer:before {
+  background-color: #45474d;
+}
+.trading-theme-dark .bione-trade-order-range-slider .range-ruler .pointer.on:before {
+  background-color: #3f77cd;
+}
+
+.trading-theme-dark .bione-trade-order-range-slider .range-pointer {
+  border-color: #45474d;
+}
+.trading-theme-dark .bione-trade-order-range-slider .range-pointer .pointer {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .bione-range-slider {
+  background-color: #45474d;
+}
+.trading-theme-dark .bione-range-slider::-webkit-slider-thumb {
+  background-color: #1c202a;
+}
+.trading-theme-dark .bione-range-slider::-moz-range-thumb {
+  background-color: #1c202a;
+}
+
+.trading-theme-dark .bione-trade-inlineform .fld {
+  border-color: #45474d;
+  background-color: transparent;
+}
+.trading-theme-dark .bione-trade-inlineform .btn {
+  background-color: #45474d;
+}
+
+.trading-theme-dark .bione-trade-table > thead > tr > th {
+  color: #7e7e7e;
+  border-color: #050507;
+  background-color: transparent;
+}
+.trading-theme-dark .bione-trade-table > tbody > tr > td {
+  border-color: #050507;
+}
+
+.trading-theme-dark .bione-trade-table .btn {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .bione-trade-table th.sticky {
+  background-color: #1c202a;
+}
+.trading-theme-dark .bione-trade-table td.sticky {
+  background-color: #1c202a;
+}
+
+.trading-theme-dark .bione-trade-table > tbody > tr:hover > td {
+  background: #26282f;
+}
+
+/* trade responsive */
+
+@media all and (max-width: 1200px) {
+  .trading-theme-dark .bione-trade-section.order-open .bione-trade-container .container.orderform .bione-order-trigger {
+    background-color: #050507;
+  }
+  .trading-theme-dark .bione-trade-section.order-open .bione-trade-container .container.orderform .bione-order-trigger .aside[data-order-ctr="close"] {
+    background-color: #050507;
+  }
+} /* @media end */
+
+@media all and (max-width: 768px) {
+  .trading-theme-dark .bione-trade-container .container.orderform .container-wrap {
+    background-color: #1c202a;
+  }
+  .trading-theme-dark .bione-trade-section.order-open.order-full .bione-trade-container .container.orderform:before {
+    background-color: #1c202a;
+  }
+  .trading-theme-dark .bione-trade-section.order-open.order-full .bione-trade-container .container.orderform:after {
+    background-color: #070707;
+  }
+
+  .trading-theme-dark .bione-trade-section.order-open .container.orderform .bione-trade-form .form-button {
+    background-color: #1c202a;
+  }
+
+  .trading-theme-dark .bione-order-trigger {
+    background-color: #373b45 !important;
+  }
+
+  .trading-theme-dark .bione-trade-section.order-open .bione-order-trigger {
+    border-color: #070707;
+  }
+
+  .trading-theme-dark .bione-trade-section.order-open .bione-order-trigger .aside {
+    border-color: #45474d;
+    color: #7e7e7e;
+  }
+
+  .trading-theme-dark .bione-trade-item .item-ctr .ctr {
+    background-color: #1c202a;
+  }
+  .trading-theme-dark .bione-trade-item.open .item-ctr .ctr {
+    background-color: #1c202a;
+  }
+
+  .trading-theme-dark .bione-trade-header .expand {
+    background-color: #1c202a;
+  }
+  .trading-theme-dark .bione-trade-header .expand:before {
+    color: #7e7e7e;
+  }
+} /* @media end */
+
+/* trade responsive */
+
+/* trade */
+
+/* layout 나머지 페이지 */
+/* 메인페이지  */
+.trading-theme-dark .bione-section.bg2 {
+  background-color: #18191d;
+}
+
+.trading-theme-dark .bione-section-title > i {
+  color: #c9c9c9;
+}
+
+.trading-theme-dark .bione-main-slide:after {
+  background-color: #373b45;
+}
+.trading-theme-dark .bione-main-slide:before {
+  background-color: #373b45;
+}
+
+.trading-theme-dark .swiper-pagination-bullet {
+  background-color: #fff;
+}
+.trading-theme-dark .swiper-pagination-bullet-active {
+  background-color: #61656f;
+}
+
+.trading-theme-dark .bione-main-banner .slide-text .label {
+  background-color: #45474d;
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-main-banner .slide-text .text1 {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-main-banner .slide-text .text2 {
+  color: #b9bbc1;
+}
+.trading-theme-dark .bione-main-banner .slide-text .text3 {
+  color: #c9c8c8;
+}
+.trading-theme-dark .bione-main-banner .slide-text .btn {
+  background-color: #3f77cd;
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-market-slide .item {
+  background-color: #2d323c;
+  box-shadow: 0 0 9px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .bione-list-tab .tab.on {
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-list-tab .tab:after {
+  background: #45474d;
+}
+
+.trading-theme-dark .bione-market-list .list-row.row-header {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-market-list .list-search {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .bione-main-biz .item {
+  box-shadow: 0 0 19px rgb(0, 0, 0, 0.9);
+  background-color: #2d323c;
+}
+
+.trading-theme-dark .bione-main-str .item {
+  box-shadow: 0 0 19px rgb(0, 0, 0, 0.9);
+  background-color: #2d323c;
+}
+.trading-theme-dark .bione-main-str .item-btn .btn {
+  border-color: #45474d;
+}
+.trading-theme-dark .bione-main-str .item-btn .btn:hover {
+  background-color: #45474d;
+  border-color: #45474d;
+  color: #e9e9e9;
+  box-shadow: 0 10px 10px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .bione-main-str .item-btn .btn.on:hover {
+  background-color: #3f77cd;
+  border-color: #3f77cd;
+}
+
+.trading-theme-dark .bione-box-news .swiper-slide {
+  box-shadow: 0 0 9px rgb(0, 0, 0, 0.9);
+  background-color: #2d323c;
+}
+/* 메인페이지  */
+
+/* 로그인/가입  */
+
+.trading-theme-dark .bione-form .txt-main {
+  color: #c9c9c9;
+}
+
+.trading-theme-dark .bione-form .box-wrap {
+  border-color: #070707;
+}
+
+.trading-theme-dark .bione-form .fld {
+  border-color: #4a4e5c;
+  background-color: #1c202a;
+}
+.trading-theme-dark .bione-form .fld .inp {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-form .fld.on {
+  background-color: #3f77cd;
+  border-color: #3f77cd;
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-form .fld:hover {
+  box-shadow: 0 0 19px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .bione-form button.fld {
+  background-color: #4a4e5c;
+  border-color: #4a4e5c;
+}
+.trading-theme-dark .bione-form button.fld:hover {
+  background-color: #363a45;
+  border-color: #363a45;
+}
+.trading-theme-dark .bione-form button.fld.on:hover {
+  background-color: #363a45;
+  border-color: #363a45;
+}
+
+.trading-theme-dark .bione-form .fld:focus-within {
+  border-color: #3f77cd;
+}
+
+.trading-theme-dark .bione-form .fld .label {
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-form .fld .label:after {
+  background: #1c202a;
+}
+
+.trading-theme-dark .bione-form .fld .ic-btn {
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-form .is-link .link {
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-form .fld.is-amount .inp::placeholder {
+  color: #7e7e7e;
+}
+.trading-theme-dark .bione-form .fld.is-amount .amount-label {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-form .chkwrap > label:before {
+  border-color: #4a4e5c;
+}
+
+.trading-theme-dark .bione-form .divider:after {
+  border-color: #4a4e5c;
+}
+.trading-theme-dark .bione-form .divider > em {
+  background-color: #1c202a;
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-form .foot {
+  border-color: #4a4e5c;
+}
+
+.trading-theme-dark .bione-section-form .form-terms {
+  background-color: #1c202a;
+}
+.trading-theme-dark .bione-section-form .form-terms .bione-scroll-content {
+  border-color: #4a4e5c;
+}
+
+/* 로그인/가입  */
+
+/* 월렛  */
+.trading-theme-dark .bione-wallet-overview .item {
+  background-color: #2d323c;
+  box-shadow: 0 0 9px rgb(0, 0, 0, 1);
+}
+.trading-theme-dark .bione-wallet-overview .item .title {
+  background-color: #1c202a;
+}
+.trading-theme-dark .bione-wallet-overview .item .item-row {
+  border-color: #4a4e5c;
+}
+
+.trading-theme-dark .bione-table > thead > tr > th {
+  color: #7e7e7e;
+  border-color: #070707;
+}
+.trading-theme-dark .bione-table > tbody > tr > td {
+  border-color: #070707;
+}
+.trading-theme-dark .bione-table > tbody > tr:hover > td {
+  background: #252933;
+}
+
+.trading-theme-dark .bione-percent-sel:after {
+  border-color: #4a4e5c;
+}
+.trading-theme-dark .bione-percent-sel .btn {
+  border-color: #4a4e5c;
+  background-color: #4a4e5c;
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-exchage-symbol .ex {
+  border-color: #070707;
+  box-shadow: 0 10px 10px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .bione-exchage-symbol .item > em {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .bione-wallet-p2p2-wrap .p2p2-sum {
+  border-color: #070707;
+  box-shadow: 0 10px 10px rgb(0, 0, 0, 0.9);
+}
+
+/* 월렛  */
+
+/* 어카운트  */
+.trading-theme-dark .bione-account-overview .item {
+  background-color: #2d323c;
+  border-color: #070707;
+  box-shadow: 0 0 9px rgb(0, 0, 0, 1);
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .bione-account-overview .item .title {
+  border-color: #4a4e5c;
+}
+.trading-theme-dark .bione-account-overview .item .title > i {
+  background-color: #4a4e5c;
+  color: #e9e9e9;
+}
+
+/* 어카운트  */
+
+/* 페이징 */
+.trading-theme-dark .bione-paging .pg,
+.bione-paging .pa {
+  border-color: #45474d;
+  color: #e9e9e9;
+}
+.trading-theme-dark .bione-paging .pg.on {
+  color: #e9e9e9;
+}
+/* 페이징 */
+
+/* 채팅  */
+.trading-theme-dark .bione-chat {
+  background-color: #252a35;
+}
+.trading-theme-dark .bione-chat.chat-main {
+  box-shadow: 0 10px 10px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .bione-chat .chat-head {
+  background-color: #252a35;
+  border-color: #070707;
+}
+
+.trading-theme-dark .bione-chat .chat-input {
+  background-color: #1c202a;
+  border-color: #070707;
+}
+.trading-theme-dark .bione-chat .chat-input .btn:hover {
+  background-color: #252a35;
+}
+
+.trading-theme-dark .bione-chat .chat-message > .avatar {
+  background-color: #41454f;
+}
+
+.trading-theme-dark .bione-chat .chat-message .bub {
+  background-color: #41454f;
+}
+.trading-theme-dark .bione-chat .chat-message.me .bub {
+  background-color: #41485c;
+}
+
+.trading-theme-dark .bione-chat .chat-message.other .message:after {
+  border-color: #41454f #41454f transparent transparent;
+}
+.trading-theme-dark .bione-chat .chat-message.me .message:after {
+  border-color: #41485c transparent transparent #41485c;
+}
+
+/* 채팅  */
+
+/* 공지  */
+.trading-theme-dark .bione-notice-list .notice-list {
+  border-color: #1c202a;
+  background-color: #2d323c;
+}
+.trading-theme-dark .bione-notice-list .notice-list.open {
+  background-color: #252a35;
+}
+
+.trading-theme-dark .bione-notice-list .notice-list .list-title {
+  color: #c9c9c9;
+}
+.trading-theme-dark .bione-notice-list .notice-list .list-title:after {
+  color: #c9c9c9;
+}
+
+.trading-theme-dark .bione-notice-list .notice-list .list-content {
+  color: #e9e9e9;
+}
+
+/* 공지  */
+
+/* 모달 */
+.trading-theme-dark .bione-modal-wrapper:after {
+  background-color: #252a35;
+}
+
+.trading-theme-dark .bione-modal {
+  background-color: #2d323c;
+}
+
+.trading-theme-dark .bione-modal.modal-notice {
+  background-color: #2d323c;
+}
+
+/* 모달 */
+
+/* 팝오버 */
+.trading-theme-dark .bione-popover {
+  background-color: #2d323c;
+  border-radius: 6px;
+  box-shadow: 0 0 15px rgb(0, 0, 0, 0.9);
+  border-color: #050507;
+}
+.trading-theme-dark .bione-popover:before {
+  border-color: #050507 transparent transparent transparent;
+}
+.trading-theme-dark .bione-popover:after {
+  border-color: #2d323c transparent transparent transparent;
+}
+
+.trading-theme-dark .bione-popover .btn-wrap {
+  border-color: #050507;
+}
+.trading-theme-dark .bione-popover .btn {
+  border-color: #050507;
+}
+
+/* 팝오버 */
+
+/* layout responsive */
+
+/* 테이블  */
+@media all and (max-width: 768px) {
+  .trading-theme-dark .bione-table > tbody > tr {
+    border-color: #45474d;
+  }
+  .trading-theme-dark .bione-table > tbody > tr > td {
+    border-color: #45474d;
+  }
+  .trading-theme-dark .bione-table > tbody > tr > td:before {
+    color: #7e7e7e;
+    border-color: #45474d;
+  }
+
+  .trading-theme-dark .bione-table td .btn {
+    width: auto;
+    min-width: 100px;
+  }
+} /* @media end */
+/* 테이블  */
+
+/* layout responsive */
+
+/* layout 나머지 페이지 */
+
+/* 다크모드 =============================================================== */
+
+/* @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@신상@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ */
+
+/* 다크모드 =============================================================== */
+
+/* common */
+.trading-theme-dark a:link,
+.trading-theme-dark a:visited {
+  color: #e9e9e9;
+}
+.trading-theme-dark a:active,
+.trading-theme-dark a:hover {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark ::selection {
+  background: #4f525b;
+  color: #e9e9e9;
+}
+.trading-theme-dark ::-moz-selection {
+  background: #4f525b;
+  color: #e9e9e9;
+}
+.trading-theme-dark ::-webkit-selection {
+  background: #4f525b;
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-tooltip .tip {
+  background-color: #35373c;
+  color: #e9e9e9;
+  box-shadow: 0 0 5px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .thbit-tooltip .tip:after {
+  border-color: #35373c transparent transparent transparent;
+}
+.trading-theme-dark .thbit-tooltip .tip.bt:after {
+  border-color: transparent transparent #35373c transparent;
+}
+.trading-theme-dark .thbit-tooltip .tip.lf:after {
+  border-color: transparent transparent transparent #35373c;
+}
+.trading-theme-dark .thbit-tooltip .tip.ri:after {
+  border-color: transparent #35373c transparent transparent;
+}
+
+.trading-theme-dark input {
+  color: #e9e9e9;
+}
+.trading-theme-dark button {
+  color: #e9e9e9;
+}
+.trading-theme-dark .inp {
+  color: #e9e9e9;
+}
+
+/* common */
+
+/* layout 공통 헤더 푸터 */
+.trading-theme-dark {
+  background-color: #1a1f2c;
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-header .header-logo .logo:before {
+  background-image: url(../images/common/logo-white.png);
+}
+.trading-theme-dark .thbit-menu > nav > ul > li > a:hover {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-menu > nav > ul > li.box > a {
+  color: #e9e9e9;
+}
+.trading-theme-dark .thbit-menu > nav > ul > li.box > a:after {
+  background-color: #45474d;
+}
+
+.trading-theme-dark .thbit-menu > nav > ul > li.line > a {
+  color: #e9e9e9;
+}
+.trading-theme-dark .thbit-menu > nav > ul > li.line > a:after {
+  background-color: transparent;
+  border-color: #45474d;
+}
+
+.trading-theme-dark .thbit-menu > nav > ul > li > ul {
+  border-color: #1a1f2c;
+  background-color: #292e3a;
+  box-shadow: 0 0 10px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .thbit-menu > nav > ul > li > ul > li > a > i {
+  color: #e9e9e9;
+}
+.trading-theme-dark .thbit-menu > nav > ul > li > ul > li > a:hover {
+  background-color: #1a1f2c;
+  color: #7e7e7e;
+}
+.trading-theme-dark .thbit-menu > nav > ul > li > ul > li.on > a {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-header.header-fixed:after {
+  background-color: #30333e;
+  box-shadow: 0 0 19px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .thbit-menu > nav.snb > ul > li.add:before {
+  background-color: #45474d;
+}
+.trading-theme-dark .thbit-menu > nav.snb > ul > li.add i {
+  color: #fff;
+}
+
+.trading-theme-dark .thbit-footer {
+  border-color: #010101;
+}
+
+.trading-theme-dark .thbit-footer .footer-logo .thbit-img:before {
+  background-image: url(../images/common/logo-white.png);
+}
+
+.trading-theme-dark .thbit-footer .fnb > ul > li > a {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-footer .info {
+  border-color: #010101;
+}
+
+.trading-theme-dark .thbit-sns-ico > ul > li > a:after {
+  background-color: transparent;
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-sns-ico > ul > li > a:hover:after {
+  background-color: #010101;
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-sns-ico > ul > li > a > i {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-footer .company-info {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-footer .company-info .inb:before {
+  background-color: #010101;
+}
+
+.trading-theme-dark .thbit-dropdown {
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-dropdown .dropdown {
+  border-color: #010101;
+  background-color: #1a1f2c;
+}
+.trading-theme-dark .thbit-dropdown .dropdown .p {
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-dropdown .dropdown .p:hover {
+  background-color: #45474d;
+}
+
+/* layout responsive */
+.trading-theme-dark .thbit-mobile-menu > i:before {
+  background-color: #e9e9e9;
+}
+.trading-theme-dark .thbit-mobile-menu > i:after {
+  background-color: #e9e9e9;
+}
+.trading-theme-dark .thbit-mobile-menu > i {
+  background-color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-header.open .thbit-mobile-menu > i:before {
+  background-color: #7e7e7e;
+}
+.trading-theme-dark .thbit-header.open .thbit-mobile-menu > i:after {
+  background-color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-menu-mobile {
+  background-color: #1a1f2c;
+}
+
+.trading-theme-dark .thbit-menu-mobile .gnb {
+  background-color: #1a1f2c;
+}
+.trading-theme-dark .thbit-menu-mobile .gnb > ul > li {
+  border-color: #010101;
+}
+
+.trading-theme-dark .thbit-menu-mobile .new {
+  border-color: #45474d;
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-menu-mobile .gnb > ul > li > ul > li > a > i {
+  color: #7e7e7e;
+}
+.trading-theme-dark .thbit-menu-mobile .gnb > ul > li > ul > li.on > a {
+  color: #7e7e7e;
+}
+.trading-theme-dark .thbit-menu-mobile .gnb > ul > li > ul > li.on > a > i {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-menu-mobile .snb {
+  background-color: #1a1f2c;
+  border-color: #010101;
+}
+
+.trading-theme-dark .thbit-menu-mobile .mem > li.line > a {
+  border-color: #45474d;
+}
+.trading-theme-dark .thbit-menu-mobile .mem > li.box > a {
+  background-color: #45474d;
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-menu-mobile .snb > ul > li > ul {
+  background-color: #292e3a;
+  box-shadow: 0 0 5px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .thbit-menu-mobile .snb > ul > li > ul > li > a > i {
+  color: #e9e9e9;
+}
+.trading-theme-dark .thbit-menu-mobile .snb > ul > li > ul > li > a:hover {
+  background-color: #1a1f2c;
+  color: #7e7e7e;
+}
+.trading-theme-dark .thbit-menu-mobile .snb > ul > li > ul > li.on > a {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-side-stat {
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-side-stat .stat .label {
+  color: #7e7e7e;
+}
+.trading-theme-dark .thbit-side-stat .btn {
+  background-color: #45474d;
+}
+
+@media all and (max-width: 768px) {
+  .trading-theme-dark .thbit-header.open:before {
+    background-color: #010101;
+  }
+} /* @media end */
+
+/* layout responsive */
+
+/* layout 공통 헤더 푸터 */
+
+/* trade */
+
+.trading-theme-dark .thbit-layout-set .container .item {
+  border-color: #414447;
+  background-color: #414447;
+}
+.trading-theme-dark .thbit-layout-set .container .item.on {
+  border-color: #6b5dd3;
+  background-color: #292e3a;
+}
+
+.trading-theme-dark .thbit-trade-section {
+  background-color: #010101;
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-trade-section input {
+  color: #e9e9e9;
+}
+.trading-theme-dark .thbit-trade-section button {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-trade-side-ctr > i {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-trade-side-ctr .ctr-item {
+  background-color: #292e3a;
+  box-shadow: 0 10px 10px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .thbit-trade-header {
+  background-color: #1a1f2c;
+  border-color: #010101;
+}
+
+.trading-theme-dark .thbit-trade-header .item-label {
+  color: #e9e9e9;
+}
+.trading-theme-dark .thbit-trade-header .item-exp {
+  color: #7e7e7e;
+}
+.trading-theme-dark .thbit-trade-header .item-cate {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-trade-header .coin-lists {
+  background-color: #292e3a;
+  border-color: #010101;
+  box-shadow: 0 0 9px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .thbit-trade-container .container {
+  background-color: #1a1f2c;
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-trade-container .container.chart {
+  background-color: #131722;
+}
+
+.trading-theme-dark .thbit-trade-price-list .list-ctr {
+  border-color: #010101;
+  background-color: transparent;
+}
+.trading-theme-dark .thbit-trade-price-list .list-ctr .sort:before {
+  background-color: #2c2f39;
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-trade-price-list[data-sort="sort-orderbook"] .list-ctr .sort[data-sort="orderbook"]:before {
+  background-color: #010101;
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-trade-price-list[data-sort="sort-orderbuy"] .list-ctr .sort[data-sort="orderbuy"]:before {
+  background-color: #010101;
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-trade-price-list[data-sort="sort-ordersell"] .list-ctr .sort[data-sort="ordersell"]:before {
+  background-color: #010101;
+  border-color: #010101;
+}
+
+.trading-theme-dark .thbit-trade-price-list .list-wrap .list .col {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-trade-price-list.coin-list .list-wrap .list .col .on[data-wish-coin] {
+  color: #6b5dd3;
+}
+
+.trading-theme-dark .thbit-trade-price-list .list-wrap:not(.list-header) .list:hover .col {
+  background-color: #2c2f39;
+}
+
+.trading-theme-dark .thbit-trade-price-list .list-wrap.list-header .list .col {
+  color: #7e7e7e;
+  border-color: #010101;
+}
+
+.trading-theme-dark .thbit-trade-price-list .list-sum {
+  background-color: #2c2f39;
+}
+.trading-theme-dark .thbit-trade-price-list .list-sum .more {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-trade-price-list .list-comparison {
+  background-color: #1a1f2c;
+  border-color: #050507;
+}
+
+.trading-theme-dark .thbit-trade-price-list .list-time {
+  background-color: #1a1f2c;
+  border-color: #050507;
+  text-align: center;
+}
+
+.trading-theme-dark .thbit-trade-price-list .list-wrap .list .bar {
+  opacity: 0.2;
+}
+
+.trading-theme-dark .thbit-trade-price-list .list-search {
+  background-color: transparent;
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-trade-price-list .list-search .inp {
+  border-color: #45474d;
+  background-color: transparent;
+}
+
+.trading-theme-dark .thbit-trade-tab {
+  border-color: #050507;
+}
+.trading-theme-dark .thbit-trade-tab .tab:after {
+  background: #45474d;
+}
+
+.trading-theme-dark .thbit-index-tab {
+  border-color: #010101;
+  background-color: #2c2f39;
+}
+.trading-theme-dark .thbit-index-tab .tab {
+  color: #a8a8a8;
+}
+.trading-theme-dark .thbit-index-tab .tab.on {
+  color: #fff;
+}
+
+.trading-theme-dark .thbit-index-tab .tab:after {
+  background: #1a1f2c;
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-index-tab .tab:before {
+  background: #414447;
+}
+.trading-theme-dark .thbit-index-tab .tab.on:before {
+  left: 0;
+  right: 0;
+}
+
+.trading-theme-dark .thbit-line-tab {
+  border-color: #050507;
+}
+.trading-theme-dark .thbit-line-tab .tab {
+  color: #a8a8a8;
+}
+.trading-theme-dark .thbit-line-tab .tab.on {
+  color: #fff;
+}
+.trading-theme-dark .thbit-line-tab .tab:after {
+  background: #45474d;
+}
+.trading-theme-dark .thbit-line-tab .tab > i {
+  color: #a8a8a8;
+}
+.trading-theme-dark .thbit-line-tab .tab.on > i {
+  color: #fff;
+}
+
+.trading-theme-dark .thbit-order-tab .tab {
+  background-color: #2c2f39;
+  color: #a8a8a8;
+}
+.trading-theme-dark .thbit-order-tab .tab.on {
+  color: #fff;
+}
+
+.trading-theme-dark .thbit-trade-form .form-fld {
+  border-color: #45474d;
+}
+.trading-theme-dark .thbit-trade-form .form-fld.disabled {
+  background-color: #45474d;
+  border-color: #45474d;
+}
+
+.trading-theme-dark .thbit-trade-form .form-fld:hover {
+  border-color: #5d6068;
+}
+.trading-theme-dark .thbit-trade-form .form-fld:hover * {
+  border-color: #5d6068 !important;
+}
+
+.trading-theme-dark .thbit-trade-form .form-row .label {
+  color: #7e7e7e;
+  background-color: #1a1f2c;
+}
+.trading-theme-dark .thbit-trade-form .form-row .label-modal {
+  color: #7e7e7e;
+  background-color: #282e33;
+}
+
+.trading-theme-dark .thbit-trade-form .form-fld input.inp {
+  color: #e9e9e9;
+}
+.trading-theme-dark .thbit-trade-form .form-fld .label:after {
+  background-color: #1a1f2c;
+}
+.trading-theme-dark .thbit-trade-form .form-fld .label-modal:after {
+  background-color: #282e33;
+}
+
+.trading-theme-dark .thbit-trade-form .form-row .btn {
+  border-color: #45474d;
+}
+.trading-theme-dark .thbit-trade-form .form-row .btn .updn:last-child {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .thbit-trade-form .form-row .btn:before {
+  color: #7e7e7e;
+}
+.trading-theme-dark .thbit-trade-form .form-row .btn .updn:before {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-trade-form .form-row .btn:hover:before {
+  color: #e9e9e9;
+}
+.trading-theme-dark .thbit-trade-form .form-row .btn .updn:hover:before {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-trade-form .pick {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .thbit-trade-form .chkwrap > label:before {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .thbit-trade-section .dropdown-wrap .dropdown {
+  background-color: #292e3a;
+  box-shadow: 0 0 10px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .thbit-trade-section .dropdown-wrap .dropdown .item:hover {
+  background-color: #1a1f2c;
+}
+.trading-theme-dark .thbit-trade-section .dropdown-wrap .dropdown .item.on {
+  background-color: #1a1f2c;
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-trade-form .form-button .button:hover {
+  box-shadow: 0 7px 7px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .thbit-trade-asset {
+  color: #e9e9e9;
+}
+.trading-theme-dark .thbit-trade-asset .asset-title {
+  border-color: #050507;
+}
+.trading-theme-dark .thbit-trade-asset .label {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-trade-asset .btn {
+  background-color: #45474d;
+}
+
+.trading-theme-dark .thbit-trade-order-range-slider .range-ruler .pointer:before {
+  background-color: #45474d;
+}
+.trading-theme-dark .thbit-trade-order-range-slider .range-ruler .pointer.on:before {
+  background-color: #fff;
+}
+
+.trading-theme-dark .thbit-trade-order-range-slider .range-pointer {
+  border-color: #45474d;
+}
+.trading-theme-dark .thbit-trade-order-range-slider .range-pointer .pointer {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .thbit-range-slider {
+  background-color: #45474d;
+}
+.trading-theme-dark .thbit-range-slider::-webkit-slider-thumb {
+  background-color: #fff;
+}
+.trading-theme-dark .thbit-range-slider::-moz-range-thumb {
+  background-color: #fff;
+}
+
+.trading-theme-dark .thbit-trade-inlineform .fld {
+  border-color: #45474d;
+  background-color: transparent;
+}
+.trading-theme-dark .thbit-trade-inlineform .btn {
+  background-color: #45474d;
+}
+
+.trading-theme-dark .thbit-trade-table > thead > tr > th {
+  color: #7e7e7e;
+  border-color: #050507;
+  background-color: transparent;
+}
+.trading-theme-dark .thbit-trade-table > tbody > tr > td {
+  border-color: #050507;
+}
+.trading-theme-dark .thbit-trade-table > tbody > tr:nth-child(even) > td {
+  background-color: #2f3133;
+}
+
+.trading-theme-dark .thbit-trade-table .btn {
+  border-color: #45474d;
+}
+
+.trading-theme-dark .thbit-trade-table th.sticky {
+  background-color: #1a1f2c;
+}
+.trading-theme-dark .thbit-trade-table td.sticky {
+  background-color: #1a1f2c;
+}
+
+.trading-theme-dark .thbit-trade-table > tbody > tr:hover > td {
+  background: #2c2f39;
+}
+
+/* trade responsive */
+
+@media all and (max-width: 800px) {
+  .trading-theme-dark .thbit-trade-container .container.coinlist {
+    background-color: #292e3a;
+  }
+
+  .trading-theme-dark .thbit-trade-container .container.coinlist .list-search {
+    background-color: #292e3a;
+  }
+
+  .trading-theme-dark .thbit-order-trigger {
+    background-color: #1a1f2c;
+  }
+} /* @media end */
+
+/* trade responsive */
+
+/* trade */
+
+/* 메인페이지  */
+.trading-theme-dark .swiper-pagination-bullet {
+  background-color: #fff;
+}
+.trading-theme-dark .swiper-pagination-bullet-active {
+  background-color: #6b5dd3;
+}
+
+.trading-theme-dark .thbit-market-slide {
+  background-color: #232836;
+  border-color: #010101;
+}
+
+.trading-theme-dark .thbit-main-store:after {
+  background-image: url("../images/main/store-bg-dark.jpg");
+  background-color: #232836;
+  border-color: #232836;
+}
+
+.trading-theme-dark .thbit-section .thbit-wrapper {
+  background-color: #23212c;
+}
+
+.trading-theme-dark .thbit-trade-step .step {
+  background-color: #232836;
+}
+.trading-theme-dark .thbit-trade-step .step:after {
+  background-color: #232836;
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-main-biz .item {
+  background-color: #232836;
+  border-color: #010101;
+}
+
+.trading-theme-dark .thbit-faq-list .list-row {
+  background-color: #232836;
+  border-color: #010101;
+}
+
+.trading-theme-dark .thbit-main-str .item {
+  background-color: #232836;
+  border-color: #010101;
+}
+
+.trading-theme-dark .thbit-box-news {
+  background-color: #232836;
+}
+
+/* 메인페이지  */
+
+/* 로그인/가입  */
+
+.trading-theme-dark .thbit-form .txt-main {
+  color: #c9c9c9;
+}
+
+.trading-theme-dark .thbit-form .box-wrap {
+  border-color: #070707;
+}
+
+.trading-theme-dark .thbit-form .fld {
+  border-color: #4a4e5c;
+  background-color: #1c202a;
+}
+.trading-theme-dark .thbit-form .fld .inp {
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-form .fld.on {
+  background-color: #6b5dd3;
+  border-color: #6b5dd3;
+  color: #e9e9e9;
+}
+.trading-theme-dark .thbit-form .fld:hover {
+  box-shadow: 0 0 19px rgb(0, 0, 0, 0.9);
+}
+.trading-theme-dark .thbit-form button.fld {
+  background-color: #4a4e5c;
+  border-color: #4a4e5c;
+}
+.trading-theme-dark .thbit-form button.fld:hover {
+  background-color: #363a45;
+  border-color: #363a45;
+}
+.trading-theme-dark .thbit-form button.fld.on:hover {
+  background-color: #363a45;
+  border-color: #363a45;
+}
+
+.trading-theme-dark .thbit-form .fld:focus-within {
+  border-color: #6b5dd3;
+}
+
+.trading-theme-dark .thbit-form .fld .label {
+  color: #7e7e7e;
+}
+.trading-theme-dark .thbit-form .fld .label:after {
+  background: #1c202a;
+}
+
+.trading-theme-dark .thbit-form .fld .ic-btn {
+  color: #7e7e7e;
+}
+.trading-theme-dark .thbit-form .is-link .link {
+  color: #7e7e7e;
+}
+.trading-theme-dark .thbit-form .fld.is-amount .inp::placeholder {
+  color: #7e7e7e;
+}
+.trading-theme-dark .thbit-form .fld.is-amount .amount-label {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-form .chkwrap > label:before {
+  border-color: #4a4e5c;
+}
+
+.trading-theme-dark .thbit-form .divider:after {
+  border-color: #4a4e5c;
+}
+.trading-theme-dark .thbit-form .divider > em {
+  background-color: #1c202a;
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-form .foot {
+  border-color: #4a4e5c;
+}
+
+.trading-theme-dark .thbit-section-form .form-terms {
+  background-color: #1c202a;
+}
+.trading-theme-dark .thbit-section-form .form-terms .thbit-scroll-content {
+  border-color: #4a4e5c;
+}
+
+/* 로그인/가입  */
+
+/* 월렛  */
+.trading-theme-dark .thbit-wallet-overview {
+  border-color: #010101;
+}
+.trading-theme-dark .thbit-wallet-overview .item .title {
+  background-color: #1c202a;
+}
+.trading-theme-dark .thbit-wallet-overview .item .item-row {
+  border-color: #4a4e5c;
+}
+
+.trading-theme-dark .thbit-table > thead > tr > th {
+  color: #7e7e7e;
+  border-color: #070707;
+}
+.trading-theme-dark .thbit-table > tbody > tr > td {
+  border-color: #070707;
+}
+.trading-theme-dark .thbit-table > tbody > tr:hover > td {
+  background: #252933;
+}
+
+.trading-theme-dark .thbit-percent-sel:after {
+  border-color: #4a4e5c;
+}
+.trading-theme-dark .thbit-percent-sel .btn {
+  border-color: #4a4e5c;
+  background-color: #4a4e5c;
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-exchage-symbol .ex {
+  border-color: #070707;
+  box-shadow: 0 10px 10px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .thbit-exchage-symbol .item > em {
+  color: #7e7e7e;
+}
+
+.trading-theme-dark .thbit-wallet-p2p2-wrap .p2p2-sum {
+  border-color: #070707;
+  box-shadow: 0 10px 10px rgb(0, 0, 0, 0.9);
+}
+
+/* 월렛  */
+
+/* 어카운트  */
+.trading-theme-dark .thbit-account-overview .item {
+  background-color: #2d323c;
+  border-color: #070707;
+  box-shadow: 0 0 9px rgb(0, 0, 0, 1);
+  color: #e9e9e9;
+}
+
+.trading-theme-dark .thbit-account-overview .item .title {
+  border-color: #4a4e5c;
+}
+.trading-theme-dark .thbit-account-overview .item .title > i {
+  background-color: #4a4e5c;
+  color: #e9e9e9;
+}
+
+/* 어카운트  */
+
+/* 페이징 */
+.trading-theme-dark .thbit-paging .pg,
+.trading-theme-dark .thbit-paging .pa {
+  border-color: #45474d;
+  color: #e9e9e9;
+}
+.trading-theme-dark .thbit-paging .pg.on {
+  color: #e9e9e9;
+}
+/* 페이징 */
+
+/* 채팅  */
+.trading-theme-dark .thbit-chat {
+  background-color: #252a35;
+}
+.trading-theme-dark .thbit-chat.chat-main {
+  box-shadow: 0 10px 10px rgb(0, 0, 0, 0.9);
+}
+
+.trading-theme-dark .thbit-chat .chat-head {
+  background-color: #252a35;
+  border-color: #070707;
+}
+
+.trading-theme-dark .thbit-chat .chat-input {
+  background-color: #1c202a;
+  border-color: #070707;
+}
+.trading-theme-dark .thbit-chat .chat-input .btn:hover {
+  background-color: #252a35;
+}
+
+.trading-theme-dark .thbit-chat .chat-message > .avatar {
+  background-color: #41454f;
+}
+
+.trading-theme-dark .thbit-chat .chat-message .bub {
+  background-color: #41454f;
+}
+.trading-theme-dark .thbit-chat .chat-message.me .bub {
+  background-color: #41485c;
+}
+
+.trading-theme-dark .thbit-chat .chat-message.other .message:after {
+  border-color: #41454f #41454f transparent transparent;
+}
+.trading-theme-dark .thbit-chat .chat-message.me .message:after {
+  border-color: #41485c transparent transparent #41485c;
+}
+
+/* 채팅  */
+
+/* 공지  */
+.trading-theme-dark .thbit-notice-list .notice-list {
+  border-color: #1c202a;
+  background-color: #2d323c;
+}
+.trading-theme-dark .thbit-notice-list .notice-list.open {
+  background-color: #252a35;
+}
+
+.trading-theme-dark .thbit-notice-list .notice-list .list-title {
+  color: #c9c9c9;
+}
+.trading-theme-dark .thbit-notice-list .notice-list .list-title:after {
+  color: #c9c9c9;
+}
+
+.trading-theme-dark .thbit-notice-list .notice-list .list-content {
+  color: #e9e9e9;
+}
+
+/* 공지  */
+
+/* 모달 */
+.trading-theme-dark .thbit-modal-wrapper:after {
+  background-color: #252a35;
+}
+
+.trading-theme-dark .thbit-modal {
+  background-color: #2d323c;
+}
+
+.trading-theme-dark .thbit-modal.modal-notice {
+  background-color: #2d323c;
+}
+
+/* 모달 */
+
+/* 팝오버 */
+.trading-theme-dark .thbit-popover {
+  background-color: #2d323c;
+  border-radius: 6px;
+  box-shadow: 0 0 15px rgb(0, 0, 0, 0.9);
+  border-color: #050507;
+}
+.trading-theme-dark .thbit-popover:before {
+  border-color: #050507 transparent transparent transparent;
+}
+.trading-theme-dark .thbit-popover:after {
+  border-color: #2d323c transparent transparent transparent;
+}
+
+.trading-theme-dark .thbit-popover .btn-wrap {
+  border-color: #050507;
+}
+.trading-theme-dark .thbit-popover .btn {
+  border-color: #050507;
+}
+
+/* 팝오버 */
+
+/* layout responsive */
+
+/* 테이블  */
+@media all and (max-width: 768px) {
+  .trading-theme-dark .thbit-table > tbody > tr {
+    border-color: #45474d;
+  }
+  .trading-theme-dark .thbit-table > tbody > tr > td {
+    border-color: #45474d;
+  }
+  .trading-theme-dark .thbit-table > tbody > tr > td:before {
+    color: #7e7e7e;
+    border-color: #45474d;
+  }
+
+  .trading-theme-dark .thbit-table td .btn {
+    width: auto;
+    min-width: 100px;
+  }
+} /* @media end */
+/* 테이블  */
+
+/* layout responsive */
+
+/* layout 나머지 페이지 */
+
+/* 다크모드 =============================================================== */
+
+.trading-theme-dark .order-setting {
+  border-bottom: 1px solid black;
+}

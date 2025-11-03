@@ -1,0 +1,2064 @@
+@charset "utf-8";
+
+body {
+}
+
+.thbit-layout-set {
+  padding: 0 9px;
+  min-width: 200px;
+}
+.thbit-layout-set .title {
+  white-space: nowrap;
+}
+
+.thbit-layout-set .container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.thbit-layout-set .container .item {
+  cursor: pointer;
+  flex-basis: calc(50% - 5px);
+  text-align: center;
+  margin-top: 9px;
+  padding: 9px;
+  border: 1px solid #f9fafd;
+  background-color: #f9fafd;
+}
+.thbit-layout-set .container .item.on {
+  border-color: #6b5dd3;
+  background-color: #fff;
+}
+
+.thbit-trade-section {
+  /*background-color:#dee8f1;*/  
+  border-top: 1px solid #e9ecf1;
+  background-color: #e9ecf1;
+}
+.thbit-trade-section .thbit-wrapper {
+  max-width: 3840px;
+}
+
+.thbit-trade-section {
+  /* top: 18px; */
+  position: relative;
+  overflow: hidden;
+}
+.thbit-trade-section strong {
+  font-weight: 700;
+}
+.thbit-trade-section .thbit-wrapper {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.thbit-trade-side-ctr {
+  position: absolute;
+  z-index: 99;
+  display: block;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 26px;
+  height: 26px;
+  line-height: 26px;
+  text-align: center;
+  cursor: pointer;
+}
+.thbit-trade-side-ctr > i {
+  color: #667c99;
+}
+.thbit-trade-side-ctr .txt {
+  font-size: 0.8em;
+}
+.thbit-trade-side-ctr .txt > i {
+  margin-left: 5px;
+}
+.thbit-trade-price-list .list-ctr .thbit-trade-side-ctr {
+  right: 6px;
+}
+.thbit-trade-price-list .list-ctr .thbit-trade-side-ctr:nth-of-type(2) {
+  right: 40px;
+}
+
+.thbit-trade-side-ctr .ctr-item {
+  display: none;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #fff;
+  box-shadow: 0 10px 10px rgb(0, 0, 0, 0.08);
+  border-radius: 6px;
+  font-size: 0.9em;
+}
+.thbit-trade-side-ctr .ctr-item.lf {
+  left: 0;
+  transform: none;
+}
+.thbit-trade-side-ctr .ctr-item.ri {
+  left: auto;
+  transform: none;
+  right: 0;
+}
+
+.thbit-trade-side-ctr .ctr-item .item {
+  position: relative;
+  display: block;
+  padding: 5px 15px;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+.thbit-trade-side-ctr .ctr-item .item label * {
+  vertical-align: middle;
+}
+
+.thbit-trade-main {
+  position: relative;
+  z-index: 9;
+}
+
+.thbit-trade-chart-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+.thbit-trade-chart {
+  margin: -1px;
+}
+
+.thbit-trade-container {
+  position: relative;
+  padding: 1px;
+  display: grid;
+  gap: 3px;
+}
+
+[data-layout="bottom-center"] .thbit-trade-container {
+  grid-template-columns: 320px 1fr 320px 320px;
+  grid-template-rows: 50px calc(100vh - 50px - 50px - 350px - 28px) 450px auto; /*  calc(100vh - header - tradeheader - orderform - gap)  */
+  grid-template-areas:
+    "orderbook header coinlist orderlist"
+    "orderbook chart coinlist orderlist"
+    "orderbook orderform orderasset orderlist"
+    "tradelist tradelist tradelist tradelist";
+}
+
+[data-layout="bottom-center"] .thbit-trade-chart {
+  height: calc(100vh - 50px - 50px - 350px - 30px);
+}
+
+[data-layout="bottom-side"] .thbit-trade-container {
+  grid-template-columns: 320px 1fr 320px 320px;
+  grid-template-rows: 50px calc(80vh - 50px - 50px - 350px - 28px) auto auto; /*  calc(100vh - header - tradeheader - orderform - gap)  */
+  grid-template-areas:
+    "coinlist header orderbook orderlist"
+    "coinlist chart orderbook orderlist"
+    "tradelist tradelist orderform orderform"
+    "tradelist tradelist orderasset orderasset";
+}
+
+[data-layout="bottom-side"] .thbit-trade-chart {
+  height: calc(100vh - 50px - 50px - 350px - 30px);
+}
+
+[data-layout="bottom-side"] .thbit-trade-asset .asset-item .item {
+  flex-basis: calc(50% - 15px);
+}
+
+[data-layout="side-right"] .thbit-trade-container {
+  grid-template-columns: 580px 250px auto;
+  grid-template-rows: 50px 500px 50px 500px auto;
+  grid-template-areas:
+    "chart_ksp"
+    "chart_ksp"
+    "chart_ksp"
+    "chart_ksp"
+    ;
+}
+
+
+
+[data-layout="side-right"] .thbit-trade-chart {
+  height: 600px;
+}
+
+[data-layout="side-left"] .thbit-trade-container {
+  grid-template-columns: 360px 1fr 320px 320px;
+  grid-template-rows: 50px 250px 220px 210px auto;
+  grid-template-areas:
+    "orderform header orderbook coinlist"
+    "orderform chart orderbook coinlist"
+    "orderform chart orderbook orderlist"
+    "orderasset chart orderbook orderlist"
+    "tradelist tradelist tradelist tradelist";
+}
+
+[data-layout="side-left"] .thbit-trade-chart {
+  height: 680px;
+}
+
+/* [data-layout="side-left"] .thbit-order-form .order-form {display:none;}
+[data-layout="side-right"] .thbit-order-form .order-form {display:none;} */
+
+[data-layout="side-left"] .thbit-order-form .order-form.on {
+  display: block;
+}
+[data-layout="side-right"] .thbit-order-form .order-form.on {
+  display: block;
+}
+
+.thbit-order-tab {
+  padding: 19px;
+}
+.thbit-order-tab .tab {
+  flex-grow: 1;
+  width: 100%;
+  line-height: 30px;
+  text-align: center;
+  background-color: #e7e7e7;
+}
+.thbit-order-tab .tab.on {
+  color: #fff;
+}
+.thbit-order-tab .tab.buy.on {
+  background-color: #03b37c;
+}
+.thbit-order-tab .tab.sell.on {
+  background-color: #ed3b18;
+}
+
+.thbit-order-tab {
+  display: none;
+}
+[data-layout="side-left"] .thbit-order-tab,
+[data-layout="side-right"] .thbit-order-tab {
+  display: flex;
+}
+
+[data-layout="bottom-side"] .thbit-order-tab {
+  display: flex;
+}
+[data-layout="bottom-center"] .thbit-order-tab {
+  display: flex;
+}
+[data-layout="side-left"] .thbit-order-tab {
+  display: flex;
+}
+
+.thbit-trade-header {
+  grid-area: header;
+  position: relative;
+  z-index: 99;
+  background-color: #fff;
+  border: 1px solid #e9ecf1;
+  margin: 0;
+}
+.thbit-trade-header .item-wrapper {
+  height: 40px;
+  display: flex;
+  gap: 2px 10px;
+  align-items: center;
+  padding: 0 20px;
+  overflow: hidden;
+}
+.thbit-trade-header .item {
+  flex-grow: 0;
+  display: block;
+  line-height: 1.2;
+  margin: 0;
+}
+.thbit-trade-header .item [data-sparkline] {
+  zoom: 0.6;
+  overflow: hidden;
+}
+.thbit-trade-header .item [data-sparkline] > div {
+  margin-bottom: -2px;
+}
+
+.thbit-trade-header .item-name {
+  font-size: 1.2em;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 800;
+}
+.thbit-trade-header .coin-list-trigger {
+  font-size: 2em;
+  margin-top: -3px;
+  display: none;
+  vertical-align: middle;
+}
+.thbit-trade-header .item-label {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 0.8em;
+  padding: 2px 9px;
+  line-height: 1;
+  margin-top: -2px;
+  margin-left: 5px;
+  border-radius: 9px;  
+}
+.thbit-trade-header .item-exp {
+  font-size: 0.9em;
+  display: block;
+  color: #667c99;
+}
+
+.thbit-trade-header .item-value {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 1em;
+  font-weight: 600;
+}
+.thbit-trade-header .item-value.main {
+  font-size: 1.1em;
+  font-weight: 700;
+}
+.thbit-trade-header .item-cate {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 2px;
+  font-size: 0.8em;
+}
+
+.thbit-trade-container .container {
+  position: relative;
+  background-color: #fff;
+  border: 1px solid #e9ecf1;
+  margin: 0;
+}
+.thbit-trade-container .container-wrap {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  overflow-y: auto;
+}
+.thbit-trade-container .container.orderbook {
+  grid-area: orderbook;
+}
+.thbit-trade-container .container.orderform {
+  grid-area: orderform;
+}
+.thbit-trade-container .container.chart {
+  grid-area: chart;
+}
+.thbit-trade-container .container.status {
+  grid-area: status;
+}
+.thbit-trade-container .container.tradelist {
+  grid-area: tradelist;
+}
+.thbit-trade-container .container.coinlist {
+  grid-area: coinlist;
+}
+.thbit-trade-container .container.orderlist {
+  grid-area: orderlist;
+}
+.thbit-trade-container .container.orderasset {
+  padding-top: 15px;
+  grid-area: orderasset;
+}
+.thbit-trade-container .container.orderarea {
+  padding-top: 10px;
+  grid-area: orderarea;
+}
+
+.thbit-trade-price-list {
+  position: relative;
+  height: calc(100% - 1px);
+}
+
+.thbit-trade-price-list[data-sort="sort-orderbook"] .list-group {
+  height: calc((100% - 120px) / 2);
+}
+.thbit-trade-price-list[data-sort="sort-orderbuy"] .list-group {
+  height: calc(100% - 30px - 40px);
+}
+.thbit-trade-price-list[data-sort="sort-ordersell"] .list-group {
+  height: calc(100% - 30px - 40px);
+}
+
+.thbit-trade-price-list.trade-price {
+  height: calc(100% - 30px - 55px);
+}
+.thbit-trade-price-list.trade-price .list-group {
+  height: calc(100% - 2px);
+}
+.thbit-trade-price-list.coin-list .list-group {
+  height: calc(100% - 38px - 30px);
+}
+
+.thbit-trade-container .container .thbit-trade-list {
+  height: 100%;
+}
+.thbit-trade-container .container .thbit-trade-table-wrapper {
+  /* height: calc(100% - 50px); */
+}
+.thbit-trade-container .container .thbit-trade-table-container {
+  height: 100%;
+}
+
+/* 레이아웃 구성 */
+
+.tradingview-widget-copyright {
+  display: none;
+}
+
+.tradingview-widget-container {
+  position: relative;
+}
+.tradingview-widget-container:before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+}
+
+.thbit-trade-price-list .list-group {
+  overflow: hidden;
+  overflow-y: auto;
+}
+.thbit-trade-price-list[data-sort="sort-orderbuy"] .list-group.list-sell {
+  display: none;
+}
+.thbit-trade-price-list[data-sort="sort-ordersell"] .list-group.list-buy {
+  display: none;
+}
+
+.thbit-trade-price-list .list-ctr {
+  position: relative;
+  height: 50px;
+  padding: 11px 20px;
+  border-bottom: 1px solid #dee8f1;
+  background-color: #f9fafd;
+}
+.thbit-trade-price-list .list-ctr .sort {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  width: 26px;
+  height: 26px;
+  margin-right: 6px;
+}
+.thbit-trade-price-list .list-ctr .sort:before {
+  position: absolute;
+  content: "";
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-size: 50% 50%;
+  background-position: center center;
+  background-color: #dee8f1;
+  border: 1px solid #dee8f1;
+  border-radius: 5px;
+}
+.thbit-trade-price-list .list-ctr .sort[data-sort="orderbook"]:before {
+  background-image: url(../images/icon/sort-orderbook.svg);
+}
+.thbit-trade-price-list .list-ctr .sort[data-sort="orderbuy"]:before {
+  background-image: url(../images/icon/sort-orderbuy.svg);
+}
+.thbit-trade-price-list .list-ctr .sort[data-sort="ordersell"]:before {
+  background-image: url(../images/icon/sort-ordersell.svg);
+}
+
+.thbit-trade-price-list[data-sort="sort-orderbook"] .list-ctr .sort[data-sort="orderbook"]:before {
+  background-color: #fff;
+  border-color: #6b5dd3;
+}
+.thbit-trade-price-list[data-sort="sort-orderbuy"] .list-ctr .sort[data-sort="orderbuy"]:before {
+  background-color: #fff;
+  border-color: #6b5dd3;
+}
+.thbit-trade-price-list[data-sort="sort-ordersell"] .list-ctr .sort[data-sort="ordersell"]:before {
+  background-color: #fff;
+  border-color: #6b5dd3;
+}
+
+.thbit-trade-price-list .list-time {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  width: 100%;
+  font-size: 0.9em;
+  text-align: center;
+}
+
+.thbit-trade-price-list .list-wrap {
+  display: table;
+  width: 100%;
+  padding-right: 3px;
+  table-layout: fixed;
+}
+.thbit-trade-price-list .list-wrap .list {
+  position: relative;
+  display: table-row;
+  padding: 0px 20px;
+}
+.thbit-trade-price-list .list-wrap .list .col {
+  cursor: pointer;
+  display: table-cell;
+  padding: 2px 0;
+  font-size: 0.9em;
+  font-weight: 500;
+  color: #555;
+  border-top: 1px solid transparent;
+}
+
+.thbit-trade-price-list.coin-list .list-wrap .list .col {
+  padding: 5px 0;
+}
+.thbit-trade-price-list.coin-list .list-group {
+  padding: 5px 0;
+}
+
+.thbit-trade-price-list.trade-price .list-wrap .list .col {
+  padding: 5px 0;
+}
+.thbit-trade-price-list.trade-price .list-group {
+  padding: 7px 0;
+}
+
+.thbit-trade-price-list .list-wrap .list .col.price {
+  width: 50%;
+  text-align: left;
+  padding-left: 30px;
+}
+.thbit-trade-price-list .list-wrap .list .col.amount {
+  width: 50%;
+  padding-right: 30px;
+  text-align: right !important;
+}
+
+.thbit-trade-price-list .list-wrap .list .col.time {
+  width: 20%;
+  text-align: center;
+  padding-left: 5px;
+}
+
+.thbit-trade-price-list .list-wrap .list .col.log {
+  width: 75%;
+  /* text-align: left; */
+  padding-left: 15px;
+}
+
+.thbit-trade-price-list.trade-price .list-wrap .list .col.price {
+  width: 33.3%;
+}
+.thbit-trade-price-list.trade-price .list-wrap .list .col.amount {
+  width: 20.3%;
+}
+.thbit-trade-price-list.trade-price .list-wrap .list .col.total {
+  width: 33.3%;
+}
+
+.thbit-trade-price-list.coin-list .list-wrap .list .col.pair {
+  width: 45%;
+  text-align: left;
+  padding-left: 20px;
+  white-space: nowrap;
+}
+
+.thbit-trade-price-list.coin-list .list-wrap:not(.list-header) .list .col.pair {
+  font-size: 0.9em;
+}
+.thbit-trade-price-list.coin-list .list-wrap .list .col.price {
+  width: 30%;
+  text-align: right;
+}
+.thbit-trade-price-list.coin-list .list-wrap .list .col.change {
+  width: 25%;
+  text-align: right;
+  padding-right: 20px;
+}
+
+.thbit-trade-price-list.coin-list .list-wrap .list .col.symbol {
+  font-size: 1em;
+  width: 45%;
+  text-align: left;
+  padding-left: 40px;
+  white-space: nowrap;
+}
+
+.thbit-trade-price-list.coin-list .list-wrap:not(.list-header) .list .col.symbol_col {
+  font-size: 1em;
+  width: 20%;
+  text-align: center;
+  padding-left: 5px;
+  white-space: nowrap;  
+}
+
+.thbit-trade-price-list.coin-list .list-wrap:not(.list-header) .list .col.symbol {
+  font-size: 1em;
+  width: 20%;
+  text-align: center;
+  white-space: nowrap;  
+}
+
+.thbit-trade-price-list.coin-list .list-wrap .list .col.kor_name_col {
+  font-size: 1em;
+  width: 80%;
+  text-align: center;
+}
+
+.thbit-trade-price-list.coin-list .list-wrap .list .col.kor_name {
+  font-size: 1em;
+  width: 80%;
+  text-align: left;
+  padding-left: 50px;  
+}
+
+.thbit-trade-price-list.coin-list .list-wrap .list .col.eng_name_col {
+  font-size: 1em;
+  width: 40%;
+  text-align: center;
+}
+
+.thbit-trade-price-list.coin-list .list-wrap .list .col.eng_name {
+  font-size: 1em;
+  width: 40%;
+  text-align: left;
+}
+
+.thbit-trade-price-list.coin-list .list-wrap .list .col > em {
+  font-style: normal;
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+.thbit-trade-price-list.coin-list .list-wrap .list .col [data-wish-coin] {
+  opacity: 0.3;
+  font-size: 0.9em;
+  position: relative;
+  z-index: 99;
+  padding: 10px;
+  margin: -10px;
+  margin-right: -5px;
+}
+.thbit-trade-price-list.coin-list .list-wrap .list .col [data-wish-coin]:hover {
+  opacity: 0.7;
+}
+.thbit-trade-price-list.coin-list .list-wrap .list .col .on[data-wish-coin] {
+  opacity: 1;
+  color: #6b5dd3;
+}
+
+.thbit-trade-price-list .list-wrap:not(.list-header) .list:hover .col {
+  background-color: #fafafa;
+}
+
+.thbit-trade-price-list .list-wrap.list-header .list .col {
+  height: 20px;
+  line-height: 20px;
+  font-weight: 600;
+  font-size: 0.8em;
+  border-bottom: 1px solid #dee8f1;
+}
+
+.thbit-trade-price-list .list-wrap.list-header .list.list-buy {
+  display: none;
+}
+.thbit-trade-price-list .list-wrap.list-header {
+  margin-bottom: 1px;
+}
+
+.thbit-trade-price-list .list-wrap .list .bar {
+  position: absolute;
+  z-index: -1;
+  left: 0;
+  top: 1px;
+  bottom: 1px;
+  opacity: 0.1;
+  transition: 0.1s;
+  -webkit-transition: 1s;
+  transition: 1s;
+}
+
+.thbit-trade-price-list:hover .main-tip {
+  visibility: hidden;
+}
+.thbit-trade-price-list .main-tip p {
+  text-align: left;
+}
+.thbit-trade-price-list .main-tip .label {
+  display: inline-block;
+  width: 56px;
+}
+
+.thbit-trade-price-list .list-sum {
+  position: relative;
+  height: 38px;
+  padding: 8px 20px;
+  margin: 2px 0;
+  background-color: #f9fafd;
+}
+.thbit-trade-price-list .list-sum .contract {
+  position: relative;
+  font-size: 1.1em;
+  font-weight: 500;
+  display: inline-block;
+  vertical-align: middle;
+  padding-right: 15px;
+  margin-right: 10px;
+  line-height: 2;
+}
+.thbit-trade-price-list .list-sum .contract:after {
+  position: absolute;
+  content: "";
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-size: 0.8em;
+}
+/* .thbit-trade-price-list .list-sum .contract.buy-color:after {
+  content: "\f062";
+}
+.thbit-trade-price-list .list-sum .contract.sell-color:after {
+  content: "\f063";
+} */
+.thbit-trade-price-list .list-sum .market {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 0.9em;
+}
+.thbit-trade-price-list .list-sum .more {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8em;
+  color: #667c99;
+}
+.thbit-trade-price-list[data-sort="sort-ordersell"] .list-sum {
+  border-bottom: 0;
+  margin-bottom: 0;
+}
+
+.thbit-trade-price-list .list-search {
+  height: 50px;
+  padding: 10px;
+  position: relative;
+  background-color: #f9fafd;
+  border-bottom: 1px solid #dee8f1;
+}
+.thbit-trade-price-list .list-search .inp {
+  display: block;
+  height: 30px;
+  width: 100%;
+  border: 0;
+  outline: none;
+  padding: 0 39px;
+  border: 1px solid #dee8f1;
+  border-radius: 12px;
+}
+.thbit-trade-price-list .list-search .inp:focus {
+  border-color: #6b5dd3;
+}
+.thbit-trade-price-list .list-search .label {
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  text-align: center;
+  opacity: 0.5;
+}
+.thbit-trade-price-list .list-search .clr {
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  text-align: center;
+}
+.thbit-trade-price-list .list-search .clr.on {
+  opacity: 1;
+}
+.thbit-trade-price-list .list-search .clr.on > i {
+  opacity: 0.5;
+}
+
+.thbit-trade-tab {
+  border-bottom: 1px solid #dee8f1;
+  height: 80px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0 19px;
+}
+.thbit-trade-tab.full .tab {
+  flex-grow: 1;
+}
+.thbit-trade-tab .tab {
+  position: relative;
+  white-space: nowrap;
+  cursor: pointer;
+  z-index: 1;
+  display: block;
+  overflow: hidden;
+  height: 50px;
+  line-height: 26px;
+  padding: 0 16px;
+  text-align: center;
+  align-items: center;
+  display: flex;
+  font-size: 1em;
+  font-weight: 700;
+  transition: 0.2s;
+}
+.thbit-trade-tab .tab > i {
+  opacity: 0.3;
+}
+.thbit-trade-tab .tab.on {
+  color: #fff;
+}
+.thbit-trade-tab .tab.on > i {
+  opacity: 1;
+}
+
+.thbit-trade-tab .tab:after {
+  position: absolute;
+  z-index: -1;
+  content: "";
+  left: 50%;
+  right: 50%;
+  height: 0;
+  border-radius: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #6b5dd3;
+  opacity: 0;
+  transition: inherit;
+}
+.thbit-trade-tab .tab.on:after {
+  left: 0;
+  right: 0;
+  height: 100%;
+  opacity: 1;
+}
+
+.thbit-index-tab {
+  position: relative;
+  z-index: 100;
+  border-bottom: 1px solid #dee8f1;
+  background-color: #f9fafd;
+  height: 50px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0 19px;
+}
+.thbit-index-tab.full .tab {
+  flex-grow: 1;
+}
+.thbit-index-tab .tab {
+  align-self: start;
+  position: relative;
+  white-space: nowrap;
+  cursor: pointer;
+  z-index: 1;
+  display: block;
+  height: 50px;
+  line-height: 50px;
+  padding: 0 22px;
+  text-align: center;
+  font-size: 1.1em;
+  font-weight: 700;
+  transition: 0.2s;
+}
+.thbit-index-tab .tab > i {
+  opacity: 0.3;
+}
+.thbit-index-tab .tab.on {
+  color: #6b5dd3;
+}
+.thbit-index-tab .tab.on > i {
+  opacity: 1;
+}
+
+.thbit-index-tab .tab:after {
+  position: absolute;
+  z-index: -1;
+  content: "";
+  left: -1px;
+  right: -1px;
+  bottom: 0;
+  top: 0;
+  background: #fff;
+  border-left: 1px solid #dee8f1;
+  border-right: 1px solid #dee8f1;
+  opacity: 0;
+  transition: inherit;
+}
+.thbit-index-tab .tab.on:after {
+  z-index: -1;
+  opacity: 1;
+}
+
+.thbit-index-tab .tab:before {
+  position: absolute;
+  z-index: 1;
+  content: "";
+  left: 50%;
+  right: 50%;
+  top: 0px;
+  background: #6b5dd3;
+  height: 4px;
+  transition: inherit;
+}
+.thbit-index-tab .tab.on:before {
+  left: -1px;
+  right: -1px;
+}
+
+.thbit-index-tab .tab:first-of-type {
+  margin-left: -19px;
+}
+.thbit-index-tab .tab:last-of-type {
+  margin-right: -19px;
+}
+
+.thbit-line-tab {
+  margin-top: -1px;
+  border-top: 1px solid #dee8f1;
+  border-bottom: 1px solid #dee8f1;
+  height: 33px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0 10px;
+}
+.thbit-line-tab > * {
+  margin: 0 13px;
+}
+.thbit-line-tab .tab {
+  position: relative;
+  cursor: pointer;
+  display: block;
+  font-size: 0.9em;
+  font-weight: 700;
+  height: 33px;
+  line-height: 33px;
+  transition: 0.2s;
+}
+
+.thbit-line-tab .tab:after {
+  position: absolute;
+  content: "";
+  width: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  height: 3px;
+  background: #6b5dd3;
+  transition: inherit;
+}
+.thbit-line-tab .tab.on {
+  color: #6b5dd3;
+}
+.thbit-line-tab .tab * {
+  color: #393939;
+}
+.thbit-line-tab .tab.on > i {
+  color: #6b5dd3;
+}
+.thbit-line-tab .tab.on:after {
+  width: 100%;
+}
+
+.thbit-trade-form {
+  padding-top: 20px;
+  padding-bottom: 10px;
+  z-index: 2;
+}
+
+.thbit-trade-form-dialog {
+  padding-left: 140px;
+  padding-bottom: 20px;
+  z-index: 2;
+}
+
+.thbit-trade-form .form-row {
+  position: relative;
+  margin-top: 15px;
+  padding: 0 22px;
+}
+
+.thbit-modal .thbit-trade-form {
+  padding-bottom: 29px;
+  padding-top: 10px;
+}
+.thbit-modal .thbit-trade-form .form-row {
+  padding: 0 29px;
+}
+
+.thbit-order-form {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  gap: 0;
+}
+.thbit-order-form.on {
+  display: flex !important;
+}
+.thbit-order-form .order-form {
+  flex-grow: 1;
+}
+
+.thbit-trade-form .form-fld {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  text-align: left;
+  white-space: nowrap;
+  position: relative;
+  height: 36px;
+  line-height: 1;
+  padding: 0 15px;
+  border: 1px solid #bac6d7;
+  border-radius: 5px;
+  transition: 0.5s;
+}
+.thbit-trade-form .form-fld.disabled {
+  background-color: #f9fafd;
+  border: 1px dashed #bac6d7;
+}
+
+.thbit-trade-form .form-fld:hover {
+  border-color: #6b5dd3;
+}
+.thbit-trade-form .form-fld:hover * {
+  border-color: #6b5dd3 !important;
+}
+
+.thbit-trade-form .form-fld .label {
+  position: absolute;
+  display: inline-block;
+  margin: 0;
+  flex-grow: 0;
+  z-index: 9;
+  left: 15px;
+  top: -9px;
+  transition: 0.2s;
+}
+.thbit-trade-form .form-fld .label:after {
+  position: absolute;
+  content: "";
+  z-index: -1;
+  left: -5px;
+  right: -5px;
+  height: 4px;
+  bottom: 0;
+  background-color: #fff;
+  transition: inherit;
+}
+
+.thbit-trade-form .form-fld .inp:placeholder-shown + .label {
+  top: 12px;
+  opacity: 0;
+}
+.thbit-trade-form .form-fld .inp:placeholder-shown + .label:after {
+  background-color: transparent;
+}
+
+.thbit-trade-form .form-row .label {
+  color: #999;
+  font-size: 0.9em;
+  background-color: #fff;
+}
+.thbit-trade-form .form-row > .label {
+  margin-left: 15px;
+}
+
+.thbit-trade-form .form-fld .inp {
+  order: -1;
+  flex-grow: 1;
+  margin-right: auto;
+  display: block;
+  width: 100%;
+  white-space: normal;
+  transition: inherit;
+}
+.thbit-trade-form .form-fld input.inp {
+  font-size: 0.9em;
+  font-weight: bold;
+  height: 100%;
+  outline: none !important;
+  border: 0;
+  background-color: transparent;
+}
+
+.thbit-trade-form .form-row .btn {
+  order: 99;
+  color: transparent;
+  flex-shrink: 0;
+  justify-self: flex-end;
+  margin-right: -15px;
+  position: relative;
+  z-index: 9;
+  height: 100%;
+  width: 50px;
+  border-radius: 0 5px 5px 0;
+  text-align: center;
+  border-left: 1px solid #bac6d7;
+  transition: 0;
+}
+.thbit-trade-form .form-row .btn .updn {
+  color: transparent;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 50%;
+  line-height: 50%;
+}
+.thbit-trade-form .form-row .btn .updn:last-child {
+  border-top: 1px solid #bac6d7;
+}
+
+.thbit-trade-form .form-row .btn:before {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-size: 1em;
+  color: #555;
+  transition: 0;
+}
+.thbit-trade-form .form-row .btn .updn:before {
+  zoom: 0.5;
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  color: #555;
+  transition: 0;
+}
+
+.thbit-trade-form .form-row .btn:hover:before {
+  color: #6b5dd3;
+}
+.thbit-trade-form .form-row .btn .updn:hover:before {
+  color: #6b5dd3;
+}
+
+.thbit-trade-form .form-row .ex {
+  font-size: 0.9em;
+}
+
+.thbit-trade-form .fa-solid {
+  color: #999;
+}
+
+.thbit-trade-form .pick {
+  position: relative;
+  display: inline-block;
+  height: 23px;
+  line-height: 23px;
+  padding: 0 12px;
+  font-size: 0.9em;
+  text-align: center;
+  border: 1px solid #bac6d7;
+  border-radius: 4px;
+}
+.thbit-trade-form .pick > i {
+  margin-left: 5px;
+}
+.thbit-trade-form .pick:first-of-type {
+  margin-left: 0;
+}
+
+.thbit-trade-form .ex-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.thbit-trade-form .chkwrap {
+  position: relative;
+  z-index: 999;
+  display: inline-block;
+  vertical-align: middle;
+}
+.thbit-trade-form .chkwrap > input {
+  position: absolute;
+  opacity: 0;
+}
+.thbit-trade-form .chkwrap > label {
+  display: inline-block;
+  position: relative;
+  padding-left: 22px;
+  transition: 0.5s;
+}
+.thbit-trade-form .chkwrap > label:before {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border: 1px solid #bac6d7;
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-size: 0.9em;
+  content: "";
+  transition: 0.5s;
+}
+.thbit-trade-form .chkwrap > input[type="checkbox"] + label:before {
+  border-radius: 2px;
+}
+.thbit-trade-form .chkwrap > input[type="radio"] + label:before {
+  border-radius: 100%;
+}
+.thbit-trade-form .chkwrap > input:checked + label:before {
+  background-color: #6b5dd3;
+  border-color: #6b5dd3;
+  color: #fff;
+  content: "\f00c";
+}
+
+.thbit-trade-section .dropdown-wrap {
+  position: relative;
+  display: inline-block;
+}
+.thbit-trade-section .dropdown-wrap:hover {
+  z-index: 9999;
+}
+.thbit-trade-section .dropdown-wrap .trigger {
+  cursor: pointer;
+}
+.thbit-trade-section .dropdown-wrap .dropdown {
+  display: none;
+  position: absolute;
+  z-index: 999;
+  left: 0;
+  min-width: 100%;
+  background-color: #fff;
+  box-shadow: 0 0 10px rgb(63, 119, 205, 0.2);
+  border-radius: 5px;
+  overflow-y: auto;
+  max-height: 200px;
+  padding: 9px 10px;
+  line-height: 1;
+}
+.thbit-trade-section .dropdown-wrap .dropdown .item {
+  display: block;
+  padding: 6px 15px;
+  margin: 5px 0;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+.thbit-trade-section .dropdown-wrap .dropdown .item:hover {
+  background-color: #f7f7f7;
+  border-radius: 4px;
+}
+.thbit-trade-section .dropdown-wrap .dropdown .item.on {
+  background-color: #f7f7f7;
+  border-radius: 4px;
+  color: #6b5dd3;
+}
+
+.thbit-trade-section .dropdown-wrap .dropdown.ri {
+  left: auto;
+  right: 0;
+}
+
+.ico-reload:before {
+  content: "\f2f9";
+}
+.ico-up:before {
+  content: "\f077";
+}
+.ico-dn:before {
+  content: "\f078";
+}
+.ico-search:before {
+  content: "\f002";
+}
+
+.thbit-header .header-button {
+  width: 120px;
+  position: relative;
+  text-align: center;
+  /* display: grid; */
+  /* grid-template-columns: repeat(auto-fit, minmax(10%, auto)); */
+  column-gap: 10px;
+}
+
+.thbit-header .header-button .button {
+  font-size: 0.9em;
+  font-weight: 400;
+  border-radius: 5px;
+  transition: 0.5s;
+  height: 30px;
+  width: 120px;
+  border: 1px solid #bac6d7;
+}
+
+.thbit-trade-form .form-button {
+  position: relative;
+  text-align: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10%, auto));
+  column-gap: 10px;
+}
+.thbit-trade-form .form-button .button {
+  padding: 10px 0;
+  font-size: 1.2em;
+  font-weight: 800;
+  border-radius: 5px;
+  transition: 0.5s;
+  border: 1px solid #bac6d7;
+}
+.thbit-trade-form .form-button .button:hover {
+  box-shadow: 0 7px 7px rgb(0, 0, 0, 0.08);
+}
+
+.thbit-trade-form .form-button .button > em {
+  font-style: normal;
+  font-weight: normal;
+  font-size: 0.9em;
+}
+.thbit-trade-form .form-button .button .ex {
+  display: block;
+  position: relative;
+  font-size: 0.7em;
+  padding-top: 6px;
+  margin-top: 6px;
+}
+.thbit-trade-form .form-button .button .ex:before {
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  top: 0;
+  height: 1px;
+  content: "";
+  background-color: #fff;
+  opacity: 0.2;
+}
+
+.thbit-trade-asset-info {
+  padding-top: 5px;
+  position: relative;
+  color: #555;
+
+}
+.thbit-trade-asset-info .label {
+  flex-grow: 1;
+  opacity: 0.9;
+}
+.thbit-trade-asset-info .asset-item {
+  padding: 0px 15px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 0.9em;
+}
+
+.thbit-trade-asset-info .item {
+  flex-grow: 1;
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 7px 0;
+}
+
+.thbit-trade-asset-status {
+  position: relative;
+  color: #555;
+  padding-top: 15px;
+}
+
+.thbit-trade-asset-status .item {
+  flex-grow: 1;
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 7px 0;
+}
+
+.thbit-trade-asset-status .asset-status {
+  padding-bottom: 10px;
+  padding-left: 30px;
+  padding-right: 30px;
+  display: flex;
+  gap: 0 30px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 0.9em;
+}
+
+.thbit-trade-asset-status .label {
+  flex-grow: 1;
+  opacity: 0.7;
+}
+
+.thbit-trade-asset-status .button {
+  font-size: 0.9em;
+  font-weight: 400;
+  border-radius: 5px;
+  transition: 0.5s;
+  height: 30px;
+  width: 85%;
+  border: 1px solid #bac6d7;
+  display: block;
+  margin: auto;
+  margin-top: 20px;
+  text-align: center;  
+}
+
+.thbit-trade-asset-status .form-fld {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  text-align: left;
+  white-space: nowrap;
+  position: relative;
+  height: 36px;
+  line-height: 1;
+  margin-top: 35px;
+  padding: 0 15px;
+  width: 85%;
+  border: 1px solid #bac6d7;
+  border-radius: 5px;
+  transition: 0.5s;
+}
+.thbit-trade-asset-status .form-fld.disabled {
+  background-color: #f9fafd;
+  border: 1px dashed #bac6d7;
+}
+
+.thbit-trade-asset-status .form-fld:hover {
+  border-color: #6b5dd3;
+}
+.thbit-trade-asset-status .form-fld:hover * {
+  border-color: #6b5dd3 !important;
+}
+
+.thbit-trade-asset-status .form-fld .label {
+  position: absolute;
+  display: inline-block;
+  margin: 0;
+  flex-grow: 0;
+  z-index: 9;
+  left: 2px;
+  top: -17px;
+  transition: 0.2s;
+}
+.thbit-trade-asset-status .form-fld .label:after {
+  position: absolute;
+  content: "";
+  z-index: -1;
+  left: -5px;
+  right: -5px;
+  height: 4px;
+  bottom: 0;
+  background-color: #fff;
+  transition: inherit;
+}
+
+.thbit-trade-asset-status .form-fld .inp:placeholder-shown + .label {
+  top: 12px;
+  opacity: 0;
+}
+.thbit-trade-asset-status .form-fld .inp:placeholder-shown + .label:after {
+  background-color: transparent;
+}
+
+.thbit-trade-asset-status .form-row .label {
+  color: #999;
+  font-size: 0.9em;
+  background-color: #fff;
+}
+.thbit-trade-asset-status .form-row > .label {
+  margin-left: 15px;
+}
+
+.thbit-trade-asset-status .form-fld .inp {
+  order: -1;
+  flex-grow: 1;
+  margin-right: auto;
+  display: block;
+  width: 100%;
+  white-space: normal;
+  transition: inherit;
+}
+.thbit-trade-asset-status .form-fld input.inp {
+  font-size: 0.9em;
+  font-weight: bold;
+  height: 100%;
+  outline: none !important;
+  border: 0;
+  background-color: transparent;
+}
+
+.thbit-trade-asset-status .form-row .btn {
+  order: 99;
+  color: transparent;
+  flex-shrink: 0;
+  justify-self: flex-end;
+  margin-right: -15px;
+  position: relative;
+  z-index: 9;
+  height: 100%;
+  width: 50px;
+  border-radius: 0 5px 5px 0;
+  text-align: center;
+  border-left: 1px solid #bac6d7;
+  transition: 0;
+}
+.thbit-trade-asset-status .form-row .btn .updn {
+  color: transparent;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 50%;
+  line-height: 50%;
+}
+.thbit-trade-asset-status .form-row .btn .updn:last-child {
+  border-top: 1px solid #bac6d7;
+}
+
+.thbit-trade-asset-status .form-row .btn:before {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-size: 1em;
+  color: #555;
+  transition: 0;
+}
+.thbit-trade-asset-status .form-row .btn .updn:before {
+  zoom: 0.5;
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  color: #555;
+  transition: 0;
+}
+
+
+.thbit-trade-asset {
+  position: relative;
+  color: #555;
+  padding-bottom: 15px;
+}
+
+
+.thbit-trade-asset .asset-title {
+  display: flex;
+  align-items: center;
+  padding: 5px 19px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #dee8f1;
+  font-size: 1.1em;
+}
+.thbit-trade-asset .asset-title:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.thbit-trade-asset .asset-title .title {
+  flex-grow: 1;
+}
+
+.thbit-trade-asset .asset-item {
+  padding: 0 19px;
+  display: flex;
+  gap: 0 30px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 0.9em;
+}
+
+.thbit-trade-asset .item {
+  flex-grow: 1;
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 7px 0;
+}
+
+
+
+.thbit-trade-asset .label {
+  flex-grow: 1;
+  opacity: 0.7;
+}
+
+.thbit-trade-asset .asset-btn {
+  padding: 0 19px;
+  display: flex;
+  gap: 0 30px;
+  align-items: center;
+  font-size: 0.9em;
+}
+.thbit-trade-asset .btn {
+  flex-grow: 1;
+  display: block;
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  background-color: #e7e7e7;
+  border-radius: 6px;
+  margin: 10px 0;
+}
+
+.thbit-trade-asset u {
+  text-decoration-style: dashed;
+  text-underline-offset: 4px;
+}
+
+.thbit-trade-order-range-slider {
+  position: relative;
+  z-index: 999;
+  margin: 0 12px;
+  margin-top: 15px;
+}
+
+.thbit-trade-order-range-slider .range-ruler {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 44px;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer {
+  position: absolute;
+  cursor: pointer;
+  top: -9px;
+  padding-top: 15px;
+  display: block;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.7em;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="0"] {
+  left: 0;
+  transform: none;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="10"] {
+  left: 10%;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="20"] {
+  left: 20%;
+  margin-left: 4px;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="25"] {
+  left: 25%;
+  margin-left: 4px;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="30"] {
+  left: 30%;
+  margin-left: 4px;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="35"] {
+  left: 35%;
+  margin-left: 4px;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="50"] {
+  left: 50%;
+  margin-left: 2px;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="70"] {
+  left: 70%;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="75"] {
+  left: 75%;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="100"] {
+  left: 100%;
+  margin-left: -3px;
+}
+
+.thbit-trade-order-range-slider .range-ruler .pointer:before {
+  position: absolute;
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #e7e7e7;
+}
+.thbit-trade-order-range-slider .range-ruler .pointer.on:before {
+  background-color: #6b5dd3;
+}
+/*
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="0"]:before {left:2px;transform:none;}
+.thbit-trade-order-range-slider .range-ruler .pointer[data-range="100"]:before {left:100%;margin-left:-8px;transform:none;}
+*/
+
+.thbit-trade-order-range-slider .range-pointer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10%, auto));
+  text-align: center;
+  border: 1px solid #bac6d7;
+  border-radius: 4px;
+  margin-top: 12px;
+}
+.thbit-trade-order-range-slider .range-pointer .pointer {
+  display: block;
+  padding: 5px 0;
+  font-size: 0.8em;
+  border-left: 1px solid #bac6d7;
+}
+.thbit-trade-order-range-slider .range-pointer .pointer:first-child {
+  border: 0;
+}
+
+.thbit-range-slider {
+  position: relative;
+  z-index: 9;
+  display: block;
+  width: 100%;
+  -webkit-appearance: none;
+  -moz-apperance: none;
+  border-radius: 6px;
+  height: 4px;
+  background-color: #e7e7e7;
+}
+.thbit-range-slider::-moz-range-track {
+  border: none;
+  background: none;
+  outline: none;
+}
+.thbit-range-slider:focus {
+  outline: none;
+  border: none;
+}
+.thbit-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  background-color: #fff;
+  border: 4px solid #6b5dd3;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.thbit-range-slider::-moz-range-thumb {
+  moz-appearance: none !important;
+  background-color: #fff;
+  border: 4px solid #6b5dd3;
+  height: 13px;
+  width: 13px;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.thbit-range-slider-wrap.thbit-tooltip .tip {
+  left: 0;
+  transform: none;
+  margin-bottom: 12px;
+  font-size: 0.7em;
+  padding: 2px 6px;
+}
+
+.thbit-trade-inlineform {
+  position: relative;
+  z-index: 99;
+  height: 29px;
+  line-height: 26px;
+  white-space: nowrap;
+  overflow-y: scroll;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.thbit-trade-inlineform::-webkit-scrollbar {
+  display: none;
+}
+.thbit-trade-inlineform > * {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 5px;
+}
+
+.thbit-trade-inlineform .fld {
+  position: relative;
+  border: 1px solid #e0e2e8;
+  background-color: #fff;
+  border-radius: 12px;
+  height: 100%;
+  padding: 0 10px;
+}
+.thbit-trade-inlineform .fld .inp {
+  outline: none !important;
+  border: 0;
+  background-color: transparent;
+  width: 100%;
+  height: 100%;
+  min-width: 60px;
+}
+.thbit-trade-inlineform .fld .inp.date {
+  width: 76px;
+  text-align: center;
+}
+
+.thbit-trade-inlineform .btn {
+  padding: 0 10px;
+  height: 100%;
+  border-radius: 12px;
+  background-color: #6b5dd3;
+  color: #fff;
+  width: 80px;
+}
+.thbit-trade-inlineform .label {
+  font-size: 0.9em;
+}
+
+.thbit-trade-table-wrapper .thbit-trade-inlineform {
+  position: absolute;
+  right: 10px;
+  top: -40px;
+  z-index: 999999999;
+}
+
+.thbit-trade-list {
+  position: relative;
+}
+
+.thbit-trade-table-wrapper {
+  position: relative;
+}
+.thbit-trade-table-container {
+  position: relative;
+  overflow: auto;
+  margin-top: -1px;
+}
+
+.thbit-trade-table {
+  position: relative;
+  min-width: 100%;
+  table-layout: fixed;
+  white-space: nowrap;
+}
+.thbit-trade-table > thead {
+  position: relative;
+  z-index: 2;
+}
+.thbit-trade-table > thead > tr > th {
+  position: relative;
+  z-index: 2;
+  padding: 9px 11px;
+  font-weight: normal;
+  border-top: 1px solid #e0e2e8;
+  border-bottom: 1px solid #e0e2e8;
+  background-color: #fff;
+  font-size: 0.9em;
+  height: 49px;
+}
+.thbit-trade-table > thead > tr > th > em {
+  font-style: normal;
+  font-size: 0.8em;
+  font-weight: 400;
+  margin-left: 3px;
+}
+.thbit-trade-table > tbody > tr > td {
+  padding: 13px 11px;
+  border-top: 0 solid #e0e2e8;
+  text-align: center;
+  word-break: break-all;
+  font-size: 0.9em;
+}
+.thbit-trade-table > tbody > tr > td:first-child {
+  word-break: keep-all;
+}
+.thbit-trade-table > tbody > tr > td:last-child {
+  word-break: keep-all;
+}
+.thbit-trade-table > tbody > tr:nth-child(even) > td {
+  background-color: #f9fafd;
+}
+.thbit-trade-table .left {
+  text-align: left;
+}
+
+.thbit-trade-table .btn {
+  display: inline-block;
+  width: 100%;
+  white-space: nowrap;
+  padding: 3px 7px;
+  vertical-align: middle;
+  font-size: 0.9em;
+  font-weight: 700;
+  border-radius: 39px;
+  border: 1px solid #bac6d7;
+}
+
+.thbit-trade-table .sticky {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+}
+.thbit-trade-table th.sticky {
+  background-color: #fff;
+}
+.thbit-trade-table td.sticky {
+  background-color: #fff;
+}
+
+.thbit-trade-table .sticky.head {
+  top: 0;
+  z-index: 2;
+}
+.thbit-trade-table .sticky.col-right {
+  right: 0;
+}
+
+.thbit-trade-table > tbody > tr:hover > td {
+  background: #eef2f9;
+}
+
+.thbit-trade-table .thbit-ico-coin {
+  width: 18px;
+  height: 18px;
+}
+
+.thbit-order-trigger {
+  display: none;
+}
+.thbit-order-trigger .title {
+  display: none;
+}
+
+.thbit-trade-container .container.orderbook .thbit-trade-asset {
+  display: none;
+}
+.thbit-trade-container .container.mobiletab {
+  display: none;
+}
+
+
+.thbit-trade-tab-ov {
+  border-bottom: 1px solid #dee8f1;
+  height: 120px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 5px;
+}
+.thbit-trade-tab-ov.full .tab {
+  flex-grow: 1;
+}
+.thbit-trade-tab-ov .tab {
+  position: relative;
+  white-space: nowrap;
+  cursor: pointer;
+  z-index: 1;
+  display: block;
+  overflow: hidden;
+  height: 46px;
+  line-height: 46px;
+  padding: 0 25px;
+  text-align: center;
+  font-size: 1em;
+  font-weight: 700;
+  transition: 0.2s;
+}
+.thbit-trade-tab-ov .tab > i {
+  opacity: 0.3;
+}
+.thbit-trade-tab-ov .tab.on {
+  color: #fff;
+}
+.thbit-trade-tab-ov .tab.on > i {
+  opacity: 1;
+}
+
+.thbit-trade-tab-ov .tab:after {
+  position: absolute;
+  z-index: -1;
+  content: "";
+  left: 50%;
+  right: 50%;
+  height: 0;
+  border-radius: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #6b5dd3;
+  opacity: 0;
+  transition: inherit;
+}
+.thbit-trade-tab-ov .tab.on:after {
+  left: 0;
+  right: 0;
+  height: 100%;
+  opacity: 1;
+}
+
+
+.thbit-trade-tab-replace {
+  border-bottom: 1px solid #dee8f1;
+  height: 50px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  
+}
+.thbit-trade-tab-replace.full .tab {
+  flex-grow: 1;
+}
+.thbit-trade-tab-replace .tab {
+  position: relative;
+  white-space: nowrap;
+  cursor: pointer;
+  z-index: 1;
+  display: block;
+  overflow: hidden;
+  height: 26px;
+  line-height: 26px;
+  padding: 0 16px;
+  text-align: center;
+  font-size: 1em;
+  font-weight: 700;
+  transition: 0.2s;
+}
+.thbit-trade-tab-replace .tab > i {
+  opacity: 0.3;
+}
+.thbit-trade-tab-replace .tab.on {
+  color: #fff;
+}
+.thbit-trade-tab-replace .tab.on > i {
+  opacity: 1;
+}
+
+.thbit-trade-tab-replace .tab:after {
+  position: absolute;
+  z-index: -1;
+  content: "";
+  left: 50%;
+  right: 50%;
+  height: 0;
+  border-radius: 39px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #ed3b18;
+  opacity: 0;
+  transition: inherit;
+}
+.thbit-trade-tab-replace .tab.on:after {
+  left: 0;
+  right: 0;
+  height: 100%;
+  opacity: 1;
+}

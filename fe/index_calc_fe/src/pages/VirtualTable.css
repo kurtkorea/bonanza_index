@@ -1,0 +1,66 @@
+/* VirtualTable 스타일 */
+
+/* 테이블 헤더와 바디의 셀 너비 동기화 */
+.virtual-table-container .ant-table-thead > tr > th {
+  padding: 6px 8px !important;
+  box-sizing: border-box;
+}
+
+/* Summary 셀 padding 동기화 */
+.virtual-table-container .ant-table-summary > tr > td {
+  padding: 6px 8px !important;
+  box-sizing: border-box;
+}
+
+.virtual-table-container .ant-table-tbody {
+  overflow: hidden !important;
+}
+
+/* 가상화된 행 스타일 */
+.virtual-table-row {
+  background: white;
+  transition: background 0.15s;
+  min-height: 40px;
+  height: auto;
+}
+
+.virtual-table-row:hover {
+  background: #fafafa;
+}
+
+/* 셀 내용 2줄 제한 */
+.virtual-table-row > div {
+  line-height: 1.5;
+  max-height: 48px; /* 1.5 * 16px * 2줄 = 48px */
+}
+
+/* 스크롤바 스타일 */
+.virtual-table-container .ant-table-body {
+  overflow: visible !important;
+}
+
+/* 테이블 헤더 고정 */
+.virtual-table-container .ant-table-thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+}
+
+/* Summary 고정 (상단) */
+.virtual-table-container .ant-table-summary {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+  background: white;
+}
+
+/* 로딩 상태 */
+.virtual-table-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #999;
+}
+
