@@ -2,7 +2,6 @@ node_modules/
 node_modules
 package-lock.json
 .vscode/launch.json
-/public
 /public_prod
 /public/*.js
 /public/*.css
