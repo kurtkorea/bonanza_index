@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticker-storage-worker
+  namespace: bonanza-index
+  labels:
+    app: ticker-storage-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ticker-storage-worker
+  template:
+    metadata:
+      labels:
+        app: ticker-storage-worker
+    spec:
+      nodeSelector:
+        app-server: "true"
+      containers:
+      - name: ticker-storage-worker
+        image: bonanza-index/ticker-storage-worker:latest
+        imagePullPolicy: Always
+        env:
+        - name: DEPTH
+          value: "15"
+        - name: TICK_MS
+          value: "1000"
+        - name: SYMBOL
+          value: "KRW-BTC"
+        - name: IS_BATCH
+          value: "true"
+        - name: IS_SAVE_DB
+          value: "true"
+        - name: ZMQ_PUSH_HOST
+          value: "tcp://ticker-collector-service:5657"
+        envFrom:
+        - configMapRef:
+            name: bonanza-common-config
+        - secretRef:
+            name: bonanza-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "pgrep -f 'node.*ticker-storage-worker' || exit 1"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+

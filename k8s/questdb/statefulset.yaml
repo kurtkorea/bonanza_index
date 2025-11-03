@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: questdb
+  namespace: bonanza-index
+  labels:
+    app: questdb
+spec:
+  serviceName: questdb-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: questdb
+  template:
+    metadata:
+      labels:
+        app: questdb
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: questdb
+        image: questdb/questdb:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8812
+          name: pgwire
+          protocol: TCP
+        - containerPort: 9000
+          name: rest
+          protocol: TCP
+        - containerPort: 9009
+          name: ilp
+          protocol: TCP
+        env:
+        - name: QDB_PG_WIRE_BIND
+          value: "0.0.0.0:8812"
+        - name: QDB_HTTP_BIND
+          value: "0.0.0.0:9000"
+        - name: QDB_ILP_BIND
+          value: "0.0.0.0:9009"
+        volumeMounts:
+        - name: questdb-data
+          mountPath: /var/lib/questdb
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 9000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: questdb-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "local-path"
+      resources:
+        requests:
+          storage: 100Gi
+

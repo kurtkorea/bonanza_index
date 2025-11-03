@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: orderbook-storage-worker-service
+  namespace: bonanza-index
+  labels:
+    app: orderbook-storage-worker
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5557
+    targetPort: 5557
+    protocol: TCP
+    name: zmq-pull
+  selector:
+    app: orderbook-storage-worker
+

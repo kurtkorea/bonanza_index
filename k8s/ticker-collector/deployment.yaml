@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticker-collector
+  namespace: bonanza-index
+  labels:
+    app: ticker-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ticker-collector
+  template:
+    metadata:
+      labels:
+        app: ticker-collector
+    spec:
+      nodeSelector:
+        app-server: "true"
+      containers:
+      - name: ticker-collector
+        image: bonanza-index/ticker-collector:latest
+        imagePullPolicy: Always
+        env:
+        - name: DEPTH
+          value: "15"
+        - name: TICK_MS
+          value: "1000"
+        - name: SYMBOL
+          value: "KRW-BTC"
+        - name: ZMQ_PUSH_PORT
+          value: "5657"
+        - name: ZMQ_PUB_PORT
+          value: "6657"
+        - name: PUSH_QUEUE_SIZE
+          value: "50000"
+        - name: PUB_QUEUE_SIZE
+          value: "50000"
+        - name: IS_RAW_DATA
+          value: "true"
+        - name: TELEGRAM_SERVICE_URL
+          value: "http://telegram-log-service:3109/v1/telegram"
+        envFrom:
+        - configMapRef:
+            name: bonanza-common-config
+        - secretRef:
+            name: bonanza-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "pgrep -f 'node.*ticker-collector' || exit 1"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+

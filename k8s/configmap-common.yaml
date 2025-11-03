@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bonanza-common-config
+  namespace: bonanza-index
+data:
+  # Redis 설정
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  REDIS_STORE: "SYMBOL"
+  
+  # QuestDB 설정
+  QDB_HOST: "questdb-service"
+  QDB_PORT: "8812"
+  QDB_DB: "qdb"
+  QDB_USER: "admin"
+  QDB_ILP_PORT: "9009"
+  QDB_LOG: "false"
+  
+  # MariaDB 설정
+  DB_DIALECT: "mariadb"
+  DB_HOST: "mariadb-service"
+  DB_PORT: "23306"
+  DB_SCHEME: "margin"
+  
+  # 공통 설정
+  LOG_LEVEL: "info"
+  NODE_ENV: "production"
+  
+  # CORS 설정
+  CORS_ORIGIN: "*"
+

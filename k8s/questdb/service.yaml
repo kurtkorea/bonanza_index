@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: questdb-service
+  namespace: bonanza-index
+  labels:
+    app: questdb
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8812
+    targetPort: 8812
+    protocol: TCP
+    name: pgwire
+  - port: 9000
+    targetPort: 9000
+    protocol: TCP
+    name: rest
+  - port: 9009
+    targetPort: 9009
+    protocol: TCP
+    name: ilp
+  selector:
+    app: questdb
+

@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: index-calculator
+  namespace: bonanza-index
+  labels:
+    app: index-calculator
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: index-calculator
+  template:
+    metadata:
+      labels:
+        app: index-calculator
+    spec:
+      nodeSelector:
+        app-server: "true"
+      containers:
+      - name: index-calculator
+        image: bonanza-index/index-calculator:latest
+        imagePullPolicy: Always
+        env:
+        - name: ZMQ_SUB_DEPTH_HOST
+          value: "tcp://orderbook-collector-service:6557"
+        - name: ZMQ_SUB_TICKER_HOST
+          value: "tcp://ticker-collector-service:6657"
+        - name: ZMQ_PUB_PORT
+          value: "6757"
+        - name: DEPTH
+          value: "15"
+        - name: TICK_MS
+          value: "1000"
+        - name: SYMBOL
+          value: "KRW-BTC"
+        - name: SUB_QUEUE_SIZE
+          value: "50000"
+        - name: SUB_TOPICS
+          value: "KRW-BTC"
+        - name: STALE_MS
+          value: "30000"
+        - name: PROV_MAX_MS
+          value: "60000"
+        - name: MIN_SOURCES
+          value: "2"
+        envFrom:
+        - configMapRef:
+            name: bonanza-common-config
+        - secretRef:
+            name: bonanza-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "pgrep -f 'node.*index-calculator' || exit 1"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+

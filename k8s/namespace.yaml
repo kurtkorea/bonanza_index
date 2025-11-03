@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bonanza-index
+  labels:
+    name: bonanza-index
+    app: bonanza-index
+

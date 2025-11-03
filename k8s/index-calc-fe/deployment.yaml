@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: index-calc-fe
+  namespace: bonanza-index
+  labels:
+    app: index-calc-fe
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: index-calc-fe
+  template:
+    metadata:
+      labels:
+        app: index-calc-fe
+    spec:
+      nodeSelector:
+        app-server: "true"
+      containers:
+      - name: index-calc-fe
+        image: bonanza-index/index-calc-fe:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        env:
+        - name: SERVICE
+          value: "http://index-endpoint-service:3009"
+        - name: SERVICENAME
+          value: "TWDMA"
+        - name: IS_DEBUG
+          value: "false"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
