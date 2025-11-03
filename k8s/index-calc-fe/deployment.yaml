@@ -20,7 +20,7 @@ spec:
       containers:
       - name: index-calc-fe
         image: bonanza-index/index-calc-fe:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
           name: http

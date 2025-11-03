@@ -20,7 +20,7 @@ spec:
       containers:
       - name: index-calculator
         image: bonanza-index/index-calculator:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: ZMQ_SUB_DEPTH_HOST
           value: "tcp://orderbook-collector-service:6557"

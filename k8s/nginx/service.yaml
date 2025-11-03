@@ -6,12 +6,18 @@ metadata:
   labels:
     app: nginx
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
   - port: 7600
-    targetPort: 80
+    targetPort: 7600
+    nodePort: 30076
     protocol: TCP
     name: http
+  - port: 9000
+    targetPort: 9000
+    nodePort: 30090
+    protocol: TCP
+    name: questdb
   selector:
     app: nginx
 

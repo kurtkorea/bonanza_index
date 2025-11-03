@@ -20,7 +20,7 @@ spec:
       containers:
       - name: orderbook-storage-worker
         image: bonanza-index/orderbook-storage-worker:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: DEPTH
           value: "15"

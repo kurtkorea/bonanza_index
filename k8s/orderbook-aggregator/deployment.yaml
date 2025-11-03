@@ -20,7 +20,7 @@ spec:
       containers:
       - name: orderbook-aggregator
         image: bonanza-index/orderbook-aggregator:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: DEPTH
           value: "15"

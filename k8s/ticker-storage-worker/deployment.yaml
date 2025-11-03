@@ -20,7 +20,7 @@ spec:
       containers:
       - name: ticker-storage-worker
         image: bonanza-index/ticker-storage-worker:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: DEPTH
           value: "15"

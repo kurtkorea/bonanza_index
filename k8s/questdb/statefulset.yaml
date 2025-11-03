@@ -22,10 +22,18 @@ spec:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists
         effect: NoSchedule
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsNonRoot: true
       containers:
       - name: questdb
         image: questdb/questdb:latest
         imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 1000
+          runAsNonRoot: true
         ports:
         - containerPort: 8812
           name: pgwire
@@ -43,6 +51,8 @@ spec:
           value: "0.0.0.0:9000"
         - name: QDB_ILP_BIND
           value: "0.0.0.0:9009"
+        - name: QDB_ROOT
+          value: "/var/lib/questdb"
         volumeMounts:
         - name: questdb-data
           mountPath: /var/lib/questdb
@@ -57,17 +67,18 @@ spec:
           httpGet:
             path: /
             port: 9000
-          initialDelaySeconds: 60
+          initialDelaySeconds: 120
           periodSeconds: 30
           timeoutSeconds: 10
-          failureThreshold: 3
+          failureThreshold: 5
         readinessProbe:
-          tcpSocket:
+          httpGet:
+            path: /
             port: 9000
           initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 5
-          failureThreshold: 5
+          failureThreshold: 10
   volumeClaimTemplates:
   - metadata:
       name: questdb-data
@@ -76,5 +87,5 @@ spec:
       storageClassName: "local-path"
       resources:
         requests:
-          storage: 100Gi
+          storage: 200Gi
 

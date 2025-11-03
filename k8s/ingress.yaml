@@ -4,12 +4,12 @@ metadata:
   name: bonanza-index-ingress
   namespace: bonanza-index
   annotations:
-    kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/cors-allow-origin: "*"
     nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
     nginx.ingress.kubernetes.io/cors-allow-headers: "Origin, X-Requested-With, Content-Type, Accept, Authorization"
 spec:
+  ingressClassName: nginx
   rules:
   - host: api.bonanza-index.local
     http:
@@ -31,4 +31,14 @@ spec:
             name: index-calc-fe-service
             port:
               number: 80
+  - host: questdb.bonanza-index.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: questdb-service
+            port:
+              number: 9000
 

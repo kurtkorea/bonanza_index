@@ -11,8 +11,31 @@ data:
         server index-endpoint-service.bonanza-index.svc.cluster.local:3009;
     }
     
+    upstream questdb {
+        server questdb-service.bonanza-index.svc.cluster.local:9000;
+    }
+    
+    # QuestDB 웹 콘솔 서버 (9000 포트)
     server {
-        listen 80;
+        listen 9000;
+        server_name _;
+        
+        # QuestDB 프록시
+        location / {
+            proxy_pass http://questdb;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 300;
+            proxy_connect_timeout 300;
+        }
+    }
+    
+    # 기존 애플리케이션 서버 (7600 포트)
+    server {
+        listen 7600;
         server_name _;
         
         # API 프록시
@@ -54,6 +77,13 @@ data:
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_read_timeout 86400;
+        }
+        
+        # Health check 엔드포인트 (backend에 의존하지 않음)
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
         }
         
         # 기본 프록시 (다른 경로)
