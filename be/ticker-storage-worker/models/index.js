@@ -3,7 +3,7 @@ const Sequelize = require("sequelize");
 const db = {};
 
 const sequelize = new Sequelize("qdb", "admin", "quest", {
-	host: "121.88.4.81",
+	host: "121.88.4.53",
 	port: 8812,
 	dialect: "postgres",
 	logging: false,
