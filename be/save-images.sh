@@ -24,20 +24,57 @@ SERVICES=(
     "ticker-storage-worker"
     "orderbook-aggregator"
     "telegram-log"
-    "index-calc-fe"
 )
+
+# 메뉴 표시
+echo "💾 저장할 서비스 선택:"
+echo ""
+echo "   0) 전체 서비스 저장"
+echo ""
+for i in "${!SERVICES[@]}"; do
+    INDEX=$((i + 1))
+    echo "   ${INDEX}) ${SERVICES[$i]}"
+done
+echo ""
+read -p "선택하세요 (0-${#SERVICES[@]}): " SELECTION
+
+# 선택된 서비스 목록
+SELECTED_SERVICES=()
+
+if [ "$SELECTION" = "0" ]; then
+    # 전체 서비스 선택
+    SELECTED_SERVICES=("${SERVICES[@]}")
+    echo ""
+    echo "✅ 전체 서비스 저장 선택됨"
+elif [[ "$SELECTION" =~ ^[1-9][0-9]*$ ]] && [ "$SELECTION" -ge 1 ] && [ "$SELECTION" -le "${#SERVICES[@]}" ]; then
+    # 개별 서비스 선택
+    INDEX=$((SELECTION - 1))
+    SELECTED_SERVICES=("${SERVICES[$INDEX]}")
+    echo ""
+    echo "✅ ${SELECTED_SERVICES[0]} 저장 선택됨"
+else
+    echo ""
+    echo "❌ 잘못된 선택입니다. 0-${#SERVICES[@]} 사이의 숫자를 입력하세요."
+    exit 1
+fi
 
 # 저장 디렉토리
 SAVE_DIR="images"
 mkdir -p "$SAVE_DIR"
 
+echo ""
 echo "📦 저장 디렉토리: $SAVE_DIR"
+echo ""
+echo "📋 저장할 서비스 목록:"
+for SERVICE in "${SELECTED_SERVICES[@]}"; do
+    echo "   - $SERVICE"
+done
 echo ""
 
 SAVE_SUCCESS=0
 SAVE_FAILED=0
 
-for SERVICE in "${SERVICES[@]}"; do
+for SERVICE in "${SELECTED_SERVICES[@]}"; do
     IMAGE_NAME="${IMAGE_PREFIX}/${SERVICE}:latest"
     OUTPUT_FILE="${SAVE_DIR}/${SERVICE}.tar.gz"
     

@@ -44,11 +44,43 @@ SERVICES=(
     "ticker-storage-worker"
     "orderbook-aggregator"
     "telegram-log"
-    "index-calc-fe"
 )
 
-echo "📦 빌드할 서비스 목록:"
-for SERVICE in "${SERVICES[@]}"; do
+# 메뉴 표시
+echo "📦 빌드할 서비스 선택:"
+echo ""
+echo "   0) 전체 서비스 빌드"
+echo ""
+for i in "${!SERVICES[@]}"; do
+    INDEX=$((i + 1))
+    echo "   ${INDEX}) ${SERVICES[$i]}"
+done
+echo ""
+read -p "선택하세요 (0-${#SERVICES[@]}): " SELECTION
+
+# 선택된 서비스 목록
+SELECTED_SERVICES=()
+
+if [ "$SELECTION" = "0" ]; then
+    # 전체 서비스 선택
+    SELECTED_SERVICES=("${SERVICES[@]}")
+    echo ""
+    echo "✅ 전체 서비스 빌드 선택됨"
+elif [[ "$SELECTION" =~ ^[1-9][0-9]*$ ]] && [ "$SELECTION" -ge 1 ] && [ "$SELECTION" -le "${#SERVICES[@]}" ]; then
+    # 개별 서비스 선택
+    INDEX=$((SELECTION - 1))
+    SELECTED_SERVICES=("${SERVICES[$INDEX]}")
+    echo ""
+    echo "✅ ${SELECTED_SERVICES[0]} 선택됨"
+else
+    echo ""
+    echo "❌ 잘못된 선택입니다. 0-${#SERVICES[@]} 사이의 숫자를 입력하세요."
+    exit 1
+fi
+
+echo ""
+echo "📋 빌드할 서비스 목록:"
+for SERVICE in "${SELECTED_SERVICES[@]}"; do
     echo "   - $SERVICE"
 done
 echo ""
@@ -57,30 +89,33 @@ echo ""
 BUILD_SUCCESS=0
 BUILD_FAILED=0
 
-for SERVICE in "${SERVICES[@]}"; do
+for SERVICE in "${SELECTED_SERVICES[@]}"; do
     echo "🔨 ${SERVICE} 빌드 중..."
     
+    SERVICE_DIR="$SERVICE"
+    
     # 서비스 디렉토리 확인
-    if [ ! -d "$SERVICE" ]; then
-        echo "   ❌ ${SERVICE} 디렉토리를 찾을 수 없습니다. 건너뜁니다."
+    if [ ! -d "$SERVICE_DIR" ]; then
+        echo "   ❌ ${SERVICE_DIR} 디렉토리를 찾을 수 없습니다. 건너뜁니다."
         BUILD_FAILED=$((BUILD_FAILED + 1))
         continue
     fi
     
     # Dockerfile 확인
-    if [ ! -f "$SERVICE/Dockerfile" ]; then
-        echo "   ❌ ${SERVICE}/Dockerfile을 찾을 수 없습니다. 건너뜁니다."
+    if [ ! -f "$SERVICE_DIR/Dockerfile" ]; then
+        echo "   ❌ ${SERVICE_DIR}/Dockerfile을 찾을 수 없습니다. 건너뜁니다."
         BUILD_FAILED=$((BUILD_FAILED + 1))
         continue
     fi
     
-    cd "$SERVICE"
+    cd "$SERVICE_DIR"
     
     # 이미지 이름
     IMAGE_NAME="${IMAGE_PREFIX}/${SERVICE}:latest"
     
     # Docker 이미지 빌드
     echo "   📦 이미지: ${IMAGE_NAME}"
+    echo "   📁 디렉토리: $(pwd)"
     if docker build -t "${IMAGE_NAME}" .; then
         echo "   ✅ ${SERVICE} 빌드 완료"
         BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
@@ -89,7 +124,7 @@ for SERVICE in "${SERVICES[@]}"; do
         BUILD_FAILED=$((BUILD_FAILED + 1))
     fi
     
-    cd ..
+    cd "$SCRIPT_DIR"
     echo ""
 done
 
