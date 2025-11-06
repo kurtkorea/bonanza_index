@@ -14,11 +14,12 @@ const ignoredErrorCodes = ['ECONNABORTED', 'ECONNRESET', 'EPIPE', 'ECONNREFUSED'
 console.error = function(...args) {
 	// HPM (http-proxy-middleware) 관련 에러이고, 무시할 에러 코드인 경우 억제
 	const errorMessage = args.join(' ');
-	if (errorMessage.includes('[HPM]') && 
+	if ((errorMessage.includes('[HPM]') || errorMessage.includes('[webpack-dev-server]')) && 
 	    (errorMessage.includes('ECONNABORTED') || 
 	     errorMessage.includes('ECONNRESET') || 
 	     errorMessage.includes('EPIPE') ||
-	     errorMessage.includes('ECONNREFUSED'))) {
+	     errorMessage.includes('ECONNREFUSED') ||
+	     errorMessage.includes('WebSocket error'))) {
 		// SockJS 전송 방식 시도 중 발생하는 정상적인 에러이므로 억제
 		return;
 	}
@@ -100,9 +101,13 @@ module.exports = (env, options) => {
 					onError: (err, req, res) => {
 						// WebSocket 연결 에러는 무시 (SockJS가 다른 전송 방식을 시도함)
 						// SockJS 관련 경로의 에러는 조용히 무시
-						if (req.url && req.url.includes('/ws/') && 
-						    (err.code === 'ECONNABORTED' || err.code === 'ECONNRESET' || err.code === 'EPIPE')) {
+						if (req.url && (req.url.includes('/ws/') || req.url.includes('/sockjs-node/')) && 
+						    (err.code === 'ECONNABORTED' || err.code === 'ECONNRESET' || err.code === 'EPIPE' || err.code === 'ECONNREFUSED')) {
 							// 조용히 무시 (에러 로그 출력 안 함)
+							return;
+						}
+						// WebSocket 관련 에러는 모두 무시
+						if (err.code === 'ECONNABORTED' || err.code === 'ECONNRESET' || err.code === 'EPIPE' || err.code === 'ECONNREFUSED') {
 							return;
 						}
 						console.error('[webpack-dev-server] Proxy error:', err.message);
@@ -125,18 +130,12 @@ module.exports = (env, options) => {
 					onProxyErrorWs: (err, req, socket) => {
 						// WebSocket 에러 처리 (연결 중단 에러는 조용히 무시)
 						// SockJS는 여러 전송 방식을 시도하므로 일부 실패는 정상
-						// http-proxy-middleware가 내부적으로 에러를 로깅하지만,
-						// logLevel을 'warn'으로 설정하여 일부 에러를 억제
-						if (err.code === 'ECONNABORTED' || err.code === 'ECONNRESET' || err.code === 'EPIPE' || err.code === 'ECONNREFUSED') {
-							// 조용히 무시 (에러 로그 출력 안 함)
-							// socket이 아직 열려있으면 닫기
-							if (socket && !socket.destroyed) {
-								socket.destroy();
-							}
-							return;
+						// 모든 WebSocket 프록시 에러를 조용히 무시 (에러 로그 출력 안 함)
+						if (socket && !socket.destroyed) {
+							socket.destroy();
 						}
-						// 다른 에러만 로그 출력
-						console.error('[webpack-dev-server] WebSocket proxy error:', err.code, err.message);
+						// 에러 로그 출력하지 않음 (console.error 오버라이드로 처리)
+						return;
 					},
 				},
 				{
@@ -145,7 +144,7 @@ module.exports = (env, options) => {
 					target: 'http://121.88.4.57:30076',
 					secure: false,
 					changeOrigin: true,
-					logLevel: 'debug',
+					logLevel: 'silent', // WebSocket 에러 억제를 위해 silent로 변경
 					onProxyRes: (proxyRes, req, res) => {
 						// CORS 헤더 강제 추가
 						proxyRes.headers['Access-Control-Allow-Origin'] = '*';
@@ -153,6 +152,13 @@ module.exports = (env, options) => {
 						proxyRes.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma';
 						proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
 						proxyRes.headers['Access-Control-Expose-Headers'] = '*';
+					},
+					onProxyErrorWs: (err, req, socket) => {
+						// WebSocket 에러 조용히 무시
+						if (socket && !socket.destroyed) {
+							socket.destroy();
+						}
+						return;
 					},
 					ws: true,
 				},

@@ -32,6 +32,8 @@ spec:
           value: "3009"
         - name: SWAGGER_URL
           value: "index-endpoint-service:3009"
+        - name: ZMQ_SUB_INDEX_HOST
+          value: "tcp://index-calculator-service:6757"
         envFrom:
         - configMapRef:
             name: bonanza-common-config

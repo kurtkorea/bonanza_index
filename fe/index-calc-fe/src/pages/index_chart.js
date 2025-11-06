@@ -86,7 +86,7 @@ export default function MultiExchangeChart({
   parse = defaultParse,
   maxPoints = 3000,
   throttleMs = 120,
-  height = 420,
+  height = 400,
   xTickCount = 12,
   showBrush = true,
   className = "",
@@ -134,7 +134,7 @@ export default function MultiExchangeChart({
 
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={seriesData} margin={{ top: 80, right: 24, left: 24, bottom: 8 }}>
+          <LineChart data={seriesData} margin={{ top: 25, right: 24, left: 24, bottom: 8 }}>
             <CartesianGrid strokeDasharray="3 3" />
 
             <XAxis

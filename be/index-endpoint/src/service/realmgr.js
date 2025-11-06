@@ -24,10 +24,13 @@ async function runSubscriber() {
             console.log(`🔵 Subscribed to topic: ${topic}`);
         });
       
-        console.log("🔵 Subscriber connected to", process.env.ZMQ_SUB_INDEX_HOST);
+        console.log("🔵 Subscriber connected to !!!", process.env.ZMQ_SUB_INDEX_HOST);
       
         for await (const [topic, msg] of sub_sock) {
             const topic_id = "/topic/" + topic.toString();
+
+            // console.log(topic_id, msg.toString());
+
             if ( stompServer != null) {
                 stompServer.send(topic_id, { 'content-type': 'application/json' }, msg.toString());
             }
