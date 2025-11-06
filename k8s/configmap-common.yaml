@@ -5,23 +5,25 @@ metadata:
   namespace: bonanza-index
 data:
   # Redis 설정
-  REDIS_HOST: "redis-service"
+  REDIS_HOST: "121.88.4.53"
   REDIS_PORT: "6379"
   REDIS_STORE: "SYMBOL"
   
   # QuestDB 설정
-  QDB_HOST: "questdb-service"
-  QDB_PORT: "8812"
+  # Service 이름 사용 (Kubernetes Service를 통한 자동 라우팅)
+  QDB_HOST: "121.88.4.53"
+  QDB_PORT: "30812"
   QDB_DB: "qdb"
   QDB_USER: "admin"
-  QDB_ILP_PORT: "9009"
+  QDB_ILP_HOST: "121.88.4.53"
+  QDB_ILP_PORT: "30099"
   QDB_LOG: "false"
   
   # MariaDB 설정
   DB_DIALECT: "mariadb"
-  DB_HOST: "mariadb-service"
+  DB_HOST: "121.88.4.53"
   DB_PORT: "23306"
-  DB_SCHEME: "margin"
+  DB_SCHEME: "bonanza"
   
   # 공통 설정
   LOG_LEVEL: "info"
@@ -29,4 +31,5 @@ data:
   
   # CORS 설정
   CORS_ORIGIN: "*"
+
 

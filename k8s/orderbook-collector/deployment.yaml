@@ -17,11 +17,20 @@ spec:
     spec:
       nodeSelector:
         app-server: "true"
+      # DNS 정책: ClusterFirst (기본 Kubernetes DNS 정책 사용)
+      # CoreDNS가 외부 DNS를 forward하도록 설정되어 있으므로 내부/외부 모두 조회 가능
+      dnsPolicy: "ClusterFirst"
       containers:
       - name: orderbook-collector
         image: bonanza-index/orderbook-collector:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 6001
+          name: http
+          protocol: TCP
         env:
+        - name: PORT
+          value: "6001"
         - name: DEPTH
           value: "15"
         - name: TICK_MS
@@ -53,13 +62,19 @@ spec:
             memory: "512Mi"
             cpu: "500m"
         livenessProbe:
-          exec:
-            command:
-            - sh
-            - -c
-            - "pgrep -f 'node.*orderbook-collector' || exit 1"
-          initialDelaySeconds: 60
-          periodSeconds: 30
-          timeoutSeconds: 10
+          httpGet:
+            path: /health
+            port: 6001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 6001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
           failureThreshold: 3
 

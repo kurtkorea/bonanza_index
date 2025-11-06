@@ -6,7 +6,7 @@ metadata:
   labels:
     app: index-calc-fe
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: index-calc-fe
@@ -20,7 +20,7 @@ spec:
       containers:
       - name: index-calc-fe
         image: bonanza-index/index-calc-fe:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Never
         ports:
         - containerPort: 80
           name: http

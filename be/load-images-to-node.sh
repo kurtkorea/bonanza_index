@@ -82,7 +82,7 @@ echo ""
 
 # 방법 선택
 echo "📋 이미지 로드 방법 선택:"
-echo "   1. 이미지를 tar.gz로 저장 후 노드에 전송 (scp 필요)"
+echo "   1. 이미지를 tar.gz로 저장 후 ${NODE_NAME} (WSL 노드)에 전송 (scp 필요)"
 echo "   2. 직접 노드에 접속하여 로드 (수동)"
 echo ""
 read -p "선택하세요 (1 또는 2, 기본값: 1): " METHOD
@@ -129,18 +129,17 @@ if [ "$METHOD" = "1" ]; then
     echo "   저장 완료: $SAVE_SUCCESS 개"
     echo ""
     
-    echo "2️⃣  노드에 이미지 전송 및 로드..."
+    echo "2️⃣  ${NODE_NAME} (WSL 노드)에 이미지 전송 및 로드..."
     echo ""
-    read -p "노드 접속 사용자 이름 (기본값: 현재 사용자): " NODE_USER
-    NODE_USER=${NODE_USER:-$USER}
+    read -p "노드 접속 사용자 이름 (기본값: admin_star): " NODE_USER
+    NODE_USER=${NODE_USER:-admin_star}
     
     echo ""
-    echo "   다음 명령어를 노드($NODE_NAME)에서 실행하세요:"
+    echo "   📤 마스터 노드에서 WSL 노드($NODE_NAME, IP: ${NODE_IP}, 사용자: ${NODE_USER})로 전송:"
     echo ""
-    echo "   또는 scp로 전송:"
-    echo "   scp ${SAVE_DIR}/*.tar.gz ${NODE_USER}@${NODE_IP}:/tmp/"
+    echo "   scp ${SAVE_DIR}/*.tar.gz ${NODE_USER}@${NODE_IP}:tmp/"
     echo ""
-    echo "   노드에서 로드:"
+    echo "   📥 WSL 노드에서 이미지 로드:"
     for SERVICE in "${SELECTED_SERVICES[@]}"; do
         echo "   docker load < /tmp/${SERVICE}.tar.gz"
     done
@@ -150,7 +149,7 @@ elif [ "$METHOD" = "2" ]; then
     echo "📦 방법 2: 노드에 직접 접속하여 로드"
     echo ""
     
-    echo "노드($NODE_NAME)에 SSH로 접속하여 다음 명령어를 실행하세요:"
+    echo "WSL 노드($NODE_NAME, IP: ${NODE_IP})에 SSH로 접속하여 다음 명령어를 실행하세요:"
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
@@ -169,17 +168,17 @@ elif [ "$METHOD" = "2" ]; then
     
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    echo "또는 마스터 노드에서 이미지를 노드로 직접 복사:"
+    echo "또는 마스터 노드에서 WSL 노드로 직접 복사:"
     echo ""
     echo "1. 마스터 노드에서 이미지 저장:"
     echo "   ./save-images.sh"
     echo ""
-    echo "2. 노드로 전송:"
-    echo "   scp images/*.tar.gz ${NODE_USER}@${NODE_IP}:/tmp/"
+    echo "2. WSL 노드($NODE_NAME, IP: ${NODE_IP}, 사용자: admin_star)로 전송:"
+    echo "   scp images/*.tar.gz admin_star@${NODE_IP}:tmp/"
     echo ""
-    echo "3. 노드에서 로드:"
+    echo "3. WSL 노드에서 로드:"
     for SERVICE in "${SELECTED_SERVICES[@]}"; do
-        echo "   docker load < /tmp/${SERVICE}.tar.gz"
+        echo "   docker load < tmp/${SERVICE}.tar.gz"
     done
 fi
 

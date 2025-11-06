@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: questdb-server-config
+  namespace: bonanza-index
+  labels:
+    app: questdb
+data:
+  server.conf: |
+    # QuestDB 시작 속도 최적화 설정
+    
+    # HTTP 서버 설정 (빠른 시작)
+    http.min.bind.to=0.0.0.0:9000
+    http.max.header.size=8192
+    http.frozen.clock=false
+    
+    # PGWire 설정
+    pg.net.bind.to=0.0.0.0:8812
+    
+    # ILP 설정
+    ilp.net.bind.to=0.0.0.0:9009
+    
+    # 메모리 설정
+    cairo.max.memory.mapping.size=4Gi
+    
+    # Writer 설정 (성능 향상)
+    cairo.writer.commit.mode=nosync
+    
+    # WAL 설정 (복구 최적화)
+    cairo.wal.apply.enabled.default=true
+    cairo.wal.apply.table.policy=default
+    
+    # 스레드 풀 설정
+    shared.worker.count=4
+    line.tcp.net.worker.count=2
+

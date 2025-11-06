@@ -39,8 +39,7 @@ module.exports = (env, options) => {
 
     output: {
       publicPath: "/",
-      path: __dirname + "/public_prod",
-      // path: __dirname + "/public",
+      path: __dirname + "/public",
       filename: "[name].[chunkhash:8].js",
       chunkFilename: "[name].[chunkhash:8].js",
     },

@@ -12,6 +12,16 @@
     "https"
   ],
   "paths": {
+    "/health": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "성공"
+          }
+        }
+      }
+    },
     "/v1/index_history/": {
       "get": {
         "tags": [

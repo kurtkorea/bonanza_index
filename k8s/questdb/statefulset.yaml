@@ -6,7 +6,7 @@ metadata:
   labels:
     app: questdb
 spec:
-  serviceName: questdb-service
+  serviceName: questdb-service   # Headless Service 이름과 일치
   replicas: 1
   selector:
     matchLabels:
@@ -16,24 +16,31 @@ spec:
       labels:
         app: questdb
     spec:
+      # 단일 노드/k3s 등에서 마스터 스케줄링 허용 필요 시 유지
       nodeSelector:
         node-role.kubernetes.io/control-plane: "true"
       tolerations:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists
         effect: NoSchedule
+
       securityContext:
         fsGroup: 1000
         runAsUser: 1000
         runAsNonRoot: true
+
+      terminationGracePeriodSeconds: 60
+
       containers:
       - name: questdb
         image: questdb/questdb:latest
         imagePullPolicy: IfNotPresent
+
         securityContext:
           allowPrivilegeEscalation: false
           runAsUser: 1000
           runAsNonRoot: true
+
         ports:
         - containerPort: 8812
           name: pgwire
@@ -44,6 +51,10 @@ spec:
         - containerPort: 9009
           name: ilp
           protocol: TCP
+        - containerPort: 9009
+          name: ilp-udp
+          protocol: UDP
+
         env:
         - name: QDB_PG_WIRE_BIND
           value: "0.0.0.0:8812"
@@ -53,39 +64,63 @@ spec:
           value: "0.0.0.0:9009"
         - name: QDB_ROOT
           value: "/var/lib/questdb"
+        # 시작 속도 최적화
+        - name: JAVA_OPTS
+          value: "-Xms4g -Xmx6g -XX:+UnlockExperimentalVMOptions -XX:+UseZGC"
+        - name: QDB_CAIRO_WRITER_COMMIT_MODE
+          value: "NOSYNC"
+        - name: QDB_CAIRO_MAX_MEMORY_MAPPING_SIZE
+          value: "4Gi"
+
         volumeMounts:
         - name: questdb-data
           mountPath: /var/lib/questdb
+
         resources:
           requests:
-            memory: "2Gi"
-            cpu: "1000m"
-          limits:
             memory: "4Gi"
-            cpu: "2000m"
+            cpu: "4000m"
+          limits:
+            memory: "8Gi"
+            cpu: "8000m"
+
+        # 초기 기동이 느린 경우를 흡수
+        startupProbe:
+          tcpSocket:
+            port: 9000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 12   # 최대 ~1분까지 대기
+
         livenessProbe:
-          httpGet:
-            path: /
+          tcpSocket:
             port: 9000
-          initialDelaySeconds: 120
+          initialDelaySeconds: 30
           periodSeconds: 30
-          timeoutSeconds: 10
-          failureThreshold: 5
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 9000
-          initialDelaySeconds: 60
-          periodSeconds: 10
           timeoutSeconds: 5
-          failureThreshold: 10
+          failureThreshold: 5
+
+        readinessProbe:
+          tcpSocket:
+            port: 9000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 5
+
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 10"]  # 연결 드레이닝 시간 확보(필요시 종료 훅 대체)
+
   volumeClaimTemplates:
   - metadata:
       name: questdb-data
     spec:
-      accessModes: [ "ReadWriteOnce" ]
+      accessModes: ["ReadWriteOnce"]
       storageClassName: "local-path"
       resources:
         requests:
-          storage: 200Gi
-
+          storage: 100Gi

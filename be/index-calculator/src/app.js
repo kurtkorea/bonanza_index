@@ -58,6 +58,8 @@ const express = require("express");
 const app = express();
 // const server = require("http").createServer(app);
 
+app.set("port", process.env.PORT || 6001);
+
 var message = {};
 
 const cors = require("cors");
@@ -91,6 +93,15 @@ const commandRouter = require("./router/command");
 
 // 라우터 등록
 app.use("/api/command", commandRouter);
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+	res.status(200).json({
+		status: "ok",
+		service: "index-calculator",
+		timestamp: new Date().toISOString()
+	});
+});
 
 //discovery register
 // const discovery = require("./discovery");
@@ -190,5 +201,7 @@ initializeApp();
 // 	console.log(`Server is running on port ${app.get("port")}`);
 // });
 
-
+app.listen(app.get("port"), '0.0.0.0', () => {
+	console.log(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+});
 

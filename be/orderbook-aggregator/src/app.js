@@ -51,6 +51,15 @@ const commandRouter = require("./router/command");
 // 라우터 등록
 app.use("/api/command", commandRouter);
 
+// Health check endpoint
+app.get("/health", (req, res) => {
+	res.status(200).json({
+		status: "ok",
+		service: "orderbook-aggregator",
+		timestamp: new Date().toISOString()
+	});
+});
+
 //discovery register
 // const discovery = require("./discovery");
 // if (process.env.NODE_ENV === "production") {

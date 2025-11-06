@@ -25,7 +25,10 @@ if (process.env.NODE_ENV === "production") {
 const express = require("express");
 const app = express();
 // const server = require("http").createServer(app);
-app.set("port", process.env.PORT || 13001);
+app.set("port", process.env.PORT || 6003);
+
+console.log("SERVER PORT:", process.env.PORT || 6001);
+
 var message = {};
 
 const cors = require("cors");
@@ -55,6 +58,16 @@ if (process.env.NODE_ENV === "production") {
 
 //routers
 const { respMsg } = require("./utils/common");
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+	console.log("Health check endpoint");
+	res.status(200).json({
+		status: "ok",
+		service: "orderbook-storage-worker",
+		timestamp: new Date().toISOString()
+	});
+});
 
 app.use((req, res) => {
 	respMsg(res, "missing_request");
@@ -92,6 +105,9 @@ initializeApp();
 // 	console.log(`Server is running on port ${app.get("port")}`);
 // });
 
+app.listen(app.get("port"), '0.0.0.0', () => {
+	console.log(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+});
 
 process.on('unhandledRejection', (reason, p) => {
 	console.error('[unhandledRejection]', reason);

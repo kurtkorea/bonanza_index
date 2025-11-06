@@ -87,6 +87,14 @@ const telegramRouter = require("./router/telegram.js");
 // 라우터 등록
 app.use("/v1/telegram", telegramRouter);
 
+// Health check endpoint
+app.get("/health", (req, res) => {
+	res.status(200).json({
+		status: "ok",
+		timestamp: new Date().toISOString()
+	});
+});
+
 //discovery register
 // const discovery = require("./discovery");
 // if (process.env.NODE_ENV === "production") {

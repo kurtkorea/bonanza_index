@@ -2,7 +2,7 @@
 
 ## 📋 노드 구조
 
-- **마스터 노드** (121.88.4.81): Linux 서버
+- **마스터 노드** (121.88.4.53): Linux 서버
   - QuestDB, Redis, MariaDB Pod 실행
   - 자동으로 `node-role.kubernetes.io/control-plane=true` 라벨 설정됨
 

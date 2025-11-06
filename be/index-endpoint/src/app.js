@@ -101,6 +101,15 @@ if (process.env.NODE_ENV === "production") {
 	app.set("trust proxy", 1);
 }
 
+// Health check endpoint (라우터 등록 전에 먼저 등록)
+app.get("/health", (req, res) => {
+	res.status(200).json({
+		status: "ok",
+		service: "index-endpoint",
+		timestamp: new Date().toISOString()
+	});
+});
+
 //routers
 const { respMsg } = require("./utils/common");
 const indexHistoryRouter = require("./router/index_history.js");

@@ -27,7 +27,8 @@ if (process.env.NODE_ENV === "production") {
 const express = require("express");
 const app = express();
 // const server = require("http").createServer(app);
-app.set("port", process.env.PORT || 3000);
+
+app.set("port", process.env.PORT || 6001);
 
 const morgan = require("morgan");
 
@@ -50,6 +51,16 @@ const commandRouter = require("./router/command");
 
 // 라우터 등록
 app.use("/api/command", commandRouter);
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+	console.log("Health check endpoint");
+	res.status(200).json({
+		status: "ok",
+		service: "orderbook-collector",
+		timestamp: new Date().toISOString()
+	});
+});
 
 //discovery register
 // const discovery = require("./discovery");
@@ -88,7 +99,11 @@ async function handleAppShutdown(signal) {
 		console.error('Failed to send shutdown telegram notification:', e);
 	}
 	process.exit(0);
-}
+}	
+
+app.listen(app.get("port"), '0.0.0.0', () => {
+	console.log(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+});
 
 process.on('SIGINT', () => handleAppShutdown('SIGINT'));
 process.on('SIGTERM', () => handleAppShutdown('SIGTERM'));
