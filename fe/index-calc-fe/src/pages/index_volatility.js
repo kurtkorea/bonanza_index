@@ -41,7 +41,7 @@ export default function VolatilityTable({
   const horizons = useMemo(() => buildHorizons(stepSec), [stepSec]);
 
   return (
-    <div className={`w-full overflow-auto rounded-2xl border border-gray-200 bg-white ${className}`}>
+    <div className={`w-full overflow-auto rounded-2xl border border-gray-200 bg-white ${className}`} style={{ height: "100%" }}>
       {/* <div className="p-3 pb-0 text-base font-semibold">Volatility</div> */}
       <div style={{ border: "2px solid #4B5563", borderRadius: "5px", padding: "8px", margin: "5px" }}>
         <table className="mb-2 mt-1 min-w-max border-collapse w-full">
@@ -62,14 +62,15 @@ export default function VolatilityTable({
                   return (
                     <td
                       key={c.key}
-                      className="px-3 py-2 text-right tabular-nums"
+                      className="px-3 py-2 text-right tabular-nums align-top"
                       style={{
                         width: "150px",
                         height: "60px",
                         borderRight: "1.5px solid #D1D5DB",
                         borderBottom: "1.5px solid #D1D5DB",
                         textAlign: "center",
-                        padding: "0 10px"
+                        padding: "0 10px",
+                        verticalAlign: "top"
                       }}
                     >
                       {pct(val, decimals)}

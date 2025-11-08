@@ -13,7 +13,10 @@ async function fkbrti_1sec_schema(db) {
             sources         TEXT,
             expected_status TEXT,
             provisional     BOOLEAN,
-            no_publish      BOOLEAN,    
+            no_publish      BOOLEAN,            
+            actual_avg      DOUBLE,
+            diff            DOUBLE,
+            ratio           DOUBLE,
             createdAt       TIMESTAMP
         ) TIMESTAMP(createdAt)
             PARTITION BY DAY

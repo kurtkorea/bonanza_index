@@ -33,7 +33,7 @@ const message = {
 };
 
 function isEmpty(str) {
-	if (str === undefined || str === null || str === "") {
+	if (str === undefined || str === null || str === "" || isNaN(str)) {
 		return true;
 	}
 	return false;

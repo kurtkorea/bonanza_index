@@ -41,6 +41,7 @@
 		"swagger-ui-express": "^5.0.0",
 		"winston": "^3.17.0",
 		"ws": "^8.18.3",
+		"xlsx": "^0.18.5",
 		"zeromq": "^6.5.0"
 	},
 	"devDependencies": {

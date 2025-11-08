@@ -88,7 +88,7 @@ async function send_publisher(topic, payload) {
       return Promise.resolve();
     }
     
-    const query = `SELECT
+    const query_1s = `SELECT
                       createdAt,
                       vwap_buy,
                       vwap_sell,
@@ -101,19 +101,28 @@ async function send_publisher(topic, payload) {
                                       ORDER BY createdAt
                                       ROWS BETWEEN 9 PRECEDING AND CURRENT ROW
                       ) AS fkbrti_10s,
+
+                      actual_avg,
+                      diff,
+                      ratio,
+
                       expected_exchanges,  
                       sources,
                       expected_status,
                       provisional,
                       no_publish
-                    FROM tb_fkbrti_1sec ORDER BY createdAT DESC
+
+                    FROM tb_fkbrti_1sec 
+                    WHERE index_mid IS NOT NULL
+                    ORDER BY createdAT DESC
                     LIMIT 10`;
 
-    const results = await db.sequelize.query(query, {
+
+    const results = await db.sequelize.query(query_1s, {
       replacements: {},
       type: QueryTypes.SELECT,
       raw: true,
-    });
+    });    
 
     const datalist = results.map(item => ({
 			...item,
@@ -122,6 +131,8 @@ async function send_publisher(topic, payload) {
 			sources: parseJSON(item.sources),
 			expected_status: parseJSON(item.expected_status)
 		}));
+
+    // console.log ( "datalist", datalist );
 
     return await q.send([topic, JSON.stringify(datalist)]);
     

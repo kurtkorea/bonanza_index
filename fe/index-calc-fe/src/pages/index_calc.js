@@ -110,24 +110,24 @@ const columns = [
   },
   {
     title: 'DIFF-1s',
-    dataIndex: 'DIFF_1',
-    key: 'DIFF_1',
+    dataIndex: 'diff_1',
+    key: 'diff_1',
     width: 100,
     align: 'right',
     fixed: 'left',
     render: (text, record) => {
-      let color = record.DIFF_1 === 0 ? 'black' : record.DIFF_1 < 0 ? 'blue' : 'red';
+      let color = record.diff_1 === 0 ? 'black' : record.diff_1 < 0 ? 'blue' : 'red';
       return (
         <span style={{ color }}>
-          {common.pricisionFormat_Precision(record.DIFF_1, 0)}
+          {common.pricisionFormat_Precision(record.diff_1, 0)}
         </span>
       );
     },
   },
   {
     title: 'DIFF-5s',
-    dataIndex: 'DIFF_2',
-    key: 'DIFF_2',
+    dataIndex: 'diff_5',
+    key: 'diff_5',
     width: 100,
     align: 'right',
     fixed: 'left',
@@ -135,71 +135,71 @@ const columns = [
       let color = record.DIFF_1 === 0 ? 'black' : record.DIFF_1 < 0 ? 'blue' : 'red';
       return (
         <span style={{ color }}>
-          {common.pricisionFormat_Precision(record.DIFF_2, 0)}
+          {common.pricisionFormat_Precision(record.diff_5, 0)}
         </span>
       );
     },
   },
   {
     title: 'DIFF-10s',
-    dataIndex: 'DIFF_3',
-    key: 'DIFF_3',
+    dataIndex: 'diff_10',
+    key: 'diff_10',
     width: 100,
     align: 'right',
     fixed: 'left',
     render: (text, record) => {
-      let color = record.DIFF_3 === 0 ? 'black' : record.DIFF_3 < 0 ? 'blue' : 'red';
+      let color = record.diff_10 === 0 ? 'black' : record.diff_10 < 0 ? 'blue' : 'red';
       return (
         <span style={{ color }}>
-          {common.pricisionFormat_Precision(record.DIFF_3, 0)}
+          {common.pricisionFormat_Precision(record.diff_10, 0)}
         </span>
       );
     },
   },
   {
     title: 'RATIO-1s',
-    dataIndex: 'RATIO_1',
-    key: 'RATIO_1',
+    dataIndex: 'ratio_1',
+    key: 'ratio_1',
     width: 100,
     align: 'right',
     fixed: 'left',
     render: (text, record) => {
-      let color = record.RATIO_1 === 0 ? 'black' : record.RATIO_1 < 0 ? 'blue' : 'red';
+      let color = record.ratio_1 === 0 ? 'black' : record.ratio_1 < 0 ? 'blue' : 'red';
       return (
         <span style={{ color }}>
-          {common.pricisionFormat_Precision(record.RATIO_1, 2)}%
+          {common.pricisionFormat_Precision(record.ratio_1, 2)}%
         </span>
       );
     },
   },
   {
     title: 'RATIO-5s',
-    dataIndex: 'RATIO_2',
-    key: 'RATIO_2',
+    dataIndex: 'ratio_5',
+    key: 'ratio_5',
     width: 100,
     align: 'right',
     fixed: 'left',
     render: (text, record) => {
-      let color = record.RATIO_2 === 0 ? 'black' : record.RATIO_2 < 0 ? 'blue' : 'red';
+          let color = record.ratio_5 === 0 ? 'black' : record.ratio_5 < 0 ? 'blue' : 'red';
       return (
         <span style={{ color }}>
-          {common.pricisionFormat_Precision(record.RATIO_2, 2)}%
+          {common.pricisionFormat_Precision(record.ratio_5, 2)}%
         </span>
       );
     },
   },
   {
     title: 'RATIO-10s',
-    dataIndex: 'RATIO_3',
-    key: 'RATIO_3',
+    dataIndex: 'ratio_10',
+    key: 'ratio_10',
     width: 100,
     align: 'right',
     fixed: 'left',
     render: (text, record) => {
-      let color = record.RATIO_3 === 0 ? 'black' : record.RATIO_3 < 0 ? 'blue' : 'red';
+      let color = record.ratio_10 === 0 ? 'black' : record.ratio_10 < 0 ? 'blue' : 'red';
       return (
         <span style={{ color }}>
-          {common.pricisionFormat_Precision(record.RATIO_3, 2)}%
+          {common.pricisionFormat_Precision(record.ratio_10, 2)}%
         </span>
       );
     },
@@ -213,123 +213,30 @@ const columns = [
   },
 ];
 
-const columns_excel = [
-  {
-    title: 'TIME',
-    dataIndex: 'createdAt',
-    key: 'createdAt',
-    width: 180,
-    align: 'center',
-    fixed: 'left',
-    render: (text) => common.convertDateKST(text),
-  },
-  {
-    title: 'seq',
-    dataIndex: 'seq',
-    key: 'seq',
-    width: 180,
-    align: 'center',
-    fixed: 'left',
-  },
-  {
-    title: 'fkbrti-1s',
-    dataIndex: 'fkbrti_1s',
-    key: 'fkbrti_1s',
-    width: 120,
-    align: 'right',
-    fixed: 'left',
-    render: (text) => common.pricisionFormat_Precision(text, 0),
-  },
-  {
-    title: 'fkbrti-5s',
-    dataIndex: 'fkbrti_5s',
-    key: 'fkbrti_5s',
-    width: 120,
-    align: 'center',
-    fixed: 'left',
-    render: (text) => common.pricisionFormat_Precision(text, 0),
-  },
-  {
-    title: 'fkbrti-10s',
-    dataIndex: 'fkbrti_10s',
-    key: 'fkbrti_10s',
-    width: 120,
-    align: 'center',
-    fixed: 'left',
-    render: (text) => common.pricisionFormat_Precision(text, 0),
-  },
-
-  {
-    title: 'BITTHUMB',
-    dataIndex: 'BITTHUMB',
-    key: 'BITTHUMB',
-    width: 120,
-    align: 'right',
-    fixed: 'left',
-   },
-
-  {
-    title: 'COINONE',
-    dataIndex: 'COINONE',
-    key: 'COINONE',
-    width: 120,
-    align: 'right',
-    fixed: 'left',
-  },
-  {
-    title: 'KORBIT',
-    dataIndex: 'KORBIT',
-    key: 'KORBIT',
-    width: 120,
-    align: 'right',
-    fixed: 'left',
-  },
-  {
-    title: 'UPBIT',
-    dataIndex: 'UPBIT',
-    key: 'UPBIT',
-    width: 120,
-    align: 'center',
-    fixed: 'left',
-  },
-  {
-    title: 'ACTUAL-AVG',
-    dataIndex: 'ACTUAL_AVG',
-    key: 'ACTUAL_AVG',
-    width: 120,
-    align: 'right',
-    fixed: 'left',
-    
-  },
-];
-
 const IndexCalcTable = () => {
   const queryClient = useQueryClient();
-  const defaultRange = [moment().add(-7, 'day'), moment()];
+  const defaultRange = [moment().subtract(3, 'months'), moment()];
   
   const [range, setRange] = useState(defaultRange);
   const dispatch = useDispatch();
 
   const [tab_idx, setTabIdx] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [downloadLoading, setDownloadLoading] = useState(false);
 
   const index_list = useSelector(state => state.IndexReducer.index_data);
-  const min_max_info = useSelector(state => state.IndexReducer.MIN_MAX_INFO);
-  const total_count = useSelector(state => state.IndexReducer.total_count);
+  const minMaxInfo = useSelector((state) => state.IndexReducer.MIN_MAX_INFO);
+  const summaryStats = useSelector((state) => state.IndexReducer.summaryStats);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10000);
+  const [pageSize, setPageSize] = useState(500);
   const [totalCount, setTotalCount] = useState(0);
   const [pagination, setPagination] = useState({hasNext: false, hasPrev: false, page: 1, size: 500, totalCount: 0, totalPages: 0});
-  const [summaryStats, setSummaryStats] = useState({
-    '1D': { DIFF_1s: { MIN: 0, MAX: 0, AVG: 0 }, RATIO_1s: { MIN: 0, MAX: 0, AVG: 0 }, DIFF_5s: { MIN: 0, MAX: 0, AVG: 0 }, RATIO_5s: { MIN: 0, MAX: 0, AVG: 0 } },
-    '1W': { DIFF_1s: { MIN: 0, MAX: 0, AVG: 0 }, RATIO_1s: { MIN: 0, MAX: 0, AVG: 0 }, DIFF_5s: { MIN: 0, MAX: 0, AVG: 0 }, RATIO_5s: { MIN: 0, MAX: 0, AVG: 0 } },
-    '1M': { DIFF_1s: { MIN: 0, MAX: 0, AVG: 0 }, RATIO_1s: { MIN: 0, MAX: 0, AVG: 0 }, DIFF_5s: { MIN: 0, MAX: 0, AVG: 0 }, RATIO_5s: { MIN: 0, MAX: 0, AVG: 0 } },
-    '1Y': { DIFF_1s: { MIN: 0, MAX: 0, AVG: 0 }, RATIO_1s: { MIN: 0, MAX: 0, AVG: 0 }, DIFF_5s: { MIN: 0, MAX: 0, AVG: 0 }, RATIO_5s: { MIN: 0, MAX: 0, AVG: 0 } },
-  });
 
   // Fetch data with paging
-  const fetchData = async (page = currentPage, size = pageSize) => {
+  const fetchData = async (page = currentPage, size = pageSize) => 
+  {
     setLoading(true);
     try {
       const fromDate = range[0] ? range[0].format("YYYY-MM-DD") : moment().subtract(7, 'day').format("YYYY-MM-DD");
@@ -349,23 +256,6 @@ const IndexCalcTable = () => {
       console.log("total_count", res.data.pagination.totalCount);
       setCurrentPage(page);
 
-      let min_max_info_tmp = {
-        MIN_DIFF_1: 0,
-        MIN_DIFF_2: 0,
-        MIN_DIFF_3: 0,
-        MAX_DIFF_1: 0,
-        MAX_DIFF_2: 0,
-        MAX_DIFF_3: 0,
-        AVG_RATIO_1: 0,
-        AVG_RATIO_2: 0,
-        AVG_RATIO_3: 0,
-        MAX_RATIO_1: 0,
-        MAX_RATIO_2: 0,
-        MAX_RATIO_3: 0,
-        MIN_ACTUAL_AVG: 0,
-        MAX_ACTUAL_AVG: 0,
-      }
-
       let new_datalist = [];
       for (const item of res.data.datalist) {
         let new_item = {
@@ -384,13 +274,13 @@ const IndexCalcTable = () => {
           BITTHUMB: item.expected_status.find(item => item.exchange == "102")?.price,
           COINONE: item.expected_status.find(item => item.exchange == "104")?.price,
           KORBIT: item.expected_status.find(item => item.exchange == "103")?.price,
-          DIFF_1: 0,
-          DIFF_2: 0,
-          DIFF_3: 0,
-          RATIO_1: 0,
-          RATIO_2: 0,
-          RATIO_3: 0,
-          ACTUAL_AVG: 0,
+          diff_1: item.diff_1,
+          diff_5: item.diff_5,
+          diff_10: item.diff_10,
+          ratio_1: item.ratio_1,
+          ratio_5: item.ratio_5,
+          ratio_10: item.ratio_10,
+          actual_avg: item.actual_avg,
         };
 
         let sum = 0;
@@ -401,103 +291,9 @@ const IndexCalcTable = () => {
             count++;
           }
         }
-        new_item.ACTUAL_AVG = sum / count;
-
-        let colF = new_item.BITTHUMB;
-        let colI = new_item.UPBIT;
-
-        if (!colI && colI !== 0) {
-          new_item.DIFF_1 = colF - new_item.fkbrti_1s;
-        } else {
-          new_item.DIFF_1 = colI - new_item.fkbrti_1s;
-        }
-
-        if (!colI && colI !== 0) {
-          new_item.DIFF_2 = colF - new_item.fkbrti_5s;
-        } else {
-          new_item.DIFF_2 = colI - new_item.fkbrti_5s;
-        }
-
-        if (!colI && colI !== 0) {
-          new_item.DIFF_3 = colF - new_item.fkbrti_10s;
-        } else {
-          new_item.DIFF_3 = colI - new_item.fkbrti_10s;
-        }
-
-        if (!colI && colI !== 0) {
-          new_item.RATIO_1 = Math.abs(new_item.DIFF_1 / colF);
-        } else {
-          new_item.RATIO_1 = Math.abs(new_item.DIFF_1 / colI);
-        }
-        new_item.RATIO_1 = new_item.RATIO_1 * 100;
-
-        if (!colI && colI !== 0) {
-          new_item.RATIO_2 = Math.abs(new_item.DIFF_2 / colF);
-        } else {
-          new_item.RATIO_2 = Math.abs(new_item.DIFF_2 / colI);
-        }
-        new_item.RATIO_2 = new_item.RATIO_2 * 100;
-
-        if (!colI && colI !== 0) {
-          new_item.RATIO_3 = Math.abs(new_item.DIFF_3 / colF);
-        } else {
-          new_item.RATIO_3 = Math.abs(new_item.DIFF_3 / colI);
-        }
-        new_item.RATIO_3 = new_item.RATIO_3 * 100;
 
         new_datalist.push(new_item);
       }
-
-      // 통계 계산 (기간별)
-      const calcStats = (values) => {
-        if (values.length === 0) return { MIN: 0, MAX: 0, AVG: 0 };
-        const min = Math.min(...values);
-        const max = Math.max(...values);
-        const avg = values.reduce((a, b) => a + b, 0) / values.length;
-        return { MIN: min, MAX: max, AVG: avg };
-      };
-
-      const calculatePeriodStats = (periodDays) => {
-        const periodEnd = moment();
-        const periodStart = moment().subtract(periodDays, 'day');
-        const periodData = new_datalist.filter(item => {
-          const itemDate = moment(item.createdAt);
-          return itemDate.isAfter(periodStart) && itemDate.isBefore(periodEnd) || itemDate.isSame(periodStart, 'day') || itemDate.isSame(periodEnd, 'day');
-        });
-
-        if (periodData.length === 0) {
-          return {
-            DIFF_1s: { MIN: 0, MAX: 0, AVG: 0 },
-            RATIO_1s: { MIN: 0, MAX: 0, AVG: 0 },
-            DIFF_5s: { MIN: 0, MAX: 0, AVG: 0 },
-            RATIO_5s: { MIN: 0, MAX: 0, AVG: 0 },
-          };
-        }
-
-        const diff1sValues = periodData.map(item => item.DIFF_1).filter(v => v !== undefined && v !== null);
-        const ratio1sValues = periodData.map(item => item.RATIO_1).filter(v => v !== undefined && v !== null);
-        const diff5sValues = periodData.map(item => item.DIFF_2).filter(v => v !== undefined && v !== null);
-        const ratio5sValues = periodData.map(item => item.RATIO_2).filter(v => v !== undefined && v !== null);
-
-        return {
-          DIFF_1s: calcStats(diff1sValues),
-          RATIO_1s: calcStats(ratio1sValues),
-          DIFF_5s: calcStats(diff5sValues),
-          RATIO_5s: calcStats(ratio5sValues),
-        };
-      };
-
-      if (new_datalist.length > 0) {
-        setSummaryStats({
-          '1D': calculatePeriodStats(1),
-          '1W': calculatePeriodStats(7),
-          '1M': calculatePeriodStats(30),
-          '1Y': calculatePeriodStats(365),
-        });
-      }
-
-      // for 루프 밖에서 min_max_info 업데이트
-      dispatch({ type: "fkbrti/update_min_max_info", payload : min_max_info_tmp });
 
       if ( page == 1 ) {
         dispatch({ type: "fkbrti/init", payload : { current_page: page, datalist: new_datalist, total_count: res.data.pagination.totalCount } }); // maintain for Excel export
@@ -511,134 +307,227 @@ const IndexCalcTable = () => {
     }
   };
 
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      // 데이터 가공하여 Redux의 summaryStats 구조에 맞는 statsMap 생성
+      const periodMap = {
+        "1d": "1D",
+        "1w": "1W",
+        "1m": "1M",
+        "1y": "1Y"
+      };
+
+      // API로 부터 통계 데이터 요청
+      let statsRes;
+      try {
+        statsRes = await axios.get(process.env.SERVICE + "/v1/index_calc/stats");
+      } catch (err) {
+        console.error("통계 데이터 요청 실패:", err);
+        setStatsLoading(false);
+        return;
+      }
+      console.log("통계 API 응답:", statsRes.data);
+
+      // 변환: { "interval": "1d", "second": "1s", ... } -> statsMap[period] = { DIFF_1s, RATIO_1s, DIFF_5s, ... }
+      if (statsRes.data.result && Array.isArray(statsRes.data.stats)) {
+        // Redux 구조에 맞는 statsMap 만들기
+        const statsMap = {};
+
+        // 이중 루프 없이 한번의 순회로 완성
+        statsRes.data.stats.forEach(stat => {
+          const period = periodMap[String(stat.interval).toLowerCase()] || stat.interval;
+          if (!statsMap[period]) {
+            statsMap[period] = {
+              DIFF_1s: { MIN: 0, MAX: 0, AVG: 0 },
+              RATIO_1s: { MIN: 0, MAX: 0, AVG: 0 },
+              DIFF_5s: { MIN: 0, MAX: 0, AVG: 0 },
+              RATIO_5s: { MIN: 0, MAX: 0, AVG: 0 },
+              DIFF_10s: { MIN: 0, MAX: 0, AVG: 0 },
+              RATIO_10s: { MIN: 0, MAX: 0, AVG: 0 },
+            };
+          }
+
+          if (stat.second === "1s") {
+            statsMap[period].DIFF_1s = {
+              MIN: stat.diff_min ?? 0,
+              MAX: stat.diff_max ?? 0,
+              AVG: stat.diff_avg ?? 0,
+            };
+            statsMap[period].RATIO_1s = {
+              MIN: stat.ratio_min ?? 0,
+              MAX: stat.ratio_max ?? 0,
+              AVG: stat.ratio_avg ?? 0,
+            };
+          } else if (stat.second === "5s") {
+            statsMap[period].DIFF_5s = {
+              MIN: stat.diff_min ?? 0,
+              MAX: stat.diff_max ?? 0,
+              AVG: stat.diff_avg ?? 0,
+            };
+            statsMap[period].RATIO_5s = {
+              MIN: stat.ratio_min ?? 0,
+              MAX: stat.ratio_max ?? 0,
+              AVG: stat.ratio_avg ?? 0,
+            };
+          } else if (stat.second === "10s") {
+            statsMap[period].DIFF_10s = {
+              MIN: stat.diff_min ?? 0,
+              MAX: stat.diff_max ?? 0,
+              AVG: stat.diff_avg ?? 0,
+            };
+            statsMap[period].RATIO_10s = {
+              MIN: stat.ratio_min ?? 0,
+              MAX: stat.ratio_max ?? 0,
+              AVG: stat.ratio_avg ?? 0,
+            };
+          }
+        });
+
+        console.log ( "statsMap", statsMap );
+
+        console.log("변환된 통계 데이터(statsMap):", statsMap);
+        dispatch({ type: "fkbrti/set_stats", payload: statsMap });
+      } else {
+        console.warn("통계 데이터 형식이 올바르지 않습니다:", res.data);
+      }
+
+    } catch (error) {
+      console.error("통계 조회 실패:", error);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [dispatch]);
+
   useEffect(() => {
     fetchData(1, pageSize);
+    fetchStats();
     setCurrentPage(1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range, pageSize]);
+  }, [range, pageSize, fetchStats]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchStats();
+    }, 60_000);
+
+    return () => clearInterval(intervalId);
+  }, [fetchStats]);
+
+  useEffect(() => {
+    const stats1D = {
+      DIFF_1s: { MIN: minMaxInfo.MIN_DIFF_1 || 0, MAX: minMaxInfo.MAX_DIFF_1 || 0, AVG: minMaxInfo.AVG_DIFF_1 || 0 },
+      RATIO_1s: { MIN: minMaxInfo.MIN_RATIO_1 || 0, MAX: minMaxInfo.MAX_RATIO_1 || 0, AVG: minMaxInfo.AVG_RATIO_1 || 0 },
+      DIFF_5s: { MIN: minMaxInfo.MIN_DIFF_2 || 0, MAX: minMaxInfo.MAX_DIFF_2 || 0, AVG: minMaxInfo.AVG_DIFF_2 || 0 },
+      RATIO_5s: { MIN: minMaxInfo.MIN_RATIO_2 || 0, MAX: minMaxInfo.MAX_RATIO_2 || 0, AVG: minMaxInfo.AVG_RATIO_2 || 0 },
+    };
+    dispatch({ type: 'fkbrti/set_stats', payload: { '1D': stats1D } });
+  }, [dispatch, minMaxInfo]);
 
   // 조회 버튼 클릭시 (항상 1페이지부터)
   const onClickSearch = async ( page = 1, size = pageSize ) => {
     setCurrentPage(page);
     fetchData(page, size);
+    fetchStats();
   };
 
   const onClickTab = ({ currentTarget }) => {
     setTabIdx(parseInt(currentTarget.getAttribute("data")));
   };
 
+	const handleFileDownload = useCallback(() => {
+		if (!range?.[0] || !range?.[1]) {
+			console.warn('[download] range not selected');
+			return;
+		}
+
+		const params = new URLSearchParams({
+			from_date: range[0].format('YYYY-MM-DD'),
+			to_date: range[1].format('YYYY-MM-DD'),
+		});
+
+		const url = `${process.env.SERVICE}/v1/file_download?${params.toString()}`;
+		const filename = `fkbrti_export_${range[0].format('YYYY-MM-DD')}_${range[1].format('YYYY-MM-DD')}.csv`;
+
+		setDownloadLoading(true);
+
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = filename;
+		link.style.display = 'none';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+
+		setTimeout(() => {
+			setDownloadLoading(false);
+		}, 4000);
+	}, [range]);
 
   return (
-    <>
-      <div className="thbit-trade-list">
+    <div style={{ width: "100%" }}>
+      <div className="thbit-trade-list" style={{ width: "100%" }}>
         {/* 상단 조회 및 통계 섹션 */}
         <div style={{ 
           border: "1px solid #d9d9d9", 
           padding: "15px", 
           marginBottom: "10px",
-          backgroundColor: "#fafafa"
+          backgroundColor: "#fafafa",
+          width: "100%",
+          boxSizing: "border-box"
         }}>
-          <div style={{ display: "flex", alignItems: "center", marginBottom: "15px" }}>
-            <div style={{ marginRight: "20px", minWidth: "120px" }}>
-              <div style={{ marginBottom: "5px", fontSize: "12px", color: "#666" }}>조회기간 (최대 1개월)</div>
-              <RangePicker 
-                className="inp date" 
-                style={{ width: "220px" }} 
-                value={range} 
-                inputReadOnly={true} 
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            marginBottom: "15px",
+            width: "100%",
+            boxSizing: "border-box",
+            justifyContent: "flex-end"
+          }}>
+            <Button
+              type="primary"
+              onClick={async () => {
+                onClickSearch(1, pageSize);
+              }}
+            >
+              조회
+            </Button>
+            {/* <Button
+              onClick={async () => {
+                if ( pagination?.hasNext ) {
+                  onClickSearch(currentPage + 1, pageSize);
+                }
+              }}
+              disabled={!pagination?.hasNext}
+            >
+              다음
+            </Button> */}
+
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginLeft: "10px", marginRight: "10px" }}>
+              <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>다운로드 기간 (최대 3개월)</span>
+              <RangePicker
+                className="inp date"
+                style={{ width: "220px" }}
+                value={range}
+                inputReadOnly={true}
                 onChange={setRange}
                 format="YYYY-MM-DD"
               />
             </div>
-            <div style={{ marginRight: "20px" }}>
-              <div style={{ marginBottom: "5px", fontSize: "12px", color: "#666" }}>시작일</div>
-              <div style={{ padding: "4px 8px", border: "1px solid #d9d9d9", backgroundColor: "#fff", minWidth: "100px" }}>
-                {range[0]?.format('YYYY-MM-DD') || ''}
-              </div>
-            </div>
-            <div style={{ marginRight: "20px" }}>
-              <div style={{ marginBottom: "5px", fontSize: "12px", color: "#666" }}>종료일</div>
-              <div style={{ padding: "4px 8px", border: "1px solid #d9d9d9", backgroundColor: "#fff", minWidth: "100px" }}>
-                {range[1]?.format('YYYY-MM-DD') || ''}
-              </div>
-            </div>
-            <div style={{ marginRight: "20px", flex: 1 }}>
-              {/* <div style={{ marginBottom: "5px", fontSize: "12px", color: "#666" }}>'</div> */}
-              <div style={{ display: "flex", gap: "5px", marginTop: "20px" }}>
-                <Button
-                  type="primary"
-                  onClick={async () => {
-                    onClickSearch(1, pageSize);
-                  }}
-                >
-                  조회
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if ( pagination?.hasNext ) {
-                      onClickSearch(currentPage + 1, pageSize);
-                    }
-                  }}
-                  disabled={!pagination?.hasNext}
-                >
-                  다음
-                </Button>
-                <Button
-                  onClick={async () => {
-                    try {
-                      const res = await axios.get( process.env.SERVICE + "/v1/index_calc", {
-                        params: {
-                          from_date: range[0].format('YYYY-MM-DD'),
-                          to_date: range[1].format('YYYY-MM-DD'),
-                          page: 1,
-                          size: 999999,
-                          order: "asc"
-                        }
-                      });
 
-                      let new_datalist = [];
-                      let seq = 1;  
-                      for (const item of res.data.datalist) {
-                        let new_item = {
-                          createdAt: item.createdAt,
-                          seq: seq,
-                          fkbrti_1s: item.fkbrti_1s,
-                          fkbrti_5s: item.fkbrti_5s,
-                          fkbrti_10s: item.fkbrti_10s,
-                          UPBIT: item.expected_status.find(item => item.exchange == "101")?.price,
-                          BITTHUMB: item.expected_status.find(item => item.exchange == "102")?.price,
-                          COINONE: item.expected_status.find(item => item.exchange == "104")?.price,
-                          KORBIT: item.expected_status.find(item => item.exchange == "103")?.price,
-                          ACTUAL_AVG: 0,
-                        };
-
-                        let sum = 0;
-                        let count = 0;
-                        for (const expected_status of item.expected_status) {
-                          if (expected_status.reason == "ok") {
-                            sum += expected_status.price;
-                            count++;
-                          }
-                        }
-                        new_item.ACTUAL_AVG = common.pricisionFormat_Precision(sum / count, 0);
-                        new_datalist.push(new_item);
-                        seq ++;
-                      }
-                      common.exportExcel(columns_excel, new_datalist, "index_calc");
-                    } catch (err) {
-                      console.error("조회 실패:", err);
-                    }
-                  }}
-                >
-                  파일다운로드
-                </Button>
-              </div>
-            </div>
+            <Button
+              onClick={handleFileDownload}
+              loading={downloadLoading}
+              disabled={downloadLoading}
+            >
+              파일다운로드
+            </Button>
           </div>
 
           {/* 통계 테이블 */}
           <div style={{ marginTop: "15px" }}>
             <Table
+              loading={statsLoading}
               columns={[
                 {
                   title: '',
@@ -649,25 +538,25 @@ const IndexCalcTable = () => {
                   fixed: 'left',
                 },
                 {
-                  title: 'DIFF-1s',
+                  title: <Tag color="green">DIFF-1s</Tag>,
                   align: 'center',
                   children: [
                     {
-                      title: 'MIN',
+                      title: <Tag color="blue">MIN</Tag>,
                       dataIndex: 'diff1s_min',
                       key: 'diff1s_min',
                       width: 80,
                       align: 'right',
                     },
                     {
-                      title: 'MAX',
+                      title: <Tag color="red">MAX</Tag>,
                       dataIndex: 'diff1s_max',
                       key: 'diff1s_max',
                       width: 80,
                       align: 'right',
                     },
                     {
-                      title: 'AVG',
+                      title: <Tag color="orange">AVG</Tag>,
                       dataIndex: 'diff1s_avg',
                       key: 'diff1s_avg',
                       width: 80,
@@ -676,25 +565,25 @@ const IndexCalcTable = () => {
                   ],
                 },
                 {
-                  title: 'RATIO-1s',
+                  title: <Tag color="green">RATIO-1s</Tag>,
                   align: 'center',
                   children: [
                     {
-                      title: 'MIN',
+                      title: <Tag color="blue">MIN</Tag>,
                       dataIndex: 'ratio1s_min',
                       key: 'ratio1s_min',
                       width: 80,
                       align: 'right',
                     },
                     {
-                      title: 'MAX',
+                      title: <Tag color="red">MAX</Tag>,
                       dataIndex: 'ratio1s_max',
                       key: 'ratio1s_max',
                       width: 80,
                       align: 'right',
                     },
                     {
-                      title: 'AVG',
+                      title: <Tag color="orange">AVG</Tag>,
                       dataIndex: 'ratio1s_avg',
                       key: 'ratio1s_avg',
                       width: 80,
@@ -703,25 +592,25 @@ const IndexCalcTable = () => {
                   ],
                 },
                 {
-                  title: 'DIFF-5s',
+                  title: <Tag color="green">DIFF-5s</Tag>,
                   align: 'center',
                   children: [
                     {
-                      title: 'MIN',
+                      title: <Tag color="blue">MIN</Tag>,
                       dataIndex: 'diff5s_min',
                       key: 'diff5s_min',
                       width: 80,
                       align: 'right',
                     },
                     {
-                      title: 'MAX',
+                      title: <Tag color="red">MAX</Tag>,
                       dataIndex: 'diff5s_max',
                       key: 'diff5s_max',
                       width: 80,
                       align: 'right',
                     },
                     {
-                      title: 'AVG',
+                      title: <Tag color="orange">AVG</Tag>,
                       dataIndex: 'diff5s_avg',
                       key: 'diff5s_avg',
                       width: 80,
@@ -730,25 +619,25 @@ const IndexCalcTable = () => {
                   ],
                 },
                 {
-                  title: 'RATIO-5s',
+                  title: <Tag color="green">RATIO-5s</Tag>,
                   align: 'center',
                   children: [
                     {
-                      title: 'MIN',
+                      title: <Tag color="blue">MIN</Tag>,
                       dataIndex: 'ratio5s_min',
                       key: 'ratio5s_min',
                       width: 80,
                       align: 'right',
                     },
                     {
-                      title: 'MAX',
+                      title: <Tag color="red">MAX</Tag>,
                       dataIndex: 'ratio5s_max',
                       key: 'ratio5s_max',
                       width: 80,
                       align: 'right',
                     },
                     {
-                      title: 'AVG',
+                      title: <Tag color="orange">AVG</Tag>,
                       dataIndex: 'ratio5s_avg',
                       key: 'ratio5s_avg',
                       width: 80,
@@ -761,66 +650,66 @@ const IndexCalcTable = () => {
                 {
                   key: '1D',
                   period: '1D',
-                  diff1s_min: common.pricisionFormat_Precision(summaryStats['1D'].DIFF_1s.MIN, 0),
-                  diff1s_max: common.pricisionFormat_Precision(summaryStats['1D'].DIFF_1s.MAX, 0),
-                  diff1s_avg: common.pricisionFormat_Precision(summaryStats['1D'].DIFF_1s.AVG, 0),
-                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1D'].RATIO_1s.MIN, 2),
-                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1D'].RATIO_1s.MAX, 2),
-                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1D'].RATIO_1s.AVG, 2),
-                  diff5s_min: common.pricisionFormat_Precision(summaryStats['1D'].DIFF_5s.MIN, 0),
-                  diff5s_max: common.pricisionFormat_Precision(summaryStats['1D'].DIFF_5s.MAX, 0),
-                  diff5s_avg: common.pricisionFormat_Precision(summaryStats['1D'].DIFF_5s.AVG, 0),
-                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1D'].RATIO_5s.MIN, 2),
-                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1D'].RATIO_5s.MAX, 2),
-                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1D'].RATIO_5s.AVG, 2),
+                  diff1s_min: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_1s?.MIN || 0, 0),
+                  diff1s_max: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_1s?.MAX || 0, 0),
+                  diff1s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_1s?.AVG || 0, 0),
+                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_1s?.MIN || 0, 2),
+                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_1s?.MAX || 0, 2),
+                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_1s?.AVG || 0, 2),
+                  diff5s_min: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_5s?.MIN || 0, 0),
+                  diff5s_max: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_5s?.MAX || 0, 0),
+                  diff5s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_5s?.AVG || 0, 0),
+                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_5s?.MIN || 0, 2),
+                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_5s?.MAX || 0, 2),
+                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_5s?.AVG || 0, 2),
                 },
                 {
                   key: '1W',
                   period: '1W',
-                  diff1s_min: common.pricisionFormat_Precision(summaryStats['1W'].DIFF_1s.MIN, 0),
-                  diff1s_max: common.pricisionFormat_Precision(summaryStats['1W'].DIFF_1s.MAX, 0),
-                  diff1s_avg: common.pricisionFormat_Precision(summaryStats['1W'].DIFF_1s.AVG, 0),
-                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1W'].RATIO_1s.MIN, 2),
-                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1W'].RATIO_1s.MAX, 2),
-                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1W'].RATIO_1s.AVG, 2),
-                  diff5s_min: common.pricisionFormat_Precision(summaryStats['1W'].DIFF_5s.MIN, 0),
-                  diff5s_max: common.pricisionFormat_Precision(summaryStats['1W'].DIFF_5s.MAX, 0),
-                  diff5s_avg: common.pricisionFormat_Precision(summaryStats['1W'].DIFF_5s.AVG, 0),
-                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1W'].RATIO_5s.MIN, 2),
-                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1W'].RATIO_5s.MAX, 2),
-                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1W'].RATIO_5s.AVG, 2),
+                  diff1s_min: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_1s?.MIN || 0, 0),
+                  diff1s_max: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_1s?.MAX || 0, 0),
+                  diff1s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_1s?.AVG || 0, 0),
+                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_1s?.MIN || 0, 2),
+                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_1s?.MAX || 0, 2),
+                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_1s?.AVG || 0, 2),
+                  diff5s_min: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_5s?.MIN || 0, 0),
+                  diff5s_max: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_5s?.MAX || 0, 0),
+                  diff5s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_5s?.AVG || 0, 0),
+                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_5s?.MIN || 0, 2),
+                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_5s?.MAX || 0, 2),
+                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_5s?.AVG || 0, 2),
                 },
                 {
                   key: '1M',
                   period: '1M',
-                  diff1s_min: common.pricisionFormat_Precision(summaryStats['1M'].DIFF_1s.MIN, 0),
-                  diff1s_max: common.pricisionFormat_Precision(summaryStats['1M'].DIFF_1s.MAX, 0),
-                  diff1s_avg: common.pricisionFormat_Precision(summaryStats['1M'].DIFF_1s.AVG, 0),
-                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1M'].RATIO_1s.MIN, 2),
-                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1M'].RATIO_1s.MAX, 2),
-                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1M'].RATIO_1s.AVG, 2),
-                  diff5s_min: common.pricisionFormat_Precision(summaryStats['1M'].DIFF_5s.MIN, 0),
-                  diff5s_max: common.pricisionFormat_Precision(summaryStats['1M'].DIFF_5s.MAX, 0),
-                  diff5s_avg: common.pricisionFormat_Precision(summaryStats['1M'].DIFF_5s.AVG, 0),
-                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1M'].RATIO_5s.MIN, 2),
-                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1M'].RATIO_5s.MAX, 2),
-                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1M'].RATIO_5s.AVG, 2),
+                  diff1s_min: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_1s?.MIN || 0, 0),
+                  diff1s_max: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_1s?.MAX || 0, 0),
+                  diff1s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_1s?.AVG || 0, 0),
+                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_1s?.MIN || 0, 2),
+                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_1s?.MAX || 0, 2),
+                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_1s?.AVG || 0, 2),
+                  diff5s_min: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_5s?.MIN || 0, 0),
+                  diff5s_max: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_5s?.MAX || 0, 0),
+                  diff5s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_5s?.AVG || 0, 0),
+                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_5s?.MIN || 0, 2),
+                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_5s?.MAX || 0, 2),
+                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_5s?.AVG || 0, 2),
                 },
                 {
                   key: '1Y',
                   period: '1Y',
-                  diff1s_min: common.pricisionFormat_Precision(summaryStats['1Y'].DIFF_1s.MIN, 0),
-                  diff1s_max: common.pricisionFormat_Precision(summaryStats['1Y'].DIFF_1s.MAX, 0),
-                  diff1s_avg: common.pricisionFormat_Precision(summaryStats['1Y'].DIFF_1s.AVG, 0),
-                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1Y'].RATIO_1s.MIN, 2),
-                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1Y'].RATIO_1s.MAX, 2),
-                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1Y'].RATIO_1s.AVG, 2),
-                  diff5s_min: common.pricisionFormat_Precision(summaryStats['1Y'].DIFF_5s.MIN, 0),
-                  diff5s_max: common.pricisionFormat_Precision(summaryStats['1Y'].DIFF_5s.MAX, 0),
-                  diff5s_avg: common.pricisionFormat_Precision(summaryStats['1Y'].DIFF_5s.AVG, 0),
-                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1Y'].RATIO_5s.MIN, 2),
-                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1Y'].RATIO_5s.MAX, 2),
-                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1Y'].RATIO_5s.AVG, 2),
+                  diff1s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_1s?.MIN || 0, 0),
+                  diff1s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_1s?.MAX || 0, 0),
+                  diff1s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_1s?.AVG || 0, 0),
+                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_1s?.MIN || 0, 2),
+                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_1s?.MAX || 0, 2),
+                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_1s?.AVG || 0, 2),
+                  diff5s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_5s?.MIN || 0, 0),
+                  diff5s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_5s?.MAX || 0, 0),
+                  diff5s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_5s?.AVG || 0, 0),
+                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_5s?.MIN || 0, 2),
+                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_5s?.MAX || 0, 2),
+                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_5s?.AVG || 0, 2),
                 },
               ]}
               pagination={false}
@@ -847,15 +736,9 @@ const IndexCalcTable = () => {
         </div>
       </div>
 
-
       {tab_idx === 0 && (
-      <>
-        {/* <div style={{ marginTop: "10px", marginBottom: "10px", padding: "10px", backgroundColor: "#f9f9f9", border: "1px solid #d9d9d9" }}>
-          <div style={{ fontSize: "14px", fontWeight: "bold", marginBottom: "5px" }}>실시간 지수</div>
-        </div> */}
-        <div className="thbit-trade-table-container" data-simplebar style={{ height: "100%", marginTop: "10px" }}>
-
-           <Table 
+        <div className="thbit-trade-table-container" data-simplebar style={{ height: "100%", marginTop: "10px" }}>          
+          <Table 
             columns={columns}
             dataSource={index_list.slice(0, 100)}
             rowKey={(record) => `${record.createdAt}`}
@@ -863,103 +746,8 @@ const IndexCalcTable = () => {
             loading={loading}
             scroll={{ y: 500, x: 'max-content' }}
             style={{ height: "100%" }}
-            // summary={() => (
-            //   <Table.Summary fixed="top">
-            //       <Table.Summary.Row>
-            //         <Table.Summary.Cell index={0} rowSpan={2} align="center">
-            //           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            //             <Tag color="blue" style={{ fontSize: "14px", marginBottom: "10px" }}>ROWCOUNT</Tag>
-            //           </div>
-            //           {/* <br /> */}
-            //           <span style={{ fontSize: "14px", display: "flex", justifyContent: "center", alignItems: "center" }}>
-            //             {index_list?.length} / {total_count}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={1} colSpan={7} rowSpan={2} align="center">
-            //           <Tag color="processing">표기규칙</Tag>
-            //           no_data(데이터없음) stale(30초간 변동없음) crossed(매수호가/매도호가 역전)
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={9} align="right">
-            //           <Tag color="blue">MIN</Tag>
-            //           <span style={{ color: min_max_info.MIN_DIFF_1 === 0 ? 'black' : min_max_info.MIN_DIFF_1 < 0 ? 'blue' : 'red' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.MIN_DIFF_1, 0)}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={10} align="right">
-            //           <Tag color="blue">MIN</Tag>
-            //           <span style={{ color: min_max_info.MIN_DIFF_2 === 0 ? 'black' : min_max_info.MIN_DIFF_2 < 0 ? 'blue' : 'red' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.MIN_DIFF_2, 0)}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={11} align="right">
-            //           <Tag color="blue">MIN</Tag>
-            //           <span style={{ color: min_max_info.MIN_DIFF_3 === 0 ? 'black' : min_max_info.MIN_DIFF_3 < 0 ? 'blue' : 'red' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.MIN_DIFF_3, 0)}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={12} align="right">
-            //           <Tag color="green">AVG</Tag>
-            //           <span style={{ color: min_max_info.AVG_RATIO_1 === 0 ? 'black' : min_max_info.AVG_RATIO_1 < 0 ? 'blue' : 'green' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.AVG_RATIO_1, 4)}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={13} align="right">
-            //           <Tag color="green">AVG</Tag>
-            //           <span style={{ color: min_max_info.AVG_RATIO_2 === 0 ? 'black' : min_max_info.AVG_RATIO_2 < 0 ? 'blue' : 'green' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.AVG_RATIO_2, 4)}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={14} align="right">
-            //           <Tag color="green">AVG</Tag>
-            //           <span style={{ color: min_max_info.AVG_RATIO_3 === 0 ? 'black' : min_max_info.AVG_RATIO_3 < 0 ? 'blue' : 'green' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.AVG_RATIO_3, 4)}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //       </Table.Summary.Row>
-            //       <Table.Summary.Row>
-            //         <Table.Summary.Cell index={9} align="right">
-            //           <Tag color="red">MAX</Tag>
-            //           <span style={{ color: min_max_info.MAX_DIFF_1 === 0 ? 'black' : min_max_info.MAX_DIFF_1 < 0 ? 'blue' : 'red' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.MAX_DIFF_1, 0)}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={10} align="right">
-            //           <Tag color="red">MAX</Tag>
-            //           <span style={{ color: min_max_info.MAX_DIFF_2 === 0 ? 'black' : min_max_info.MAX_DIFF_2 < 0 ? 'blue' : 'red' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.MAX_DIFF_2, 0)}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={11} align="right">
-            //           <Tag color="red">MAX</Tag>
-            //           <span style={{ color: min_max_info.MAX_DIFF_3 === 0 ? 'black' : min_max_info.MAX_DIFF_3 < 0 ? 'blue' : 'red' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.MAX_DIFF_3, 0)}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={12} align="right">
-            //           <Tag color="red">MAX</Tag>
-            //           <span style={{ color: min_max_info.MAX_RATIO_1 === 0 ? 'black' : min_max_info.MAX_RATIO_1 < 0 ? 'blue' : 'red' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.MAX_RATIO_1, 4)}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={13} align="right">
-            //           <Tag color="red">MAX</Tag>
-            //           <span style={{ color: min_max_info.MAX_RATIO_2 === 0 ? 'black' : min_max_info.MAX_RATIO_2 < 0 ? 'blue' : 'red' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.MAX_RATIO_2, 4)}
-            //           </span>
-            //         </Table.Summary.Cell>
-            //         <Table.Summary.Cell index={14} align="right">
-            //           <Tag color="red">MAX</Tag>
-            //           <span style={{ color: min_max_info.MAX_RATIO_3 === 0 ? 'black' : min_max_info.MAX_RATIO_3 < 0 ? 'blue' : 'red' }}>
-            //             {common.pricisionFormat_Precision(min_max_info.MAX_RATIO_3, 4)}
-            //           </span>
-            //         </Table.Summary.Cell>
-                    
-            //       </Table.Summary.Row>
-            //   </Table.Summary>
-            // )}
           /> 
         </div>
-      </>
       )}
       {tab_idx === 1 && (
         <div className="thbit-trade-table-container" data-simplebar style={{ height: "100%" }}>
@@ -974,7 +762,7 @@ const IndexCalcTable = () => {
             height: "100%",
             alignItems: "center",
             overflowY: "hidden",
-            marginTop: "100px",
+            marginTop: "10px",
           }}
         >
           <div
@@ -1003,6 +791,7 @@ const IndexCalcTable = () => {
                 { key: 'ACTUAL_AVG' },
               ]}
               decimals={6}
+              height={500}
             />
           </div>
         </div>
@@ -1011,11 +800,11 @@ const IndexCalcTable = () => {
         <div
           className="thbit-trade-table-container flex justify-center"
           style={{
-            minHeight: "600px",
+            minHeight: "400px",
             height: "100%",
             alignItems: "center",
             overflowY: "hidden",
-            marginTop: "-65px",
+            marginTop: "10px",
           }}
         >
           <div
@@ -1043,13 +832,14 @@ const IndexCalcTable = () => {
                 { key: 'UPBIT' },
                 { key: 'ACTUAL_AVG' },
               ]}
-              stepSec={1}        // 데이터 간격(초)
+              stepSec={1}
               decimals={2}
+              height={500}
             />
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

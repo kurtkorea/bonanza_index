@@ -4,10 +4,6 @@ const db = {};
 
 let sequelize = null;
 
-// db.Messages = Messages;
-
-// Messages.init(sequelize);
-
 // 데이터베이스 연결 테스트 및 테이블 동기화
 async function connect(host, port) {
 	// 환경변수 디버깅

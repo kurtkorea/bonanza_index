@@ -151,7 +151,7 @@ kubectl label node bonanza-worker app-server=true
 간단한 스크립트로 안내를 받을 수 있습니다:
 
 ```bash
-cd k8s/scripts
+cd k8s/scriptsc
 chmod +x reinstall-k3s-from-scratch.sh
 ./reinstall-k3s-from-scratch.sh
 ```

@@ -62,12 +62,6 @@ app.get("/health", (req, res) => {
 	});
 });
 
-//discovery register
-// const discovery = require("./discovery");
-// if (process.env.NODE_ENV === "production") {
-// 	discovery.init(app);
-// }
-
 //404 handling middleware
 app.use((req, res) => {
 	respMsg(res, "missing_request");

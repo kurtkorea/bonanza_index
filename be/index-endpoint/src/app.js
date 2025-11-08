@@ -114,10 +114,12 @@ app.get("/health", (req, res) => {
 const { respMsg } = require("./utils/common");
 const indexHistoryRouter = require("./router/index_history.js");
 const indexCalcRouter = require("./router/index_calc.js");
+const fileDownloadRouter = require("./router/file_download.js");
 
 // 라우터 등록
 app.use("/v1/index_history", indexHistoryRouter);
 app.use("/v1/index_calc", indexCalcRouter);
+app.use("/v1/file_download", fileDownloadRouter);
 
 //discovery register
 // const discovery = require("./discovery");

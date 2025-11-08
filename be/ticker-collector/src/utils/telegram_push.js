@@ -8,7 +8,7 @@ async function sendTelegramMessage(source_name, text, is_send = true, is_down = 
   }
 
   if (!process.env.TELEGRAM_SERVICE_URL) {
-    console.log(`[Telegram] Skipped (no telegram service URL)`);
+    // console.log(`[Telegram] Skipped (no telegram service URL)`);
     return;
   }
 

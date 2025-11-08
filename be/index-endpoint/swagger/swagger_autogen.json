@@ -91,12 +91,6 @@
             "type": "string"
           },
           {
-            "name": "from_date",
-            "in": "query",
-            "type": "datetime",
-            "description": "검색시작시간 (예: 2025-09-01T00:00:00Z)"
-          },
-          {
             "name": "to_date",
             "in": "query",
             "type": "datetime",
@@ -107,6 +101,12 @@
             "in": "query",
             "type": "integer",
             "description": "페이지 번호 (기본값: 1)"
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "type": "datetime",
+            "description": "검색시작시간 (예: 2025-09-01T00:00:00Z)"
           },
           {
             "name": "size",
@@ -125,6 +125,52 @@
           "200": {
             "description": "성공"
           },
+          "400": {
+            "description": "잘못된 요청"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          }
+        }
+      }
+    },
+    "/v1/index_calc/stats": {
+      "get": {
+        "tags": [
+          "Index Calculation"
+        ],
+        "description": "FKBRTI 통계 조회 (기간별 DIFF 및 RATIO 통계) - 1D, 1W, 1M, 1Y",
+        "responses": {
+          "200": {
+            "description": "성공 시 통계 데이터 반환"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          }
+        }
+      }
+    },
+    "/v1/file_download/": {
+      "get": {
+        "tags": [
+          "Index History"
+        ],
+        "description": "FKBRTI 지수 히스토리 파일 다운로드",
+        "parameters": [
+          {
+            "name": "from_date",
+            "in": "query",
+            "type": "string",
+            "description": "검색시작시간 (예: 2025-09-01)"
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "type": "string",
+            "description": "검색마지막시간 (예: 2025-09-30)"
+          }
+        ],
+        "responses": {
           "400": {
             "description": "잘못된 요청"
           },

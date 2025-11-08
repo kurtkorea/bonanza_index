@@ -275,8 +275,6 @@ async function startPullQueue() {
       for (const item of batch) {
         const { topic, ts, data } = item;
 
-        
-
         let total_count = 0;
         let bid_count = 0;
         let ask_count = 0;

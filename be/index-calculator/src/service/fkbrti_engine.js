@@ -17,6 +17,7 @@ const { latestTickerByExchange, latestTradeByExchange, latestDepthByExchange } =
 const { db, sequelize } = require('../db/db.js');
 
 const { send_publisher } = require('./zmq-sender-pub.js');
+const common = require('../utils/common');
 
 const DEPTH        = num("DEPTH", 15);
 const TICK_MS      = num("TICK_MS", 1000);
@@ -178,19 +179,54 @@ class FkbrtiEngine {
 
     // 기대 거래소 상태 평가(스테일/역전/결측을 모두 무효 처리)
     const expected_status = this.expected.map(ex => {
-      // console.log("ex", ex);
       const rec = this.booksByEx[ex];
-      const ticker_key = ex + "_" + this.symbol;
+      const ticker_key = `${ex}_${this.symbol}`;
       const tick_price = latestTickerByExchange.get(ticker_key);
-      if (!rec) return { exchange: ex, reason: "no_data", price: tick_price.close ? tick_price.close : 0 };
-      if (rec.ts < cutoff) return { exchange: ex, reason: "stale", price: tick_price.close ? tick_price.close : 0 };
+      const close = toNum(tick_price?.close);
+
+      if (!rec) return { exchange: ex, reason: "no_data", price: 0 };
+      if (rec.ts < cutoff) return { exchange: ex, reason: "stale", price: 0 };
+
       const book = { bids: rec.bids, asks: rec.asks };
-      if (isCrossed(book)) return { exchange: ex, reason: "crossed", price: tick_price.close ? tick_price.close : 0 };
+      if (isCrossed(book)) return { exchange: ex, reason: "crossed", price: 0 };
+
       const ok = (rec.bids?.length || 0) > 0 || (rec.asks?.length || 0) > 0;
-      return { exchange: ex, reason: ok ? "ok" : "empty_book", price: tick_price.close ? tick_price.close : 0 };
+      return { exchange: ex, reason: ok ? "ok" : "empty_book", price: ok ? close : 0 };
     });
     const anyExpectedOk = expected_status.some(s => s.reason === "ok");
     const shouldProvisional = !anyExpectedOk;
+
+    // console.log ( "expected_status", expected_status );
+
+    let actual_avg = 0;
+    let diff = 0;
+    let ratio = 0;
+
+    let sum = 0;
+    let count = 0;
+    for (const expected_status_item of expected_status) {
+      if (expected_status_item.reason == "ok") {
+        sum += expected_status_item.price;
+        count++;
+      } else {
+        expected_status_item.price = 0;
+      }
+    }
+    actual_avg = common.isEmpty( sum / count ) ? 0 : sum / count;
+
+    let colI = expected_status.find(item => item.exchange == "101")?.price;
+    let colF = expected_status.find(item => item.exchange == "102")?.price;
+
+    if (!colI && colI !== 0) {
+      diff = colF - indexMid;
+    } else {
+      diff = colI - indexMid;
+    }
+    ratio = Math.abs(diff / indexMid) * 100;
+
+    if ( common.isEmpty(indexMid) ) {
+      return;
+    }
 
     if (!shouldProvisional && Number.isFinite(indexMid)) {
       const out = {
@@ -208,13 +244,16 @@ class FkbrtiEngine {
         expected_exchanges: this.expected,
         vwap_buy:  roundN(buyVWAP,  this.decimals),
         vwap_sell: roundN(sellVWAP, this.decimals),
-        index_mid: roundN(indexMid, this.decimals),
+        index_mid: roundN(indexMid, this.decimals),       
         sources,
         expected_status,
         provisional: false,
-        no_publish: false
+        no_publish: false,
+        diff: diff,
+        ratio: ratio,
+        actual_avg: actual_avg
       };
- 
+
       this.insertFkbrti1sec(out);
 
       this.last = {
@@ -247,19 +286,13 @@ class FkbrtiEngine {
           expected_status,
           provisional: elapsed <= this.provMaxMs,
           no_publish: elapsed > this.provMaxMs,
-          reason: "all_expected_exchanges_unavailable_or_invalid"
+          reason: "all_expected_exchanges_unavailable_or_invalid",
+          diff: diff,
+          ratio: ratio,
+          actual_avg: actual_avg,
         };
-
-        this.insertFkbrti1sec(out);
         
-        // let output = {
-        //   // ticker : this.booksByExTicker.get("101_KRW-BTC"),
-        //   // trade : this.booksByExTrade.get("101_KRW-BTC"),
-        //   orderbook : this.booksByExOrderBook.get("101_KRW-BTC"),
-        //   out : out,
-        // };
-  
-        // console.log("ticker", JSON.stringify(output, null, 2));
+        this.insertFkbrti1sec(out);
 
       } else {
         // 직전값도 없음 → 미산출
@@ -283,81 +316,78 @@ class FkbrtiEngine {
           expected_status,
           provisional: false,
           no_publish: true,
-          reason: "no_history_and_all_expected_unavailable_or_invalid"
+          reason: "no_history_and_all_expected_unavailable_or_invalid",
+          diff: diff,
+          ratio: ratio,
+          actual_avg: actual_avg,
         };
 
         this.insertFkbrti1sec(out);
-        
-        
-        // let output = {
-        //   ticker : this.booksByExTicker.get("101_KRW-BTC"),
-        //   trade : this.booksByExTrade.get("101_KRW-BTC"),
-        //   orderbook : this.booksByExOrderBook.get("101_KRW-BTC"),
-        //   out : out,
-        // };
-  
-        // console.log("ticker", JSON.stringify(output, null, 2));
       }
     }
   }
 
     // tb_fkbrti_1sec에 데이터 삽입하는 함수
-  insertFkbrti1sec(out) {
-
-    //console.log("table_name", this.table_name);
-
-  db.sequelize.query(
-    `
-    INSERT INTO :table_name (
-        symbol,
-        vwap_buy,
-        vwap_sell,
-        index_mid,
-        expected_exchanges,
-        sources,
-        expected_status,
-        provisional,
-        no_publish,
-        createdAt
-      ) VALUES (
-        :symbol,
-        :vwap_buy,
-        :vwap_sell,
-        :index_mid,
-        :expected_exchanges,
-        :sources,
-        :expected_status,
-        :provisional,
-        :no_publish,
-        :createdAt
-      )
-      `,
-      {
-        replacements: {
-          table_name: this.table_name,
-          symbol: out.symbol,
-          vwap_buy: out.vwap_buy,
-          vwap_sell: out.vwap_sell,
-          index_mid: out.index_mid,
-          expected_exchanges: JSON.stringify(out.expected_exchanges),
-          sources: JSON.stringify(out.sources),
-          expected_status: JSON.stringify(out.expected_status),
-          provisional: out.provisional,
-          no_publish: out.no_publish,
-          createdAt: out.t,
+  insertFkbrti1sec(item) {
+    db.sequelize.query(
+      `
+      INSERT INTO :table_name (
+          symbol,
+          vwap_buy,
+          vwap_sell,
+          index_mid,
+          expected_exchanges,
+          sources,
+          expected_status,
+          provisional,
+          no_publish,
+          diff,
+          ratio,
+          actual_avg,
+          createdAt
+        ) VALUES (
+          :symbol,
+          :vwap_buy,
+          :vwap_sell,
+          :index_mid,
+          :expected_exchanges,
+          :sources,
+          :expected_status,
+          :provisional,
+          :no_publish,
+          :diff,
+          :ratio,
+          :actual_avg,
+          :createdAt
+        )
+        `,
+        {
+          replacements: {
+            table_name: this.table_name,
+            symbol: item.symbol,
+            vwap_buy: item.vwap_buy,
+            vwap_sell: item.vwap_sell,
+            index_mid: item.index_mid,
+            expected_exchanges: JSON.stringify(item.expected_exchanges),
+            sources: JSON.stringify(item.sources),
+            expected_status: JSON.stringify(item.expected_status),
+            provisional: item.provisional,
+            no_publish: item.no_publish,
+            diff: item.diff,
+            ratio: item.ratio,
+            actual_avg: item.actual_avg,
+            createdAt: item.t,
+          }
         }
-      }
-    )
-    .then(() => {
-      send_publisher("fkbrti", out);
-    })
-    .catch((err) => {
-      console.error("[DB] tb_fkbrti_1sec insert 실패:", err);
-    });
+      )
+      .then(() => {
+        send_publisher("fkbrti", item);
+      })
+      .catch((err) => {
+        console.error("[DB] tb_fkbrti_1sec insert 실패:", err);
+      });
   }
 }
-
-
 
 module.exports = { FkbrtiEngine };
 

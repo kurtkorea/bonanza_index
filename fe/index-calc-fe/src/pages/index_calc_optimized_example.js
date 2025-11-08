@@ -150,7 +150,7 @@ const IndexCalcTableOptimized = () => {
 
       {/* 차트 */}
       {tabIdx === 1 && (
-        <div style={{ height: "740px" }}>
+        <div style={{ height: "5px" }}>
           <MultiExchangeChart data={[...transformedData].reverse()} height={740} />
         </div>
       )}
