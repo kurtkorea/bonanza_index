@@ -16,6 +16,8 @@ import MultiExchangeChart from "./index_chart";
 import CorrelationTable from "./index_correlation";
 import VolatilityTable from "./index_volatility";
 
+const precision = 3;
+
 const columns = [
   {
     title: 'TIME',
@@ -167,7 +169,7 @@ const columns = [
       let color = record.ratio_1 === 0 ? 'black' : record.ratio_1 < 0 ? 'blue' : 'red';
       return (
         <span style={{ color }}>
-          {common.pricisionFormat_Precision(record.ratio_1, 2)}%
+          {common.pricisionFormat_Precision(record.ratio_1, precision)}%
         </span>
       );
     },
@@ -183,7 +185,7 @@ const columns = [
           let color = record.ratio_5 === 0 ? 'black' : record.ratio_5 < 0 ? 'blue' : 'red';
       return (
         <span style={{ color }}>
-          {common.pricisionFormat_Precision(record.ratio_5, 2)}%
+          {common.pricisionFormat_Precision(record.ratio_5, precision)}%
         </span>
       );
     },
@@ -199,7 +201,7 @@ const columns = [
       let color = record.ratio_10 === 0 ? 'black' : record.ratio_10 < 0 ? 'blue' : 'red';
       return (
         <span style={{ color }}>
-          {common.pricisionFormat_Precision(record.ratio_10, 2)}%
+          {common.pricisionFormat_Precision(record.ratio_10, precision)}%
         </span>
       );
     },
@@ -230,9 +232,10 @@ const IndexCalcTable = () => {
   const summaryStats = useSelector((state) => state.IndexReducer.summaryStats);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(500);
+  const [pageSize, setPageSize] = useState(5000);
   const [totalCount, setTotalCount] = useState(0);
-  const [pagination, setPagination] = useState({hasNext: false, hasPrev: false, page: 1, size: 500, totalCount: 0, totalPages: 0});
+  const [pagination, setPagination] = useState({hasNext: false, hasPrev: false, page: 1, size: 5000, totalCount: 0, totalPages: 0});
+
 
   // Fetch data with paging
   const fetchData = async (page = currentPage, size = pageSize) => 
@@ -384,9 +387,6 @@ const IndexCalcTable = () => {
           }
         });
 
-        console.log ( "statsMap", statsMap );
-
-        console.log("변환된 통계 데이터(statsMap):", statsMap);
         dispatch({ type: "fkbrti/set_stats", payload: statsMap });
       } else {
         console.warn("통계 데이터 형식이 올바르지 않습니다:", res.data);
@@ -492,7 +492,7 @@ const IndexCalcTable = () => {
             >
               조회
             </Button>
-            {/* <Button
+            <Button
               onClick={async () => {
                 if ( pagination?.hasNext ) {
                   onClickSearch(currentPage + 1, pageSize);
@@ -501,7 +501,7 @@ const IndexCalcTable = () => {
               disabled={!pagination?.hasNext}
             >
               다음
-            </Button> */}
+            </Button>
 
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginLeft: "10px", marginRight: "10px" }}>
               <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>다운로드 기간 (최대 3개월)</span>
@@ -538,7 +538,7 @@ const IndexCalcTable = () => {
                   fixed: 'left',
                 },
                 {
-                  title: <Tag color="green">DIFF-1s</Tag>,
+                  title: <Tag color="green" style={{ width: '100%' }}>DIFF-1s</Tag>,
                   align: 'center',
                   children: [
                     {
@@ -565,7 +565,7 @@ const IndexCalcTable = () => {
                   ],
                 },
                 {
-                  title: <Tag color="green">RATIO-1s</Tag>,
+                  title: <Tag color="green" style={{ width: '100%' }}>RATIO-1s</Tag>,
                   align: 'center',
                   children: [
                     {
@@ -592,7 +592,7 @@ const IndexCalcTable = () => {
                   ],
                 },
                 {
-                  title: <Tag color="green">DIFF-5s</Tag>,
+                  title: <Tag color="green" style={{ width: '100%' }}>DIFF-5s</Tag>,
                   align: 'center',
                   children: [
                     {
@@ -619,7 +619,7 @@ const IndexCalcTable = () => {
                   ],
                 },
                 {
-                  title: <Tag color="green">RATIO-5s</Tag>,
+                  title: <Tag color="green" style={{ width: '100%' }}>RATIO-5s</Tag>,
                   align: 'center',
                   children: [
                     {
@@ -645,6 +645,60 @@ const IndexCalcTable = () => {
                     },
                   ],
                 },
+                {
+                  title: <Tag color="green" style={{ width: '100%' }}>DIFF-10s</Tag>,
+                  align: 'center',
+                  children: [
+                    {
+                      title: <Tag color="blue">MIN</Tag>,
+                      dataIndex: 'diff10s_min',
+                      key: 'diff10s_min',
+                      width: 80,
+                      align: 'right',
+                    },
+                    {
+                      title: <Tag color="red">MAX</Tag>,
+                      dataIndex: 'diff10s_max',
+                      key: 'diff10s_max',
+                      width: 80,
+                      align: 'right',
+                    },
+                    {
+                      title: <Tag color="orange">AVG</Tag>,
+                      dataIndex: 'diff10s_avg',
+                      key: 'diff10s_avg',
+                      width: 80,
+                      align: 'right',
+                    },
+                  ],
+                },
+                {
+                  title: <Tag color="green" style={{ width: '100%' }}>RATIO-10s</Tag>,
+                  align: 'center',
+                  children: [
+                    {
+                      title: <Tag color="blue">MIN</Tag>,
+                      dataIndex: 'ratio10s_min',
+                      key: 'ratio10s_min',
+                      width: 80,
+                      align: 'right',
+                    },
+                    {
+                      title: <Tag color="red">MAX</Tag>,
+                      dataIndex: 'ratio10s_max',
+                      key: 'ratio10s_max',
+                      width: 80,
+                      align: 'right',
+                    },
+                    {
+                      title: <Tag color="orange">AVG</Tag>,
+                      dataIndex: 'ratio10s_avg',
+                      key: 'ratio10s_avg',
+                      width: 80,
+                      align: 'right',
+                    },
+                  ],
+                },
               ]}
               dataSource={[
                 {
@@ -653,15 +707,21 @@ const IndexCalcTable = () => {
                   diff1s_min: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_1s?.MIN || 0, 0),
                   diff1s_max: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_1s?.MAX || 0, 0),
                   diff1s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_1s?.AVG || 0, 0),
-                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_1s?.MIN || 0, 2),
-                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_1s?.MAX || 0, 2),
-                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_1s?.AVG || 0, 2),
+                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_1s?.MIN || 0, precision),
+                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_1s?.MAX || 0, precision),
+                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_1s?.AVG || 0, precision),
                   diff5s_min: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_5s?.MIN || 0, 0),
                   diff5s_max: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_5s?.MAX || 0, 0),
                   diff5s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_5s?.AVG || 0, 0),
-                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_5s?.MIN || 0, 2),
-                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_5s?.MAX || 0, 2),
-                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_5s?.AVG || 0, 2),
+                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_5s?.MIN || 0, precision),
+                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_5s?.MAX || 0, precision),
+                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_5s?.AVG || 0, precision),
+                  diff10s_min: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_10s?.MIN || 0, 0),
+                  diff10s_max: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_10s?.MAX || 0, 0),
+                  diff10s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.DIFF_10s?.AVG || 0, 0),
+                  ratio10s_min: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_10s?.MIN || 0, precision),
+                  ratio10s_max: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_10s?.MAX || 0, precision),
+                  ratio10s_avg: common.pricisionFormat_Precision(summaryStats['1D']?.RATIO_10s?.AVG || 0, precision),
                 },
                 {
                   key: '1W',
@@ -669,15 +729,21 @@ const IndexCalcTable = () => {
                   diff1s_min: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_1s?.MIN || 0, 0),
                   diff1s_max: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_1s?.MAX || 0, 0),
                   diff1s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_1s?.AVG || 0, 0),
-                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_1s?.MIN || 0, 2),
-                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_1s?.MAX || 0, 2),
-                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_1s?.AVG || 0, 2),
+                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_1s?.MIN || 0, precision),
+                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_1s?.MAX || 0, precision),
+                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_1s?.AVG || 0, precision),
                   diff5s_min: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_5s?.MIN || 0, 0),
                   diff5s_max: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_5s?.MAX || 0, 0),
                   diff5s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_5s?.AVG || 0, 0),
-                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_5s?.MIN || 0, 2),
-                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_5s?.MAX || 0, 2),
-                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_5s?.AVG || 0, 2),
+                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_5s?.MIN || 0, precision),
+                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_5s?.MAX || 0, precision),
+                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_5s?.AVG || 0, precision),
+                  diff10s_min: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_10s?.MIN || 0, 0),
+                  diff10s_max: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_10s?.MAX || 0, 0),
+                  diff10s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.DIFF_10s?.AVG || 0, 0),
+                  ratio10s_min: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_10s?.MIN || 0, precision),
+                  ratio10s_max: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_10s?.MAX || 0, precision),
+                  ratio10s_avg: common.pricisionFormat_Precision(summaryStats['1W']?.RATIO_10s?.AVG || 0, precision),
                 },
                 {
                   key: '1M',
@@ -685,15 +751,21 @@ const IndexCalcTable = () => {
                   diff1s_min: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_1s?.MIN || 0, 0),
                   diff1s_max: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_1s?.MAX || 0, 0),
                   diff1s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_1s?.AVG || 0, 0),
-                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_1s?.MIN || 0, 2),
-                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_1s?.MAX || 0, 2),
-                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_1s?.AVG || 0, 2),
+                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_1s?.MIN || 0, precision),
+                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_1s?.MAX || 0, precision),
+                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_1s?.AVG || 0, precision),
                   diff5s_min: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_5s?.MIN || 0, 0),
                   diff5s_max: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_5s?.MAX || 0, 0),
                   diff5s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_5s?.AVG || 0, 0),
-                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_5s?.MIN || 0, 2),
-                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_5s?.MAX || 0, 2),
-                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_5s?.AVG || 0, 2),
+                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_5s?.MIN || 0, precision),
+                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_5s?.MAX || 0, precision),
+                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_5s?.AVG || 0, precision),
+                  diff10s_min: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_10s?.MIN || 0, 0),
+                  diff10s_max: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_10s?.MAX || 0, 0),
+                  diff10s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.DIFF_10s?.AVG || 0, 0),
+                  ratio10s_min: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_10s?.MIN || 0, precision),
+                  ratio10s_max: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_10s?.MAX || 0, precision),
+                  ratio10s_avg: common.pricisionFormat_Precision(summaryStats['1M']?.RATIO_10s?.AVG || 0, precision),
                 },
                 {
                   key: '1Y',
@@ -701,15 +773,21 @@ const IndexCalcTable = () => {
                   diff1s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_1s?.MIN || 0, 0),
                   diff1s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_1s?.MAX || 0, 0),
                   diff1s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_1s?.AVG || 0, 0),
-                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_1s?.MIN || 0, 2),
-                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_1s?.MAX || 0, 2),
-                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_1s?.AVG || 0, 2),
+                  ratio1s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_1s?.MIN || 0, precision),
+                  ratio1s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_1s?.MAX || 0, precision),
+                  ratio1s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_1s?.AVG || 0, precision),
                   diff5s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_5s?.MIN || 0, 0),
                   diff5s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_5s?.MAX || 0, 0),
                   diff5s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_5s?.AVG || 0, 0),
-                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_5s?.MIN || 0, 2),
-                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_5s?.MAX || 0, 2),
-                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_5s?.AVG || 0, 2),
+                  ratio5s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_5s?.MIN || 0, precision),
+                  ratio5s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_5s?.MAX || 0, precision),
+                  ratio5s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_5s?.AVG || 0, precision),
+                  diff10s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_10s?.MIN || 0, 0),
+                  diff10s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_10s?.MAX || 0, 0),
+                  diff10s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.DIFF_10s?.AVG || 0, 0),
+                  ratio10s_min: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_10s?.MIN || 0, precision),
+                  ratio10s_max: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_10s?.MAX || 0, precision),
+                  ratio10s_avg: common.pricisionFormat_Precision(summaryStats['1Y']?.RATIO_10s?.AVG || 0, precision),
                 },
               ]}
               pagination={false}

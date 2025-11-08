@@ -32,24 +32,32 @@ const initState = {
       RATIO_1s: { MIN: 0, MAX: 0, AVG: 0 },
       DIFF_5s: { MIN: 0, MAX: 0, AVG: 0 },
       RATIO_5s: { MIN: 0, MAX: 0, AVG: 0 },
+      DIFF_10s: { MIN: 0, MAX: 0, AVG: 0 },
+      RATIO_10s: { MIN: 0, MAX: 0, AVG: 0 },
     },
     '1W': {
       DIFF_1s: { MIN: 0, MAX: 0, AVG: 0 },
       RATIO_1s: { MIN: 0, MAX: 0, AVG: 0 },
       DIFF_5s: { MIN: 0, MAX: 0, AVG: 0 },
       RATIO_5s: { MIN: 0, MAX: 0, AVG: 0 },
+      DIFF_10s: { MIN: 0, MAX: 0, AVG: 0 },
+      RATIO_10s: { MIN: 0, MAX: 0, AVG: 0 },
     },
     '1M': {
       DIFF_1s: { MIN: 0, MAX: 0, AVG: 0 },
       RATIO_1s: { MIN: 0, MAX: 0, AVG: 0 },
       DIFF_5s: { MIN: 0, MAX: 0, AVG: 0 },
       RATIO_5s: { MIN: 0, MAX: 0, AVG: 0 },
+      DIFF_10s: { MIN: 0, MAX: 0, AVG: 0 },
+      RATIO_10s: { MIN: 0, MAX: 0, AVG: 0 },
     },
     '1Y': {
       DIFF_1s: { MIN: 0, MAX: 0, AVG: 0 },
       RATIO_1s: { MIN: 0, MAX: 0, AVG: 0 },
       DIFF_5s: { MIN: 0, MAX: 0, AVG: 0 },
       RATIO_5s: { MIN: 0, MAX: 0, AVG: 0 },
+      DIFF_10s: { MIN: 0, MAX: 0, AVG: 0 },
+      RATIO_10s: { MIN: 0, MAX: 0, AVG: 0 },
     },
   },
   total_count: 0,
@@ -114,13 +122,43 @@ const computeMinMaxInfo = (data) => {
   let maxActualAvg = Number.NEGATIVE_INFINITY;
 
   for (const item of data) {
-    const diff1 = Number(item.DIFF_1);
-    const diff2 = Number(item.DIFF_2);
-    const diff3 = Number(item.DIFF_3);
-    const ratio1 = Number(item.RATIO_1);
-    const ratio2 = Number(item.RATIO_2);
-    const ratio3 = Number(item.RATIO_3);
-    const actualAvg = Number(item.ACTUAL_AVG);
+    const diff1 = Number(
+      item?.diff_1 ??
+      item?.diff1 ??
+      item?.diff_1s ??
+      item?.diff1s
+    );
+    const diff2 = Number(
+      item?.diff_5 ??
+      item?.diff2 ??
+      item?.diff_5s ??
+      item?.diff2s
+    );
+    const diff3 = Number(
+      item?.diff_10 ??
+      item?.diff3 ??
+      item?.diff_10s ??
+      item?.diff3s
+    );
+    const ratio1 = Number(
+      item?.ratio_1 ??
+      item?.ratio1 ??
+      item?.ratio_1s ??
+      item?.ratio1s
+    );
+    const ratio2 = Number(
+      item?.ratio_5 ??
+      item?.ratio2 ??
+      item?.ratio_5s ??
+      item?.ratio2s
+    );
+    const ratio3 = Number(
+      item?.ratio_10 ??
+      item?.ratio3 ??
+      item?.ratio_10s ??
+      item?.ratio3s
+    );
+    const actualAvg = Number(item?.actual_avg ?? item?.actualAvg);
 
     if (Number.isFinite(diff1)) {
       if (diff1 < minDiff1) minDiff1 = diff1;
@@ -219,9 +257,9 @@ export default (state = initState, { type, payload }) => {
       return produce(state, draft => {
         draft.current_page = 1;
         draft.index_data = payload.datalist;
-        const stats = computeMinMaxInfo(draft.index_data);
-        draft.MIN_MAX_INFO = stats;
-        draft.total_count = stats.total_count;
+        // const stats = computeMinMaxInfo(draft.index_data);
+        // draft.MIN_MAX_INFO = stats;
+        // draft.total_count = stats.total_count;
       });
     case 'fkbrti/update':
       return produce(state, draft => {
@@ -259,9 +297,9 @@ export default (state = initState, { type, payload }) => {
           new_datalist = new_datalist.filter(item => !draft.index_data.some(existingItem => existingItem.createdAt >= item.createdAt));
           draft.index_data = [...new_datalist, ...draft.index_data];
 
-          const stats = computeMinMaxInfo(draft.index_data);
-          draft.MIN_MAX_INFO = stats;
-          draft.total_count = stats.total_count;
+          // const stats = computeMinMaxInfo(draft.index_data);
+          // draft.MIN_MAX_INFO = stats;
+          // draft.total_count = stats.total_count;
         }
       });
     case 'fkbrti/append':
@@ -311,9 +349,9 @@ export default (state = initState, { type, payload }) => {
 
           draft.index_data = [...draft.index_data, ...new_datalist];
 
-          const stats = computeMinMaxInfo(draft.index_data);
-          draft.MIN_MAX_INFO = stats;
-          draft.total_count = stats.total_count;
+          // const stats = computeMinMaxInfo(draft.index_data);
+          // draft.MIN_MAX_INFO = stats;
+          // draft.total_count = stats.total_count;
 
         }
 
