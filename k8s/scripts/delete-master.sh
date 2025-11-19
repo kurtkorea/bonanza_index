@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 마스터 노드용 리소스 삭제 스크립트
-# deploy-master.sh에서 배포한 리소스들을 삭제합니다
+# 데이터베이스 및 인프라 서비스 삭제 스크립트
+# 단일 노드 구성에서 데이터베이스와 Nginx 서비스를 삭제합니다
 
 set -e
 
@@ -10,38 +10,28 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 K8S_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$K8S_DIR"
 
-echo "🗑️  Bonanza Index 마스터 노드 리소스 삭제"
+echo "🗑️  Bonanza Index 데이터베이스 및 인프라 서비스 삭제"
 echo "================================"
 echo ""
 
 # 현재 노드 확인
-CURRENT_NODE=$(kubectl get nodes -o jsonpath='{.items[?(@.metadata.labels.node-role\.kubernetes\.io/control-plane=="true")].metadata.name}' | head -1)
-if [ -z "$CURRENT_NODE" ]; then
-    echo "⚠️  마스터 노드를 찾을 수 없습니다"
-    echo "   이 스크립트는 마스터 노드에서 실행해야 합니다"
-    echo ""
-    echo "사용 가능한 노드:"
-    kubectl get nodes
-    exit 1
-fi
-
-echo "✅ 마스터 노드: $CURRENT_NODE"
+echo "📊 현재 클러스터 상태:"
+echo "================================"
+echo ""
+echo "노드:"
+kubectl get nodes
 echo ""
 
 # 현재 배포 상태 확인
-echo "📊 마스터 노드 배포 상태:"
-echo "================================"
-echo ""
-
-echo "📦 마스터 노드 Pod 상태:"
-kubectl get pods -n bonanza-index -o wide --field-selector=spec.nodeName=$CURRENT_NODE 2>/dev/null || echo "Pod가 없습니다."
+echo "📦 데이터베이스 및 인프라 Pod 상태:"
+kubectl get pods -n bonanza-index -o wide 2>/dev/null | grep -E "(questdb|redis|mariadb|nginx)" || echo "Pod가 없습니다."
 
 echo ""
 echo "💾 PVC 상태:"
 kubectl get pvc -n bonanza-index 2>/dev/null || echo "PVC가 없습니다."
 
 echo ""
-echo "🔍 마스터 노드 서비스 상태:"
+echo "🔍 데이터베이스 및 인프라 서비스 상태:"
 kubectl get svc -n bonanza-index 2>/dev/null | grep -E "(redis|nginx|questdb|mariadb)" || echo "서비스가 없습니다."
 
 echo ""
@@ -164,8 +154,8 @@ echo ""
 
 # 삭제 확인
 echo "⚠️  주의사항:"
-echo "  - ConfigMap 'bonanza-common-config'는 워커 노드에서도 사용하므로 삭제하지 않습니다"
-echo "  - Secret 'bonanza-secrets'는 워커 노드에서도 사용하므로 삭제하지 않습니다"
+echo "  - ConfigMap 'bonanza-common-config'는 애플리케이션 서비스에서도 사용하므로 삭제하지 않습니다"
+echo "  - Secret 'bonanza-secrets'는 애플리케이션 서비스에서도 사용하므로 삭제하지 않습니다"
 echo "  - Namespace는 삭제하지 않습니다"
 echo "  - StorageClass는 삭제하지 않습니다"
 echo ""
@@ -243,8 +233,8 @@ if [ "$SELECTED_NGINX" = true ]; then
 fi
 
 echo ""
-echo "  ℹ️  bonanza-common-config는 워커 노드에서도 사용하므로 유지"
-echo "  ℹ️  bonanza-secrets는 워커 노드에서도 사용하므로 유지"
+echo "  ℹ️  bonanza-common-config는 애플리케이션 서비스에서도 사용하므로 유지"
+echo "  ℹ️  bonanza-secrets는 애플리케이션 서비스에서도 사용하므로 유지"
 
 echo ""
 echo "⏳ 리소스 정리 대기 중 (5초)..."
@@ -255,17 +245,17 @@ done
 echo -ne "⏳ 대기 종료          \n"
 
 echo ""
-echo "✅ 마스터 노드 리소스 삭제 상태 확인"
+echo "✅ 데이터베이스 및 인프라 서비스 삭제 상태 확인"
 echo "================================"
 echo ""
 
-echo "📦 마스터 노드 Pod 상태:"
-MASTER_PODS=$(kubectl get pods -n bonanza-index --field-selector=spec.nodeName=$CURRENT_NODE -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
-if [ -z "$MASTER_PODS" ]; then
-    echo "  ✅ 마스터 노드에 Pod가 없습니다"
+echo "📦 데이터베이스 및 인프라 Pod 상태:"
+DB_PODS=$(kubectl get pods -n bonanza-index -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | grep -E "(questdb|redis|mariadb|nginx)" || echo "")
+if [ -z "$DB_PODS" ]; then
+    echo "  ✅ 데이터베이스 및 인프라 Pod가 모두 삭제되었습니다"
 else
     echo "  ⚠️  남아있는 Pod:"
-    kubectl get pods -n bonanza-index --field-selector=spec.nodeName=$CURRENT_NODE
+    kubectl get pods -n bonanza-index | grep -E "(questdb|redis|mariadb|nginx)"
 fi
 
 echo ""
@@ -367,17 +357,20 @@ fi
 
 echo ""
 echo "================================"
-echo "✅ 마스터 노드 리소스 삭제 완료!"
+echo "✅ 데이터베이스 및 인프라 서비스 삭제 완료!"
 echo "================================"
 echo ""
 echo "💡 참고사항:"
 echo "  - Namespace 'bonanza-index'는 유지됩니다"
 echo "  - StorageClass는 유지됩니다"
-echo "  - ConfigMap 'bonanza-common-config'는 유지됩니다 (워커 노드에서 사용)"
-echo "  - Secret 'bonanza-secrets'는 유지됩니다 (워커 노드에서 사용)"
+echo "  - ConfigMap 'bonanza-common-config'는 유지됩니다 (애플리케이션 서비스에서 사용)"
+echo "  - Secret 'bonanza-secrets'는 유지됩니다 (애플리케이션 서비스에서 사용)"
 echo ""
-echo "💡 워커 노드 리소스도 삭제하려면:"
+echo "💡 애플리케이션 서비스도 삭제하려면:"
 echo "  ./k8s/scripts/delete-worker.sh"
+echo ""
+echo "💡 전체 시스템 재배포:"
+echo "  kubectl apply -f k8s/"
 echo ""
 
 

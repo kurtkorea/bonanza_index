@@ -16,14 +16,6 @@ spec:
       labels:
         app: questdb
     spec:
-      # 단일 노드/k3s 등에서 마스터 스케줄링 허용 필요 시 유지
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: "true"
-      tolerations:
-      - key: node-role.kubernetes.io/control-plane
-        operator: Exists
-        effect: NoSchedule
-
       securityContext:
         fsGroup: 1000
         runAsUser: 1000
@@ -66,11 +58,11 @@ spec:
           value: "/var/lib/questdb"
         # 시작 속도 최적화
         - name: JAVA_OPTS
-          value: "-Xms4g -Xmx6g -XX:+UnlockExperimentalVMOptions -XX:+UseZGC"
+          value: "-Xms1g -Xmx2g -XX:+UnlockExperimentalVMOptions -XX:+UseZGC"
         - name: QDB_CAIRO_WRITER_COMMIT_MODE
           value: "NOSYNC"
         - name: QDB_CAIRO_MAX_MEMORY_MAPPING_SIZE
-          value: "4Gi"
+          value: "2Gi"
 
         volumeMounts:
         - name: questdb-data
@@ -78,11 +70,11 @@ spec:
 
         resources:
           requests:
-            memory: "4Gi"
-            cpu: "4000m"
+            memory: "2Gi"
+            cpu: "1000m"
           limits:
-            memory: "8Gi"
-            cpu: "8000m"
+            memory: "4Gi"
+            cpu: "2000m"
 
         # 초기 기동이 느린 경우를 흡수
         startupProbe:
@@ -123,4 +115,4 @@ spec:
       storageClassName: "local-path"
       resources:
         requests:
-          storage: 100Gi
+          storage: 500Gi

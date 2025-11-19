@@ -80,7 +80,7 @@ sudo cat /var/lib/rancher/k3s/server/node-token
 **4-2. 워커 노드에서 환경 변수 설정:**
 ```bash
 export K3S_TOKEN=<위에서 확인한 토큰>
-export K3S_URL=https://121.88.4.53:6443
+export K3S_URL=https://localhost:6443
 ```
 
 **4-3. 워커 노드 호스트명 설정 (필수):**

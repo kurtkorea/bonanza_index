@@ -6,7 +6,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # 모든 의존성 설치 (빌드를 위해 devDependencies 필요)
-RUN npm ci
+# package-lock.json이 있으면 npm ci, 없으면 npm install 사용
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # 소스 코드 복사
 COPY . .

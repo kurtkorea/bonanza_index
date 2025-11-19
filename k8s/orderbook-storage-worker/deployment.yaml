@@ -15,8 +15,6 @@ spec:
       labels:
         app: orderbook-storage-worker
     spec:
-      nodeSelector:
-        app-server: "true"
       containers:
       - name: orderbook-storage-worker
         image: bonanza-index/orderbook-storage-worker:latest
@@ -47,11 +45,11 @@ spec:
             name: bonanza-secrets
         resources:
           requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
             memory: "512Mi"
             cpu: "500m"
-          limits:
-            memory: "1Gi"
-            cpu: "1000m"
         livenessProbe:
           httpGet:
             path: /health

@@ -16,12 +16,6 @@ spec:
       labels:
         app: mariadb
     spec:
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: "true"
-      tolerations:
-      - key: node-role.kubernetes.io/control-plane
-        operator: Exists
-        effect: NoSchedule
       containers:
       - name: mariadb
         image: mariadb:10.11
@@ -53,11 +47,11 @@ spec:
           mountPath: /var/lib/mysql
         resources:
           requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
             memory: "1Gi"
             cpu: "500m"
-          limits:
-            memory: "2Gi"
-            cpu: "1000m"
         livenessProbe:
           exec:
             command:

@@ -15,8 +15,6 @@ spec:
       labels:
         app: ticker-storage-worker
     spec:
-      nodeSelector:
-        app-server: "true"
       containers:
       - name: ticker-storage-worker
         image: bonanza-index/ticker-storage-worker:latest
@@ -47,11 +45,11 @@ spec:
             name: bonanza-secrets
         resources:
           requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
             memory: "512Mi"
             cpu: "500m"
-          limits:
-            memory: "1Gi"
-            cpu: "1000m"
         livenessProbe:
           httpGet:
             path: /health

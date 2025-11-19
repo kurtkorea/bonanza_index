@@ -103,7 +103,7 @@ sudo bash -c 'echo "127.0.0.1 bonanza-worker" >> /etc/hosts'
 
 # 환경 변수 설정 (마스터 노드 정보)
 export K3S_TOKEN=K103fb127f89a3ad2d513b33b3875a6634518785b3214e44815bb31b1542e4a001b::server:2f77d67023e56c496dcacea95e51175b
-export K3S_URL="https://121.88.4.53:6443"  # 마스터 노드 IP
+export K3S_URL="https://localhost:6443"  # 마스터 노드 IP
 
 # k3s Agent 설치 및 마스터에 조인 (노드 이름: bonanza-worker)
 # 참고: WSL2에서는 내부 IP를 자동으로 사용하며, 외부 IP는 별도로 지정 가능
@@ -348,10 +348,10 @@ kubectl get nodes --show-labels
 ping <워커-노드-IP>
 
 # 워커 노드에서 마스터 노드 접근 확인
-ping 121.88.4.53
+ping localhost
 
 # 포트 확인 (6443: Kubernetes API)
-telnet 121.88.4.53 6443
+telnet localhost 6443
 ```
 
 ### 3. 방화벽 설정 (Windows 방화벽)
