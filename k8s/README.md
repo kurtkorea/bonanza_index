@@ -22,11 +22,14 @@ k8s/
 ├── configmap-common.yaml          # 공통 ConfigMap
 ├── secret.yaml                    # 비밀 정보 (시크릿)
 ├── ingress.yaml                   # Ingress 리소스
-├── questdb/                      # QuestDB StatefulSet (마스터 노드)
-├── redis/                        # Redis Deployment (마스터 노드)
-├── mariadb/                      # MariaDB StatefulSet (마스터 노드)
-├── nginx/                        # Nginx Deployment (마스터 노드)
-├── installation/                 # Kubernetes 설치 가이드
+├── monitoring/                    # Prometheus, Loki, Grafana Helm 값 및 가이드
+├── kube-system/
+│   └── coredns-node-selector.yaml  # CoreDNS를 리눅스 노드(컨트롤 플레인)로 고정
+├── questdb/                       # QuestDB StatefulSet (마스터 노드)
+├── redis/                         # Redis Deployment (마스터 노드)
+├── mariadb/                       # MariaDB StatefulSet (마스터 노드)
+├── nginx/                         # Nginx Deployment (마스터 노드)
+├── installation/                  # Kubernetes 설치 가이드
 │   ├── README.md
 │   ├── kubernetes-install-linux.md
 │   └── kubernetes-install-wsl-windows.md
@@ -57,6 +60,14 @@ k8s/
 - [Windows WSL 워커 노드 설치](./installation/kubernetes-install-wsl-windows.md)
 
 ### 0. 노드 설정 (필수)
+# DNS(CoreDNS) 문제가 발생하는 경우
+- Windows WSL 워커와 리눅스 컨트롤 플레인 간 네트워크 제약으로 DNS가 불안정하면 `kube-system/coredns-node-selector.yaml`을 적용해 CoreDNS 파드를 컨트롤 플레인 노드에 고정하세요.
+- 적용 명령:
+  ```bash
+  kubectl apply -f k8s/kube-system/coredns-node-selector.yaml
+  kubectl rollout restart deployment/coredns -n kube-system
+  ```
+
 
 #### 마스터 노드 확인
 
@@ -130,6 +141,26 @@ kubectl apply -f k8s/index-calc-fe/
 
 # Ingress 배포
 kubectl apply -f k8s/ingress.yaml
+
+# 모니터링 스택 (Helm)
+kubectl apply -f k8s/monitoring/namespace.yaml
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+  -n bonanza-monitoring \
+  -f k8s/monitoring/values-prometheus.yaml
+helm upgrade --install loki grafana/loki-stack \
+  -n bonanza-monitoring \
+  -f k8s/monitoring/values-loki.yaml
+
+# 모니터링 스택 (스크립트)
+./k8s/scripts/deploy-monitoring.sh
+./k8s/scripts/deploy-monitoring.sh --port-forward   # Grafana 포트포워딩 포함
+
+# 모니터링 스택 제거 (스크립트)
+./k8s/scripts/destroy-monitoring.sh            # PVC 유지
+./k8s/scripts/destroy-monitoring.sh --delete-storage  # PVC/PV 삭제
 ```
 
 ### 2. 배포 확인
@@ -234,6 +265,10 @@ Ingress (nginx)     │  │ index-calc-fe            │  │
 | ticker-collector | 5657, 6657 | ZMQ Push/Pub | 워커 |
 | telegram-log | 3109 | 텔레그램 로그 API | 워커 |
 | index-calc-fe | 80 | 프론트엔드 | 워커 |
+| kube-prometheus-stack-grafana | NodePort 31300 | 대시보드 | 워커 |
+| kube-prometheus-stack-prometheus | 9090 | 메트릭 UI | 마스터 |
+| kube-prometheus-stack-alertmanager | 9093 | 알람 UI | 마스터 |
+| loki | 3100 | 로그 쿼리 API | 마스터 |
 
 ## ⚠️ 주의사항
 

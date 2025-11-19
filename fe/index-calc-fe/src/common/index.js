@@ -213,7 +213,7 @@ const convertDate = (datetime) => {
 };
 
 const convertDateKST = (datetime) => {
-	const d = moment.utc(datetime).utcOffset(0).format("YYYY년 MM월 DD일 HH:mm:ss");
+	const d = moment.utc(datetime).utcOffset(-9).format("YYYY년 MM월 DD일 HH:mm:ss");
 	return d.toString();
 };
 

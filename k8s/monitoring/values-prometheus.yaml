@@ -1,0 +1,125 @@
+global:
+  rbac:
+    create: true
+
+defaultRules:
+  create: true
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: "true"
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          storageClassName: local-path-immediate
+          resources:
+            requests:
+              storage: 5Gi
+
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: "true"
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          storageClassName: local-path-immediate
+          resources:
+            requests:
+              storage: 20Gi
+    retention: 15d
+
+grafana:
+  enabled: true
+  adminUser: bonanza
+  adminPassword: bonanza12345
+  initChownData:
+    enabled: false
+  defaultDatasourceEnabled: true
+  env:
+    GF_PLUGINS_APP_AUTO_INSTALL: ""
+    GF_INSTALL_PLUGINS: ""
+    GF_PLUGINS_AUTO_INSTALL: "false"
+    GF_PLUGIN_MANAGEMENT_DEFAULT_ENABLED_PLUGINS: ""
+    GF_UPDATE_CHECK_DISABLE: "true"
+    GF_ANALYTICS_REPORTING_ENABLED: "false"
+  service:
+    type: NodePort
+    nodePort: 31300
+  ingress:
+    enabled: false
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: "true"
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+  persistence:
+    enabled: true
+    storageClassName: local-path-immediate
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki.bonanza-monitoring.svc:3100
+      isDefault: false
+      jsonData: {}
+
+prometheusOperator:
+  enabled: true
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: "true"
+
+prometheus-node-exporter:
+  hostNetwork: false
+  extraArgs: []
+  service:
+    type: ClusterIP
+    port: 9100
+    targetPort: 9100
+    name: http-metrics
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: "true"
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: In
+                values:
+                  - "true"
+  serviceMonitor:
+    portName: http-metrics
+
+kube-state-metrics:
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+

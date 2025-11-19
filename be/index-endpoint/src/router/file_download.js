@@ -144,7 +144,7 @@ router.get("/", async (req, resp, next) => {
 		}
 		await writeRow(headers);
 
-		const batchSize = 20000;
+		const batchSize = 99999999;
 		let processedCount = 0;
 		let lastCreatedAt = null;
 
@@ -153,7 +153,7 @@ router.get("/", async (req, resp, next) => {
 		const window10 = [];
 		let sum10 = 0;
 
-		console.log('[file_download] streaming CSV started', { batchSize });
+		console.log('[file_download] streaming CSV started !!!!!!!', { batchSize });
 
 		while (true) {
 			const chunkQuery = `
@@ -166,7 +166,6 @@ router.get("/", async (req, resp, next) => {
 					AND createdAt < cast(:toDateUTC as timestamp)
 					${lastCreatedAt ? 'AND createdAt > cast(:lastCreatedAt as timestamp)' : ''}
 				ORDER BY createdAt
-				LIMIT :limit
 			`;
 
 			const replacements = {

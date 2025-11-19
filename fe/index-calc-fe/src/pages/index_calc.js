@@ -446,6 +446,8 @@ const IndexCalcTable = () => {
 			to_date: range[1].format('YYYY-MM-DD'),
 		});
 
+    console.log('params', params.toString());
+
 		const url = `${process.env.SERVICE}/v1/file_download?${params.toString()}`;
 		const filename = `fkbrti_export_${range[0].format('YYYY-MM-DD')}_${range[1].format('YYYY-MM-DD')}.csv`;
 
