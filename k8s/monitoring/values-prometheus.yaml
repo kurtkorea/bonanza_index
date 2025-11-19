@@ -8,17 +8,11 @@ defaultRules:
 alertmanager:
   enabled: true
   alertmanagerSpec:
-    nodeSelector:
-      node-role.kubernetes.io/control-plane: "true"
-    tolerations:
-      - key: "node-role.kubernetes.io/control-plane"
-        operator: "Exists"
-        effect: "NoSchedule"
     storage:
       volumeClaimTemplate:
         spec:
           accessModes: ["ReadWriteOnce"]
-          storageClassName: local-path-immediate
+          storageClassName: local-path
           resources:
             requests:
               storage: 5Gi
@@ -27,17 +21,11 @@ prometheus:
   prometheusSpec:
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
-    nodeSelector:
-      node-role.kubernetes.io/control-plane: "true"
-    tolerations:
-      - key: "node-role.kubernetes.io/control-plane"
-        operator: "Exists"
-        effect: "NoSchedule"
     storageSpec:
       volumeClaimTemplate:
         spec:
           accessModes: ["ReadWriteOnce"]
-          storageClassName: local-path-immediate
+          storageClassName: local-path
           resources:
             requests:
               storage: 20Gi
@@ -62,15 +50,9 @@ grafana:
     nodePort: 31300
   ingress:
     enabled: false
-  nodeSelector:
-    node-role.kubernetes.io/control-plane: "true"
-  tolerations:
-    - key: "node-role.kubernetes.io/control-plane"
-      operator: "Exists"
-      effect: "NoSchedule"
   persistence:
     enabled: true
-    storageClassName: local-path-immediate
+    storageClassName: local-path
     accessModes:
       - ReadWriteOnce
     size: 10Gi
@@ -84,12 +66,6 @@ grafana:
 
 prometheusOperator:
   enabled: true
-  tolerations:
-    - key: "node-role.kubernetes.io/control-plane"
-      operator: "Exists"
-      effect: "NoSchedule"
-  nodeSelector:
-    node-role.kubernetes.io/control-plane: "true"
 
 prometheus-node-exporter:
   hostNetwork: false
@@ -99,27 +75,9 @@ prometheus-node-exporter:
     port: 9100
     targetPort: 9100
     name: http-metrics
-  tolerations:
-    - key: "node-role.kubernetes.io/control-plane"
-      operator: "Exists"
-      effect: "NoSchedule"
-  nodeSelector:
-    node-role.kubernetes.io/control-plane: "true"
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-          - matchExpressions:
-              - key: node-role.kubernetes.io/control-plane
-                operator: In
-                values:
-                  - "true"
   serviceMonitor:
     portName: http-metrics
 
 kube-state-metrics:
-  tolerations:
-    - key: "node-role.kubernetes.io/control-plane"
-      operator: "Exists"
-      effect: "NoSchedule"
+  # 단일 노드 구성에서는 nodeSelector/tolerations 불필요
 

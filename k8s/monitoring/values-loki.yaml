@@ -3,16 +3,10 @@ loki:
   isDefault: false
   persistence:
     enabled: true
-    storageClassName: local-path-immediate
+    storageClassName: local-path
     size: 20Gi
     accessModes:
       - ReadWriteOnce
-  nodeSelector:
-    node-role.kubernetes.io/control-plane: "true"
-  tolerations:
-    - key: "node-role.kubernetes.io/control-plane"
-      operator: "Exists"
-      effect: "NoSchedule"
 
 promtail:
   enabled: true
@@ -30,10 +24,6 @@ promtail:
         - action: replace
           source_labels: [__meta_kubernetes_pod_node_name]
           target_label: node
-  tolerations:
-    - key: "node-role.kubernetes.io/control-plane"
-      operator: "Exists"
-      effect: "NoSchedule"
 
 fluent-bit:
   enabled: false

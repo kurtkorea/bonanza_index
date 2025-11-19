@@ -15,7 +15,7 @@
 
 - Helm 3 이상
 - `kubectl`이 클러스터에 연결되어 있어야 합니다.
-- `local-path-immediate` StorageClass가 존재해야 합니다. (기존 DB 스토리지와 동일한 클래스 사용)
+- `local-path` StorageClass가 존재해야 합니다. (k3s 기본 StorageClass 사용)
 
 ## 배포 절차
 
@@ -71,7 +71,7 @@ helm upgrade --install loki grafana/loki-stack \
     ```bash
     kubectl port-forward svc/kube-prometheus-stack-grafana -n bonanza-monitoring 31300:80
     ```
-  기본 계정은 `admin / changeme`입니다. 접속 후 비밀번호를 반드시 변경하세요.
+  기본 계정은 `bonanza / bonanza12345`입니다. 접속 후 비밀번호를 반드시 변경하세요.
 
 - **Prometheus**
   ```bash
