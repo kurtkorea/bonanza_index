@@ -15,8 +15,6 @@ spec:
       labels:
         app: index-calc-fe
     spec:
-      nodeSelector:
-        app-server: "true"
       containers:
       - name: index-calc-fe
         image: bonanza-index/index-calc-fe:latest

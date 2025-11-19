@@ -15,8 +15,6 @@ spec:
       labels:
         app: orderbook-storage-worker
     spec:
-      nodeSelector:
-        app-server: "true"
       containers:
       - name: orderbook-storage-worker
         image: bonanza-index/orderbook-storage-worker:latest

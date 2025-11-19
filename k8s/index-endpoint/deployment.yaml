@@ -15,8 +15,6 @@ spec:
       labels:
         app: index-endpoint
     spec:
-      nodeSelector:
-        app-server: "true"
       containers:
       - name: index-endpoint
         image: bonanza-index/index-endpoint:latest

@@ -15,8 +15,6 @@ spec:
       labels:
         app: ticker-storage-worker
     spec:
-      nodeSelector:
-        app-server: "true"
       containers:
       - name: ticker-storage-worker
         image: bonanza-index/ticker-storage-worker:latest

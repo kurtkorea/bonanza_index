@@ -16,14 +16,6 @@ spec:
       labels:
         app: questdb
     spec:
-      # 단일 노드/k3s 등에서 마스터 스케줄링 허용 필요 시 유지
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: "true"
-      tolerations:
-      - key: node-role.kubernetes.io/control-plane
-        operator: Exists
-        effect: NoSchedule
-
       securityContext:
         fsGroup: 1000
         runAsUser: 1000

@@ -15,12 +15,6 @@ spec:
       labels:
         app: redis
     spec:
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: "true"
-      tolerations:
-      - key: node-role.kubernetes.io/control-plane
-        operator: Exists
-        effect: NoSchedule
       containers:
       - name: redis
         image: redis:alpine

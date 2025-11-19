@@ -4,15 +4,10 @@
 
 ## 🏗️ 서버 구조
 
-이 배포는 **2대의 서버**로 구성됩니다:
+이 배포는 **단일 머신(Standalone)** 구성입니다:
 
-- **마스터 노드** (121.88.4.53 - Linux): Kubernetes 마스터 노드 + QuestDB, Redis, MariaDB Pod 실행
-- **워커 노드** (121.88.4.57 - Windows WSL): 모든 애플리케이션 Pod가 실행되는 쿠버네티스 워커 노드
-
-### 노드 셀렉터
-
-- **데이터베이스 Pod**: `nodeSelector: node-role.kubernetes.io/control-plane: "true"` → 마스터 노드에 배포
-- **애플리케이션 Pod**: `nodeSelector: app-server: "true"` → 워커 노드에만 스케줄링
+- **단일 노드**: 모든 서비스(데이터베이스, 애플리케이션, 프론트엔드)가 하나의 Kubernetes 노드에서 실행됩니다.
+- 노드 셀렉터 없음: 모든 Pod는 Kubernetes 스케줄러에 의해 자동으로 스케줄링됩니다.
 
 ## 📁 디렉토리 구조
 
@@ -22,79 +17,48 @@ k8s/
 ├── configmap-common.yaml          # 공통 ConfigMap
 ├── secret.yaml                    # 비밀 정보 (시크릿)
 ├── ingress.yaml                   # Ingress 리소스
-├── questdb/                      # QuestDB StatefulSet (마스터 노드)
-├── redis/                        # Redis Deployment (마스터 노드)
-├── mariadb/                      # MariaDB StatefulSet (마스터 노드)
-├── nginx/                        # Nginx Deployment (마스터 노드)
+├── questdb/                      # QuestDB StatefulSet
+├── redis/                        # Redis Deployment
+├── mariadb/                      # MariaDB StatefulSet
+├── nginx/                        # Nginx Deployment
 ├── installation/                 # Kubernetes 설치 가이드
 │   ├── README.md
 │   ├── kubernetes-install-linux.md
 │   └── kubernetes-install-wsl-windows.md
-├── index-endpoint/                # API 엔드포인트 서비스 (워커 노드)
-├── index-calculator/              # 지수 계산 서비스 (워커 노드)
-├── orderbook-collector/           # 호가 수집 서비스 (워커 노드)
-├── ticker-collector/              # 티커 수집 서비스 (워커 노드)
-├── orderbook-storage-worker/      # 호가 저장 워커 (워커 노드)
-├── ticker-storage-worker/         # 티커 저장 워커 (워커 노드)
-├── orderbook-aggregator/          # 호가 집계 서비스 (워커 노드)
-├── telegram-log/                  # 텔레그램 로그 서비스 (워커 노드)
-└── index-calc-fe/                 # 프론트엔드 (워커 노드)
+├── index-endpoint/                # API 엔드포인트 서비스
+├── index-calculator/              # 지수 계산 서비스
+├── orderbook-collector/           # 호가 수집 서비스
+├── ticker-collector/              # 티커 수집 서비스
+├── orderbook-storage-worker/      # 호가 저장 워커
+├── ticker-storage-worker/         # 티커 저장 워커
+├── orderbook-aggregator/          # 호가 집계 서비스
+├── telegram-log/                  # 텔레그램 로그 서비스
+└── index-calc-fe/                 # 프론트엔드
 ```
 
 ## 🚀 배포 순서
 
 ### -1. Kubernetes 설치 (필수)
 
-**각 서버에 Kubernetes 설치가 필요합니다:**
-
-- **Linux 서버 (121.88.4.53)**: 마스터 노드이므로 Kubernetes 설치 필수
-- **Windows WSL 서버 (121.88.4.57)**: 워커 노드이므로 반드시 Kubernetes 설치 필요
+**단일 머신에 Kubernetes 설치가 필요합니다:**
 
 👉 **[Kubernetes 설치 가이드](./installation/README.md)**
 
 자세한 설치 방법:
-- [Linux 마스터 노드 설치](./installation/kubernetes-install-linux.md)
-- [Windows WSL 워커 노드 설치](./installation/kubernetes-install-wsl-windows.md)
+- [Linux 설치](./installation/kubernetes-install-linux.md)
+- [Windows WSL 설치](./installation/kubernetes-install-wsl-windows.md)
 
-### 0. 노드 설정 (필수)
-
-#### 마스터 노드 확인
-
-마스터 노드는 자동으로 `node-role.kubernetes.io/control-plane=true` 라벨을 가집니다.
+### 0. 클러스터 확인
 
 ```bash
-# 마스터 노드 확인
-kubectl get nodes --show-labels | grep -E "(master|control-plane)"
+# 노드 확인
+kubectl get nodes
+
+# 클러스터 정보 확인
+kubectl cluster-info
 ```
-
-#### 워커 노드 라벨 추가
-
-배포 전에 워커 노드 (121.88.4.57)에 라벨을 추가해야 합니다:
-
-```bash
-# 노드 확인 및 이름 찾기
-kubectl get nodes -o wide | grep 121.88.4.57
-
-# 워커 노드에 라벨 추가 (노드 이름은 실제 값으로 변경)
-kubectl label nodes <node-name> app-server=true --overwrite
-
-# 라벨 확인
-kubectl get nodes --show-labels | grep app-server
-```
-
-자세한 내용은 `k8s/node-setup.md` 파일을 참조하세요.
 
 ### 1. 배포
-
-#### 자동 배포 스크립트 사용 (권장)
-
-```bash
-# 노드 라벨 자동 설정 포함 버전
-./k8s/deploy-with-node-setup.sh
-
-# 또는 기본 배포 스크립트 (라벨은 이미 설정된 경우)
-./k8s/deploy.sh
-```
 
 #### 수동 배포
 
@@ -106,16 +70,16 @@ kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/configmap-common.yaml
 kubectl apply -f k8s/secret.yaml
 
-# 데이터베이스 서비스 배포 (마스터 노드)
+# 데이터베이스 서비스 배포
 kubectl apply -f k8s/redis/pvc.yaml
 kubectl apply -f k8s/redis/
 kubectl apply -f k8s/questdb/
 kubectl apply -f k8s/mariadb/
 
-# Nginx 배포 (마스터 노드)
+# Nginx 배포
 kubectl apply -f k8s/nginx/
 
-# 백엔드 서비스 배포 (워커 노드)
+# 백엔드 서비스 배포
 kubectl apply -f k8s/index-endpoint/
 kubectl apply -f k8s/index-calculator/
 kubectl apply -f k8s/orderbook-collector/
@@ -125,7 +89,7 @@ kubectl apply -f k8s/ticker-storage-worker/
 kubectl apply -f k8s/orderbook-aggregator/
 kubectl apply -f k8s/telegram-log/
 
-# 프론트엔드 배포 (워커 노드)
+# 프론트엔드 배포
 kubectl apply -f k8s/index-calc-fe/
 
 # Ingress 배포
@@ -147,10 +111,10 @@ kubectl get svc -n bonanza-index
 # 노드별 Pod 배치 확인
 kubectl get pods -n bonanza-index -o wide --sort-by=.spec.nodeName
 
-# 데이터베이스 Pod (마스터 노드)
+# 데이터베이스 Pod
 kubectl get pods -n bonanza-index -o wide | grep -E "(questdb|redis|mariadb)"
 
-# 애플리케이션 Pod (워커 노드)
+# 애플리케이션 Pod
 kubectl get pods -n bonanza-index -o wide | grep -vE "(questdb|redis|mariadb)"
 
 # Ingress 확인
@@ -163,28 +127,23 @@ kubectl logs -f <pod-name> -n bonanza-index
 kubectl get deployments -n bonanza-index
 ```
 
-## 📍 서버별 구성
+## 📍 서비스 구성
 
-### 마스터 노드 (121.88.4.53 - Linux)
-- Kubernetes 마스터 노드
-- **QuestDB Pod**: StatefulSet (PGWire 8812, REST 9000, ILP 9009)
-- **Redis Pod**: Deployment (포트 6379)
-- **MariaDB Pod**: StatefulSet (포트 23306)
-- `node-role.kubernetes.io/control-plane=true` 라벨 자동 설정
+### 데이터베이스 서비스
+- **QuestDB**: StatefulSet (PGWire 8812, REST 9000, ILP 9009)
+- **Redis**: Deployment (포트 6379)
+- **MariaDB**: StatefulSet (포트 23306)
 - PersistentVolumeClaim을 통한 데이터 영구 저장
 
-### 워커 노드 (121.88.4.57 - Windows WSL)
-- 쿠버네티스 워커 노드
-- 모든 애플리케이션 Pod 실행
-- `app-server=true` 라벨 필요
-- 마스터 노드의 데이터베이스 서비스에 접근하여 DB 사용
+### 애플리케이션 서비스
+- 모든 백엔드 및 프론트엔드 서비스가 동일한 노드에서 실행
+- Kubernetes 서비스 DNS를 통해 서비스 간 통신
 
 ## 🔗 네트워크 아키텍처
 
 ```
                     ┌─────────────────────────────────┐
-                    │   워커 노드 (121.88.4.57)        │
-                    │   (Windows WSL)                  │
+                    │   단일 노드 (Standalone)          │
                     ├─────────────────────────────────┤
 Internet             │                                 │
   ↓                 │  ┌──────────────────────────┐  │
@@ -198,52 +157,41 @@ Ingress (nginx)     │  │ index-calc-fe            │  │
   │                 │  │ orderbook-aggregator     │  │
   │                 │  │ telegram-log            │  │
   │                 │  └──────────────────────────┘  │
-  │                 └─────────────────────────────────┘
-  │                              ↓
-  └──────────────────────────────┼────────────────────────
-                                 ↓
-                    ┌─────────────────────────────────┐
-                    │   마스터 노드 (121.88.4.53)      │
-                    │   (Linux)                       │
-                    ├─────────────────────────────────┤
-                    │  QuestDB Pod (StatefulSet)     │
-                    │  - PGWire: 8812                │
-                    │  - REST: 9000                   │
-                    │  - ILP: 9009                    │
-                    │                                │
-                    │  Redis Pod (Deployment)        │
-                    │  - Port: 6379                  │
-                    │                                │
-                    │  MariaDB Pod (StatefulSet)     │
-                    │  - Port: 23306                 │
-                    │                                │
+  │                 │                                 │
+  │                 │  ┌──────────────────────────┐  │
+  └─────────────────┼─→│ QuestDB (8812,9000,9009) │  │
+                    │  │ Redis (6379)              │  │
+                    │  │ MariaDB (23306)           │  │
+                    │  │ Nginx (7600)              │  │
+                    │  └──────────────────────────┘  │
+                    │                                 │
                     │  PersistentVolume (데이터 저장) │
                     └─────────────────────────────────┘
 ```
 
 ## 📝 서비스 포트
 
-| 서비스 | 포트 | 용도 | 배포 노드 |
-|--------|------|------|-----------|
-| questdb | 8812, 9000, 9009 | PGWire, REST, ILP | 마스터 |
-| redis | 6379 | Redis | 마스터 |
-| mariadb | 23306 | MySQL | 마스터 |
-| index-endpoint | 3009 | REST API | 워커 |
-| index-calculator | 6757 | ZMQ Publisher | 워커 |
-| orderbook-collector | 5557, 6557 | ZMQ Push/Pub | 워커 |
-| ticker-collector | 5657, 6657 | ZMQ Push/Pub | 워커 |
-| telegram-log | 3109 | 텔레그램 로그 API | 워커 |
-| index-calc-fe | 80 | 프론트엔드 | 워커 |
+| 서비스 | 포트 | 용도 |
+|--------|------|------|
+| questdb | 8812, 9000, 9009 | PGWire, REST, ILP |
+| redis | 6379 | Redis |
+| mariadb | 23306 | MySQL |
+| nginx | 7600 | Reverse Proxy |
+| index-endpoint | 3009 | REST API |
+| index-calculator | 6757 | ZMQ Publisher |
+| orderbook-collector | 5557, 6557 | ZMQ Push/Pub |
+| ticker-collector | 5657, 6657 | ZMQ Push/Pub |
+| telegram-log | 3109 | 텔레그램 로그 API |
+| index-calc-fe | 80 | 프론트엔드 |
 
 ## ⚠️ 주의사항
 
-1. **노드 라벨링 필수**: 배포 전에 반드시 워커 노드에 `app-server=true` 라벨을 추가해야 합니다. 라벨이 없으면 Pod가 스케줄링되지 않습니다.
+1. **단일 노드 구성**: 모든 서비스가 하나의 노드에서 실행되므로 리소스(CPU, 메모리)를 충분히 확보해야 합니다.
 
 2. **데이터베이스 Pod 배포**: 
-   - **QuestDB**: StatefulSet으로 마스터 노드에 배포 (PersistentVolumeClaim 사용)
-   - **Redis**: Deployment로 마스터 노드에 배포 (PersistentVolumeClaim 사용)
-   - **MariaDB**: StatefulSet으로 마스터 노드에 배포 (PersistentVolumeClaim 사용)
-   - 마스터 노드에 `node-role.kubernetes.io/control-plane=true` 라벨이 자동 설정됩니다.
+   - **QuestDB**: StatefulSet으로 배포 (PersistentVolumeClaim 사용)
+   - **Redis**: Deployment로 배포 (PersistentVolumeClaim 사용)
+   - **MariaDB**: StatefulSet으로 배포 (PersistentVolumeClaim 사용)
    - StorageClass가 설정되어 있어야 PVC가 정상 작동합니다.
 
 3. **리소스 제한**: 프로덕션 환경에서는 리소스 요청/제한을 실제 워크로드에 맞게 조정하세요.
@@ -266,14 +214,11 @@ kubectl logs <pod-name> -n bonanza-index --previous  # 이전 컨테이너 로�
 ### 노드 스케줄링 문제
 
 ```bash
-# 노드 라벨 확인
-kubectl get nodes --show-labels
+# 노드 확인
+kubectl get nodes
 
-# 워커 노드 라벨 확인
-kubectl get nodes --show-labels | grep app-server
-
-# 마스터 노드 라벨 확인
-kubectl get nodes --show-labels | grep control-plane
+# 노드 리소스 확인
+kubectl top nodes
 
 # Pod가 스케줄링되지 않는 이유 확인
 kubectl describe pod <pod-name> -n bonanza-index | grep -A 10 Events

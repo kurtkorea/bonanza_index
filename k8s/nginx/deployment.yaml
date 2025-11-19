@@ -15,9 +15,6 @@ spec:
       labels:
         app: nginx
     spec:
-      nodeSelector:
-        app-server: "true"
-      # tolerations 제거 (워커 노드에는 필요 없음)
       terminationGracePeriodSeconds: 60
       containers:
       - name: nginx

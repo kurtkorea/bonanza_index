@@ -15,8 +15,6 @@ spec:
       labels:
         app: orderbook-collector
     spec:
-      nodeSelector:
-        app-server: "true"
       # DNS 정책: ClusterFirst (기본 Kubernetes DNS 정책 사용)
       # CoreDNS가 외부 DNS를 forward하도록 설정되어 있으므로 내부/외부 모두 조회 가능
       dnsPolicy: "ClusterFirst"

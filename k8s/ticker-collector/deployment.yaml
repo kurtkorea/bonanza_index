@@ -15,8 +15,6 @@ spec:
       labels:
         app: ticker-collector
     spec:
-      nodeSelector:
-        app-server: "true"
       containers:
       - name: ticker-collector
         image: bonanza-index/ticker-collector:latest

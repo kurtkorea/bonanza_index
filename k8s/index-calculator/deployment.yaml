@@ -15,8 +15,6 @@ spec:
       labels:
         app: index-calculator
     spec:
-      nodeSelector:
-        app-server: "true"
       containers:
       - name: index-calculator
         image: bonanza-index/index-calculator:latest

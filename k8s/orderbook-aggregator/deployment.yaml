@@ -15,8 +15,6 @@ spec:
       labels:
         app: orderbook-aggregator
     spec:
-      nodeSelector:
-        app-server: "true"
       containers:
       - name: orderbook-aggregator
         image: bonanza-index/orderbook-aggregator:latest
