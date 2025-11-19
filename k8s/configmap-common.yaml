@@ -5,23 +5,26 @@ metadata:
   namespace: bonanza-index
 data:
   # Redis 설정
-  REDIS_HOST: "localhost"
+  # Kubernetes Service 이름 사용 (Pod 내부에서 자동 DNS 해석)
+  REDIS_HOST: "redis-service"
   REDIS_PORT: "6379"
   REDIS_STORE: "SYMBOL"
   
   # QuestDB 설정
-  # Service 이름 사용 (Kubernetes Service를 통한 자동 라우팅)
-  QDB_HOST: "localhost"
-  QDB_PORT: "30812"
+  # Kubernetes Service 이름 사용 (Pod 내부에서 자동 DNS 해석)
+  # ClusterIP 포트 사용 (8812: PGWire, 9000: REST, 9009: ILP)
+  QDB_HOST: "questdb-service"
+  QDB_PORT: "8812"
   QDB_DB: "qdb"
   QDB_USER: "admin"
-  QDB_ILP_HOST: "localhost"
-  QDB_ILP_PORT: "30099"
+  QDB_ILP_HOST: "questdb-service"
+  QDB_ILP_PORT: "9009"
   QDB_LOG: "false"
   
   # MariaDB 설정
+  # Kubernetes Service 이름 사용 (Pod 내부에서 자동 DNS 해석)
   DB_DIALECT: "mariadb"
-  DB_HOST: "localhost"
+  DB_HOST: "mariadb-service"
   DB_PORT: "23306"
   DB_SCHEME: "bonanza"
   
