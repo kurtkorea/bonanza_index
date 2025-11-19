@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 워커 노드용 리소스 삭제 스크립트
-# deploy-worker.sh에서 배포한 리소스들을 삭제합니다
+# 애플리케이션 서비스 삭제 스크립트
+# 단일 노드 구성에서 애플리케이션 서비스만 삭제합니다 (데이터베이스는 유지)
 
 set -e
 
@@ -10,48 +10,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 K8S_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$K8S_DIR"
 
-echo "🗑️  Bonanza Index 워커 노드 리소스 삭제"
+echo "🗑️  Bonanza Index 애플리케이션 서비스 삭제"
 echo "================================"
 echo ""
 
-# 워커 노드 확인
-WORKER_NODES=$(kubectl get nodes -l app-server=true --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null)
-if [ -z "$WORKER_NODES" ]; then
-    echo "⚠️  app-server=true 라벨을 가진 워커 노드를 찾을 수 없습니다"
-    echo ""
-    echo "사용 가능한 노드:"
-    kubectl get nodes --show-labels
-    echo ""
-    echo "💡 워커 노드에 라벨 추가:"
-    echo "   kubectl label nodes <node-name> app-server=true --overwrite"
-    exit 1
-fi
-
-echo "✅ 워커 노드 발견:"
-echo "$WORKER_NODES" | while read -r node; do
-    NODE_IP=$(kubectl get node "$node" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
-    echo "   - $node ($NODE_IP)"
-done
+# 현재 노드 확인
+echo "📊 현재 클러스터 상태:"
+echo "================================"
+echo ""
+echo "노드:"
+kubectl get nodes --show-labels
 echo ""
 
 # 현재 배포 상태 확인
-echo "📊 워커 노드 배포 상태:"
-echo "================================"
-echo ""
-
-echo "📦 워커 노드 Pod 상태:"
-WORKER_NODE_LIST=$(kubectl get nodes -l app-server=true --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null)
-if [ ! -z "$WORKER_NODE_LIST" ]; then
-    echo "$WORKER_NODE_LIST" | while read -r node; do
-        if [ ! -z "$node" ]; then
-            echo ""
-            echo "노드: $node"
-            kubectl get pods -n bonanza-index -o wide --field-selector=spec.nodeName=$node 2>/dev/null || echo "  Pod 없음"
-        fi
-    done
-else
-    echo "워커 노드를 찾을 수 없습니다"
-fi
+echo "📦 애플리케이션 Pod 상태:"
+kubectl get pods -n bonanza-index -o wide 2>/dev/null | grep -E "(index|orderbook|ticker|telegram|nginx)" || echo "  Pod 없음"
 
 echo ""
 echo "🔍 애플리케이션 서비스 상태:"
@@ -93,7 +66,8 @@ echo "  📡 Ingress:"
 echo "    - bonanza-index-ingress"
 echo ""
 echo "⚠️  주의사항:"
-echo "  - 마스터 노드의 리소스(데이터베이스, Nginx)는 유지됩니다"
+echo "  - 데이터베이스 리소스(QuestDB, Redis, MariaDB)는 유지됩니다"
+echo "  - Nginx는 유지됩니다"
 echo "  - Namespace는 삭제하지 않습니다"
 echo "  - ConfigMap 'bonanza-common-config'는 유지됩니다"
 echo "  - Secret 'bonanza-secrets'는 유지됩니다"
@@ -154,42 +128,24 @@ done
 echo -ne "⏳ 대기 종료          \n"
 
 echo ""
-echo "✅ 워커 노드 리소스 삭제 상태 확인"
+echo "✅ 애플리케이션 서비스 삭제 상태 확인"
 echo "================================"
 echo ""
 
-echo "📦 워커 노드 Pod 상태:"
-WORKER_NODE_LIST=$(kubectl get nodes -l app-server=true --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null)
-if [ ! -z "$WORKER_NODE_LIST" ]; then
-    WORKER_PODS=""
-    echo "$WORKER_NODE_LIST" | while read -r node; do
-        if [ ! -z "$node" ]; then
-            NODE_PODS=$(kubectl get pods -n bonanza-index --field-selector=spec.nodeName=$node -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
-            if [ ! -z "$NODE_PODS" ]; then
-                WORKER_PODS="$WORKER_PODS $NODE_PODS"
-            fi
-        fi
-    done
-    
-    if [ -z "$WORKER_PODS" ]; then
-        echo "  ✅ 워커 노드에 Pod가 없습니다"
-    else
-        echo "  ⚠️  남아있는 Pod:"
-        echo "$WORKER_NODE_LIST" | while read -r node; do
-            if [ ! -z "$node" ]; then
-                kubectl get pods -n bonanza-index --field-selector=spec.nodeName=$node 2>/dev/null || true
-            fi
-        done
-    fi
+echo "📦 애플리케이션 Pod 상태:"
+APP_PODS=$(kubectl get pods -n bonanza-index -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | grep -E "(index|orderbook|ticker|telegram)" || echo "")
+if [ -z "$APP_PODS" ]; then
+    echo "  ✅ 애플리케이션 Pod가 모두 삭제되었습니다"
 else
-    echo "  워커 노드를 찾을 수 없습니다"
+    echo "  ⚠️  남아있는 Pod:"
+    kubectl get pods -n bonanza-index | grep -E "(index|orderbook|ticker|telegram)"
 fi
 
 echo ""
 echo "🔍 서비스 상태:"
-WORKER_SVC=$(kubectl get svc -n bonanza-index -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | grep -E "(index|orderbook|ticker|telegram)" || echo "")
-if [ -z "$WORKER_SVC" ]; then
-    echo "  ✅ 워커 노드 서비스가 모두 삭제되었습니다"
+APP_SVC=$(kubectl get svc -n bonanza-index -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | grep -E "(index|orderbook|ticker|telegram)" || echo "")
+if [ -z "$APP_SVC" ]; then
+    echo "  ✅ 애플리케이션 서비스가 모두 삭제되었습니다"
 else
     echo "  ⚠️  남아있는 서비스:"
     kubectl get svc -n bonanza-index | grep -E "(index|orderbook|ticker|telegram)"
@@ -207,21 +163,21 @@ fi
 
 echo ""
 echo "================================"
-echo "✅ 워커 노드 리소스 삭제 완료!"
+echo "✅ 애플리케이션 서비스 삭제 완료!"
 echo "================================"
 echo ""
 echo "💡 참고사항:"
-echo "  - 마스터 노드의 리소스(QuestDB, Redis, MariaDB, Nginx)는 유지됩니다"
+echo "  - 데이터베이스 리소스(QuestDB, Redis, MariaDB)는 유지됩니다"
+echo "  - Nginx는 유지됩니다"
 echo "  - Namespace 'bonanza-index'는 유지됩니다"
 echo "  - ConfigMap 'bonanza-common-config'는 유지됩니다"
 echo "  - Secret 'bonanza-secrets'는 유지됩니다"
 echo ""
-echo "💡 마스터 노드 리소스도 삭제하려면:"
+echo "💡 데이터베이스 리소스도 삭제하려면:"
 echo "  ./k8s/scripts/delete-master.sh"
 echo ""
 echo "💡 전체 시스템 재배포:"
-echo "  ./k8s/scripts/deploy-master.sh"
-echo "  ./k8s/scripts/deploy-worker.sh"
+echo "  kubectl apply -f k8s/"
 echo ""
 
 
