@@ -6,11 +6,15 @@ console.log('[APP] Starting application...');
 console.log('[APP] Node version:', process.version);
 console.log('[APP] Working directory:', process.cwd());
 
+// 전역으로 사용할 모듈들을 먼저 선언
+let path, dotenv, http, fs, connect, db, systemlog_schema, report_schema, sendTelegramMessage, initializeClients;
+
 try {
   console.log('[APP] Loading dependencies...');
-  const path = require("path");
-  const dotenv = require("dotenv");
-  const http = require('http');
+  path = require("path");
+  dotenv = require("dotenv");
+  http = require('http');
+  fs = require('fs');
   console.log('[APP] Basic modules loaded');
   
   console.log('[APP] Loading logger...');
@@ -18,20 +22,49 @@ try {
   console.log('[APP] Logger loaded');
   
   console.log('[APP] Loading database module...');
-  const { connect, db } = require('./db/db.js');
+  const dbModule = require('./db/db.js');
+  connect = dbModule.connect;
+  db = dbModule.db;
   console.log('[APP] Database module loaded');
   
   console.log('[APP] Loading schema modules...');
-  const { systemlog_schema } = require('../../ddl/systemlog_ddl.js');
-  const { report_schema } = require('../../ddl/report_ddl.js');
+  // ddl 폴더 경로를 동적으로 찾기
+  // 프로덕션: process.cwd()는 /app이므로 /app/ddl
+  // 로컬: __dirname은 .../orderbook-collector/src이므로 ../../ddl (be/ddl)
+  let ddlPath = null;
+  const possiblePaths = [
+    path.join(process.cwd(), 'ddl'), // 프로덕션: /app/ddl
+    path.join(__dirname, '../../ddl'), // 로컬: be/ddl
+    path.join(__dirname, '../ddl'), // 대안: orderbook-collector/ddl
+  ];
+  
+  for (const testPath of possiblePaths) {
+    const testFile = path.join(testPath, 'systemlog_ddl.js');
+    if (fs.existsSync(testFile)) {
+      ddlPath = testPath;
+      break;
+    }
+  }
+  
+  if (!ddlPath) {
+    throw new Error(`DDL folder not found. Tried paths: ${possiblePaths.join(', ')}`);
+  }
+  
+  console.log('[APP] DDL path:', ddlPath);
+  const schemaModules = require(path.join(ddlPath, 'systemlog_ddl.js'));
+  systemlog_schema = schemaModules.systemlog_schema;
+  const reportModules = require(path.join(ddlPath, 'report_ddl.js'));
+  report_schema = reportModules.report_schema;
   console.log('[APP] Schema modules loaded');
   
   console.log('[APP] Loading telegram module...');
-  const  { sendTelegramMessage } = require('./utils/telegram_push.js')
+  const telegramModule = require('./utils/telegram_push.js');
+  sendTelegramMessage = telegramModule.sendTelegramMessage;
   console.log('[APP] Telegram module loaded');
   
   console.log('[APP] Loading websocket broker module...');
-  const { initializeClients } = require('./service/websocket_order_book_broker.js');
+  const brokerModule = require('./service/websocket_order_book_broker.js');
+  initializeClients = brokerModule.initializeClients;
   console.log('[APP] Websocket broker module loaded');
 } catch (error) {
   console.error('[APP] FATAL ERROR during module loading:', error);
@@ -41,19 +74,58 @@ try {
   process.exit(1);
 }
 
+console.log('[APP] Module loading phase completed');
+
 // Start of Selection
+console.log('[APP] Starting application configuration...');
 global.logging = false;
 global.sock = null;
 
-if (process.env.NODE_ENV === "production") {
-	dotenv.config({ path: path.join(__dirname, "../env/prod.env") });
-	global.logging = false;
-} else {
-	dotenv.config({ path: path.join(__dirname, "../env/dev.env") });
-	global.logging = true;
+console.log('[APP] Loading environment variables...');
+console.log('[APP] NODE_ENV:', process.env.NODE_ENV);
+try {
+	if (process.env.NODE_ENV === "production") {
+		const envPath = path.join(__dirname, "../env/prod.env");
+		console.log('[APP] Production env file path:', envPath);
+		if (fs.existsSync(envPath)) {
+			const result = dotenv.config({ path: envPath });
+			if (result.error) {
+				console.error('[APP] Error loading production env file:', result.error);
+			} else {
+				console.log('[APP] Production environment loaded successfully');
+			}
+		} else {
+			console.warn('[APP] Production env file not found:', envPath);
+			console.log('[APP] Continuing without env file...');
+		}
+		global.logging = false;
+	} else {
+		const envPath = path.join(__dirname, "../env/dev.env");
+		console.log('[APP] Development env file path:', envPath);
+		if (fs.existsSync(envPath)) {
+			const result = dotenv.config({ path: envPath });
+			if (result.error) {
+				console.error('[APP] Error loading development env file:', result.error);
+			} else {
+				console.log('[APP] Development environment loaded successfully');
+			}
+		} else {
+			console.warn('[APP] Development env file not found:', envPath);
+			console.log('[APP] Continuing without env file...');
+		}
+		global.logging = true;
+	}
+} catch (envError) {
+	console.error('[APP] Fatal error loading environment variables:', envError);
+	console.error('[APP] Error name:', envError.name);
+	console.error('[APP] Error message:', envError.message);
+	console.error('[APP] Error stack:', envError.stack);
+	console.log('[APP] Continuing without env file...');
 }
+console.log('[APP] Loading Express...');
 const express = require("express");
 const app = express();
+console.log('[APP] Express loaded');
 // const server = require("http").createServer(app);
 
 app.set("port", process.env.PORT || 6001);
@@ -74,15 +146,19 @@ if (process.env.NODE_ENV === "production") {
 }
 
 //routers
+console.log('[APP] Loading routers...');
 const { respMsg } = require("./utils/common");
 const commandRouter = require("./router/command");
+console.log('[APP] Routers loaded');
 
 // 라우터 등록
+console.log('[APP] Registering routes...');
 app.use("/api/command", commandRouter);
+console.log('[APP] Routes registered');
 
 // Health check endpoint
 app.get("/health", (req, res) => {
-	console.log("Health check endpoint");
+	// console.log("Health check endpoint");
 	res.status(200).json({
 		status: "ok",
 		service: "orderbook-collector",
@@ -135,7 +211,15 @@ async function initializeApp() {
 	}
 }
 
-initializeApp();
+console.log('[APP] About to call initializeApp()...');
+initializeApp().catch((error) => {
+	console.error('[APP] Unhandled error in initializeApp():', error);
+	console.error('[APP] Error name:', error.name);
+	console.error('[APP] Error message:', error.message);
+	console.error('[APP] Error stack:', error.stack);
+	process.exit(1);
+});
+console.log('[APP] initializeApp() called (async)');
 
 async function handleAppShutdown(signal) {
 	try {
@@ -146,8 +230,10 @@ async function handleAppShutdown(signal) {
 	process.exit(0);
 }	
 
+console.log('[APP] About to start Express server...');
 app.listen(app.get("port"), '0.0.0.0', () => {
 	console.log(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+	console.log('[APP] Express server started successfully');
 });
 
 process.on('SIGINT', () => handleAppShutdown('SIGINT'));

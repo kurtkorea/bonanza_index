@@ -64,7 +64,7 @@ const { respMsg } = require("./utils/common");
 
 // Health check endpoint
 app.get("/health", (req, res) => {
-	console.log("Health check endpoint");
+	// console.log("Health check endpoint");
 	res.status(200).json({
 		status: "ok",
 		service: "orderbook-storage-worker",

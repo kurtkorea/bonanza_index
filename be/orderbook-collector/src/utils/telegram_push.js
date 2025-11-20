@@ -31,17 +31,17 @@ async function sendTelegramMessage(source_name, text, is_send = true) {
   )
   .then(response => {
     if (response.status === 200) {
-      console.log(`[Telegram] Message sent successfully`);
+      logger.info(`[Telegram] Message sent successfully`);
     } else {
-      console.error(`[Telegram] Failed: ${response.status} ${response.statusText}`);
+      v.error(`[Telegram] Failed: ${response.status} ${response.statusText}`);
     }
   })
   .catch(error => {
     // 텔레그램 전송 실패는 앱 실행을 막지 않음
     if (error.code === 'ECONNABORTED') {
-      console.log(`[Telegram] Timeout (continuing anyway): ${error.message}`);
+      logger.error(`[Telegram] Timeout (continuing anyway): ${error.message}`);
     } else {
-      console.error(`[Telegram] Error (continuing anyway):`, error.message);
+      logger.error(`[Telegram] Error (continuing anyway):`, error.message);
     }
   });
 }

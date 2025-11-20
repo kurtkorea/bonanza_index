@@ -18,8 +18,21 @@ COPY orderbook-collector/env ./env
 # 빌드 컨텍스트가 be 디렉토리이므로 ddl 폴더가 루트에 있어야 함
 COPY ddl ./ddl
 
+# utils 폴더 복사 (dist/service/websocket_order_book_broker.js에서 ../../../utils/utils.js를 찾을 수 있도록)
+# 빌드 컨텍스트가 be 디렉토리이므로 utils 폴더가 루트에 있어야 함
+COPY utils ./utils
+
 # Babel 빌드
 RUN npm run build || (echo "Build failed!" && exit 1)
+
+# 빌드 후 ddl 폴더가 여전히 존재하는지 확인
+# 만약 없으면 빌드 컨텍스트에서 다시 복사 (빌드 과정에서 삭제될 수 있으므로)
+# 주의: 이 시점에서는 빌드 컨텍스트에 접근할 수 없으므로, 
+# COPY 명령으로 복사한 ddl 폴더가 유지되어야 함
+RUN ls -la ./ddl 2>/dev/null || (echo "ERROR: ddl folder not found after build" && exit 1)
+
+# 빌드 후 utils 폴더가 여전히 존재하는지 확인
+RUN ls -la ./utils 2>/dev/null || (echo "ERROR: utils folder not found after build" && exit 1)
 
 # 로그가 실시간으로 출력되도록 환경 변수 설정
 # stdout/stderr 버퍼링 방지
