@@ -33,12 +33,15 @@ const morgan = require("morgan");
 
 
 //cors setting
-app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
+app.use(cors({ 
+	origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : "*", 
+	credentials: true 
+}));
 
 //db connection
 const { connect, db } = require("./db/db.js");
-const { ticker_schema } = require("./ddl/ticker_ddl.js");
-const { trade_schema } = require("./ddl/trade_ddl.js");
+const { ticker_schema } = require("../../ddl/ticker_ddl.js");
+const { trade_schema } = require("../../ddl/trade_ddl.js");
 
 
 //console log middleware
@@ -47,7 +50,6 @@ app.use(morgan("dev", { skip: (req, resp) => resp.statusCode < 400 }));
 //express setting
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
-
 
 //proxy checker
 if (process.env.NODE_ENV === "production") {

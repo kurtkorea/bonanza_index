@@ -90,7 +90,6 @@ async function sendTelegramMessageQueue(source_name, text, is_send = true) {
   });
 }
 
-
 module.exports = {
   sendTelegramMessage,
   sendTelegramMessageQueue,

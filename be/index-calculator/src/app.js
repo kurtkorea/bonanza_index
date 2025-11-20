@@ -66,7 +66,10 @@ const cors = require("cors");
 const morgan = require("morgan");
 
 //cors setting
-app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
+app.use(cors({ 
+	origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : "*", 
+	credentials: true 
+}));
 
 //db connection
 // const { sequelize, Message } = require("../models");

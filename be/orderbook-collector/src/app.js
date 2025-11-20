@@ -7,11 +7,12 @@ const dotenv = require("dotenv");
 const http = require('http');
 const log = require('./utils/logger');
 const { connect, db } = require('./db/db.js');
-const { systemlog_schema } = require('./ddl/systemlog_ddl.js');
+const { systemlog_schema } = require('../../ddl/systemlog_ddl.js');
+const { report_schema } = require('../../ddl/report_ddl.js');
 
 const  { sendTelegramMessage } = require('./utils/telegram_push.js')
 
-const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_order_book_broker.js');
+const { initializeClients } = require('./service/websocket_order_book_broker.js');
 
 // Start of Selection
 global.logging = false;
@@ -77,6 +78,11 @@ async function initializeApp() {
 	try {
 		await connect(process.env.QDB_HOST, process.env.QDB_PORT);
 		await systemlog_schema(db);
+		await report_schema(db);
+		
+		// DB 연결 완료 후 클라이언트 초기화		
+		initializeClients();
+		
 		await sendTelegramMessage("system", "OrderBook-Collector Initialization.");
 	} catch (error) {
 		console.error('Application initialization failed:', error);

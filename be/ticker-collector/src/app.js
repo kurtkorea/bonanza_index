@@ -8,7 +8,7 @@ const http = require('http');
 const log = require('./utils/logger');
 
 const { connect, db } = require('./db/db.js');
-const { systemlog_schema } = require('./ddl/systemlog_ddl.js');
+const { systemlog_schema } = require('../../ddl/systemlog_ddl.js');
 const  { sendTelegramMessage } = require('./utils/telegram_push.js')
 
 
@@ -39,7 +39,10 @@ const morgan = require("morgan");
 
 
 //cors setting
-app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
+app.use(cors({ 
+	origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : "*", 
+	credentials: true 
+}));
 
 
 //console log middleware

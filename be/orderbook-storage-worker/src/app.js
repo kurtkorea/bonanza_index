@@ -36,11 +36,14 @@ const morgan = require("morgan");
 
 
 //cors setting
-app.use(cors({ origin: process.env.CORS_ORIGIN.split(","), credentials: true }));
+app.use(cors({ 
+	origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : "*", 
+	credentials: true 
+}));
 
 //db connection
 const { connect, db } = require("./db/db.js");
-const { orderbook_schema } = require("./ddl/orderbook_ddl.js");
+const { orderbook_schema } = require("../../ddl/orderbook_ddl.js");
 
 
 //console log middleware

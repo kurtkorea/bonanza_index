@@ -298,7 +298,7 @@ class BithumbClient {
       ];
       try { 
         this.ws?.send("PING"); 
-        console.log( `${this.name} ORDERBOOK PING` );
+        // console.log( `${this.name} ORDERBOOK PING` );
       } catch {
 
       }
@@ -391,7 +391,7 @@ class KorbitClient {
       this.pingInterval = setInterval(() => {
         try { 
           this.ws?.send("PING"); 
-          console.log( `${this.name} ORDERBOOK PING` );
+          // console.log( `${this.name} ORDERBOOK PING` );
         } catch {}
       }, PING_INTERVAL);
     });
@@ -470,7 +470,7 @@ class CoinoneClient {
       // 권장: 주기적 PING
       this.pingInterval = setInterval(() => {
         try { 
-          console.log( `${this.name} ORDERBOOK PING` );
+          // console.log( `${this.name} ORDERBOOK PING` );
           this.ws?.send(JSON.stringify({ request_type: "PING" })); 
         } catch {}
       }, 20 * 60 * 1000);

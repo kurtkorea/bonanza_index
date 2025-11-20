@@ -249,10 +249,15 @@ class UpbitClientTrade {
         collectorAt: coollectorAt,
         diff_ms: (coollectorAt - marketAt) / 1000,
       };
-      await SendToTrade_ZMQ(trade_item, msg);
+      await Promise.race([
+        SendToTrade_ZMQ(trade_item, msg),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('SendToTrade_ZMQ timeout')), 5000)
+        )
+      ]);
     } else {
       if ( msg.status === "UP" ) {
-        console.log( `${this.name} Trade PONG`, msg );
+        // console.log( `${this.name} Trade PONG`, msg );
       }
     }
   }
@@ -277,9 +282,9 @@ class UpbitClientTrade {
       }
       this._reconnecting = false;
       this._closeNotified = false;
-      // this.pingInterval = setInterval(() => {
-      //   try { this.ws?.send("PING"); } catch {}
-      // }, PING_INTERVAL);
+      this.pingInterval = setInterval(() => {
+        try { this.ws?.send("PING"); } catch {}
+      }, PING_INTERVAL);
     });
     this.ws.on("message", (raw) => {
       try {
@@ -478,7 +483,7 @@ class BithumbClientTrade {
       }
     } else {
       if ( msg.status === "UP" ) {
-        console.log( `${this.name} Trade PONG`, msg );
+        // console.log( `${this.name} Trade PONG`, msg );
       }
     }
   }
@@ -686,7 +691,7 @@ class KorbitClientTrade {
 
   async handleMessage(raw) {
     if ( !isJsonValue(raw.toString()) ) {
-      console.log( `${this.name} Trade PONG`, raw.toString() );
+      // console.log( `${this.name} Trade PONG`, raw.toString() );
     } else {
       const msg = JSON.parse(raw.toString());
       if (msg.type === "trade" && Array.isArray(msg.data)) {
@@ -925,7 +930,7 @@ class CoinoneClientTrade {
         await SendToTrade_ZMQ(trade_item, msg);
       }
     } else {
-      console.log( `${this.name} Trade PONG`, msg );
+      // console.log( `${this.name} Trade PONG`, msg );
     }
   }
   start() {
