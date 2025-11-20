@@ -58,6 +58,14 @@ spec:
           value: "30000"
         - name: CPU_CORES
           value: "2"
+        # 로그 출력 최적화
+        - name: NODE_OPTIONS
+          value: "--no-warnings"
+        - name: NODE_NO_WARNINGS
+          value: "1"
+        # stdout/stderr 버퍼링 방지 (로그 실시간 출력)
+        - name: PYTHONUNBUFFERED
+          value: "1"
         envFrom:
         - configMapRef:
             name: bonanza-common-config
