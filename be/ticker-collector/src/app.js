@@ -13,7 +13,7 @@ const  { sendTelegramMessage } = require('./utils/telegram_push.js')
 
 
 const { UpbitClientTrade, BithumbClientTrade, KorbitClientTrade, CoinoneClientTrade } = require('./service/websocket_trade_broker.js');
-const { UpbitClientTicker, BithumbClientTicker, KorbitClientTicker, CoinoneClientTicker } = require('./service/websocket_ticker_broker.js');
+// const { UpbitClientTicker, BithumbClientTicker, KorbitClientTicker, CoinoneClientTicker } = require('./service/websocket_ticker_broker.js');
 
 // Start of Selection
 global.logging = false;

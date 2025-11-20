@@ -181,7 +181,7 @@ if [ "$INGRESS_SELECTED" = true ]; then
 fi
 
 echo ""
-echo "⏳ 워커 노드 배포 완료 대기 중 (5초)..."
+echo "⏳ 배포 완료 대기 중 (5초)..."
 for i in {5..1}; do
     echo -ne "⏳ 남은 시간: ${i}초\r"
     sleep 1

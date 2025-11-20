@@ -1,8 +1,8 @@
-   apiVersion: storage.k8s.io/v1
-   kind: StorageClass
-   metadata:
-     name: local-path-immediate
-   provisioner: rancher.io/local-path
-   volumeBindingMode: WaitForFirstConsumer
-   allowVolumeExpansion: true
-   reclaimPolicy: Delete
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-path-immediate
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete

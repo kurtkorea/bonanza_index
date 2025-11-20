@@ -125,142 +125,71 @@ for SERVICE in "${SELECTED_SERVICES[@]}"; do
 done
 
 echo "================================"
-echo "3️⃣  워커 노드로 이미지 전송"
+echo "3️⃣  이미지 로드 (단일 노드)"
 echo "================================"
 echo ""
 
-# 워커 노드 정보
-WORKER_NODE=$(kubectl get nodes -l app-server=true --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | head -1 || echo "")
-if [ -z "$WORKER_NODE" ]; then
-    echo "❌ 워커 노드를 찾을 수 없습니다"
+# 단일 노드 정보 (현재 노드 사용)
+CURRENT_NODE=$(kubectl get nodes --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | head -1 || echo "")
+if [ -z "$CURRENT_NODE" ]; then
+    echo "❌ 노드를 찾을 수 없습니다"
     exit 1
 fi
 
-WORKER_IP="121.88.4.57"  # 기본 공인 IP
-read -p "워커 노드 IP (기본값: $WORKER_IP): " INPUT_IP
-WORKER_IP=${INPUT_IP:-$WORKER_IP}
-
-read -p "워커 노드 SSH 사용자 (기본값: bonanza): " SSH_USER
-SSH_USER=${SSH_USER:-bonanza}
-
-echo ""
-echo "📤 워커 노드 ($WORKER_IP)로 전송 중..."
-echo ""
-
-# 전송할 파일 목록 준비
-FILES_TO_TRANSFER=()
-
-# load-images.sh 스크립트 추가
-LOAD_SCRIPT="$SCRIPT_DIR/load-images.sh"
-if [ -f "$LOAD_SCRIPT" ]; then
-    FILES_TO_TRANSFER+=("$LOAD_SCRIPT")
+NODE_IP=$(kubectl get node "$CURRENT_NODE" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
+if [ -z "$NODE_IP" ]; then
+    NODE_IP=$(kubectl get node "$CURRENT_NODE" -o jsonpath='{.status.addresses[?(@.type=="ExternalIP")].address}' 2>/dev/null || echo "")
 fi
 
-# 선택된 서비스의 이미지 파일들 추가
-for SERVICE in "${SELECTED_SERVICES[@]}"; do
-    TAR_FILE="${SAVE_DIR}/${SERVICE}.tar.gz"
-    
-    if [ ! -f "$TAR_FILE" ]; then
-        echo "   ⚠️  ${SERVICE}.tar.gz 파일을 찾을 수 없습니다 (건너뜀)"
-        continue
-    fi
-    
-    FILES_TO_TRANSFER+=("$TAR_FILE")
-done
-
-if [ ${#FILES_TO_TRANSFER[@]} -eq 0 ]; then
-    echo "❌ 전송할 파일이 없습니다"
-    exit 1
-fi
-
-# 모든 파일을 한번에 전송
-echo "📤 전송할 파일 목록:"
-for FILE in "${FILES_TO_TRANSFER[@]}"; do
-    FILENAME=$(basename "$FILE")
-    if [[ "$FILENAME" == "load-images.sh" ]]; then
-        echo "   - $FILENAME (스크립트)"
-    else
-        echo "   - $FILENAME"
-    fi
-done
+# 단일 노드이므로 로컬에서 직접 로드 (SSH 전송 불필요)
+echo "✅ 단일 노드 모드: $CURRENT_NODE ($NODE_IP)"
 echo ""
 
-echo "📤 파일 전송 중 (한번에 전송)..."
-if scp "${FILES_TO_TRANSFER[@]}" "${SSH_USER}@${WORKER_IP}:/tmp/" 2>&1; then
-    echo "   ✅ 모든 파일 전송 완료"
-    
-    # load-images.sh 실행 권한 부여
-    if [ -f "$LOAD_SCRIPT" ]; then
-        ssh "${SSH_USER}@${WORKER_IP}" "chmod +x /tmp/load-images.sh" 2>/dev/null || true
-    fi
-else
-    echo "   ❌ 파일 전송 실패"
-    exit 1
-fi
-echo ""
-
-echo "================================"
-echo "4️⃣  워커 노드에서 이미지 로드"
-echo "================================"
-echo ""
-
-read -p "워커 노드에서 이미지를 자동으로 로드하시겠습니까? (y/N): " AUTO_LOAD
-if [[ "$AUTO_LOAD" =~ ^[Yy]$ ]]; then
-    echo ""
-    echo "🚀 워커 노드에서 이미지 로드 중..."
-    echo ""
-    
-    # SSH 키 기반 인증 확인
-    if ssh -o BatchMode=yes -o ConnectTimeout=5 "${SSH_USER}@${WORKER_IP}" "echo 'SSH key auth OK'" 2>/dev/null; then
-        # SSH 키 기반 인증 성공
-        echo "✅ SSH 키 기반 인증 확인됨"
-        echo ""
+# containerd 또는 Docker 확인
+if command -v ctr &> /dev/null; then
+    echo "📦 containerd를 사용하여 이미지 로드 중..."
+    for SERVICE in "${SELECTED_SERVICES[@]}"; do
+        IMAGE_NAME="bonanza-index/${SERVICE}:latest"
+        TAR_FILE="${SAVE_DIR}/${SERVICE}.tar.gz"
         
-        ssh "${SSH_USER}@${WORKER_IP}" << 'REMOTE_EOF'
-            chmod +x /tmp/load-images.sh
-            if sudo -n true 2>/dev/null; then
-                # 비밀번호 없는 sudo 사용 가능
-                sudo /tmp/load-images.sh
-            else
-                echo "⚠️  sudo 비밀번호가 필요합니다. 수동으로 실행하세요:"
-                echo "   sudo /tmp/load-images.sh"
-                exit 1
-            fi
-REMOTE_EOF
-        
-        if [ $? -eq 0 ]; then
-            echo ""
-            echo "✅ 이미지 로드 완료"
-        else
-            echo ""
-            echo "⚠️  자동 로드 실패. 수동으로 실행하세요."
-            echo ""
-            echo "   ssh ${SSH_USER}@${WORKER_IP}"
-            echo "   sudo /tmp/load-images.sh"
+        if [ ! -f "$TAR_FILE" ]; then
+            echo "   ⚠️  ${SERVICE}.tar.gz 파일을 찾을 수 없습니다 (건너뜀)"
+            continue
         fi
-    else
-        # SSH 비밀번호 인증 필요
-        echo "⚠️  SSH 키 기반 인증이 설정되지 않았습니다."
-        echo ""
-        echo "💡 수동 실행 방법:"
-        echo ""
-        echo "   ssh ${SSH_USER}@${WORKER_IP}"
-        echo "   sudo /tmp/load-images.sh"
-        echo ""
-        echo "또는 SSH 키를 설정하면 자동으로 실행됩니다:"
-        echo "   ssh-copy-id ${SSH_USER}@${WORKER_IP}"
-    fi
+        
+        echo "   📥 ${SERVICE} 로드 중..."
+        if sudo ctr -n k8s.io images import "$TAR_FILE" 2>&1; then
+            echo "   ✅ ${SERVICE} 로드 완료"
+        else
+            echo "   ❌ ${SERVICE} 로드 실패"
+        fi
+    done
+elif command -v docker &> /dev/null; then
+    echo "📦 Docker를 사용하여 이미지 로드 중..."
+    for SERVICE in "${SELECTED_SERVICES[@]}"; do
+        IMAGE_NAME="bonanza-index/${SERVICE}:latest"
+        TAR_FILE="${SAVE_DIR}/${SERVICE}.tar.gz"
+        
+        if [ ! -f "$TAR_FILE" ]; then
+            echo "   ⚠️  ${SERVICE}.tar.gz 파일을 찾을 수 없습니다 (건너뜀)"
+            continue
+        fi
+        
+        echo "   📥 ${SERVICE} 로드 중..."
+        if docker load < "$TAR_FILE" 2>&1; then
+            echo "   ✅ ${SERVICE} 로드 완료"
+        else
+            echo "   ❌ ${SERVICE} 로드 실패"
+        fi
+    done
 else
-    echo ""
-    echo "💡 수동 실행 방법:"
-    echo ""
-    echo "   ssh ${SSH_USER}@${WORKER_IP}"
-    echo "   sudo /tmp/load-images.sh"
-    echo ""
+    echo "❌ containerd 또는 Docker를 찾을 수 없습니다"
+    exit 1
 fi
+echo ""
 
 echo "================================"
-echo "5️⃣  Pod 재시작"
+echo "4️⃣  Pod 재시작"
 echo "================================"
 echo ""
 

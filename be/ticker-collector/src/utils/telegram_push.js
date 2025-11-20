@@ -42,6 +42,35 @@ async function sendTelegramMessage(source_name, text, is_send = true, is_down = 
   }
 }
 
+async function sendTelegramMessageQueue(source_name, text, is_send = true) {
+  // 큐를 통한 텔레그램 메시지 전송 (비동기, 블로킹 없음)
+  if (!process.env.TELEGRAM_SERVICE_URL) {
+    return;
+  }
+
+  const payload = {
+    source: source_name,
+    content: text,
+    is_send: is_send,
+  };
+
+  // 비동기 전송 (fire-and-forget)
+  axios.post(
+    (process.env.TELEGRAM_SERVICE_URL + '/queue') || 'http://127.0.0.1:3109/v1/telegram/queue',
+    payload,
+    {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 3000 // 3초 타임아웃
+    }
+  ).catch(error => {
+    // 에러는 로그만 남기고 무시 (앱 실행을 막지 않음)
+    console.error(`[Telegram] Queue Error (continuing anyway):`, error.message);
+  });
+}
+
 module.exports = {
   sendTelegramMessage,
+  sendTelegramMessageQueue,
 }

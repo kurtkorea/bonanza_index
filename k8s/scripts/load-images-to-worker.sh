@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 워커 노드(app-server)에 deploy-worker.sh에서 사용하는 이미지들을 로드하는 스크립트
+# 단일 노드 클러스터에 deploy-worker.sh에서 사용하는 이미지들을 로드하는 스크립트
 
 set -e
 
@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 K8S_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$K8S_DIR"
 
-echo "📦 워커 노드에 이미지 로드"
+echo "📦 단일 노드에 이미지 로드"
 echo "================================"
 echo ""
 
@@ -25,34 +25,36 @@ REQUIRED_IMAGES=(
     "bonanza-index/index-calc-fe:latest"
 )
 
-# 워커 노드 확인
+# 워커 노드 확인 (app-server=true 라벨이 있는 노드)
 WORKER_NODES=$(kubectl get nodes -l app-server=true --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null)
+
+# 워커 노드가 없으면 모든 노드 사용 (단일 노드 클러스터 대응)
 if [ -z "$WORKER_NODES" ]; then
-    echo "❌ app-server=true 라벨을 가진 워커 노드를 찾을 수 없습니다"
+    echo "⚠️  app-server=true 라벨을 가진 워커 노드를 찾을 수 없습니다"
+    echo "   모든 노드를 사용합니다 (단일 노드 클러스터 모드)"
     echo ""
-    echo "사용 가능한 노드:"
-    kubectl get nodes --show-labels
-    echo ""
-    echo "💡 워커 노드에 라벨 추가:"
-    echo "   kubectl label nodes <node-name> app-server=true --overwrite"
-    exit 1
+    WORKER_NODES=$(kubectl get nodes --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null)
 fi
 
-echo "✅ 워커 노드 발견:"
+echo "✅ 사용할 노드:"
 WORKER_NODE_LIST=()
 while IFS= read -r node; do
     if [ ! -z "$node" ]; then
         NODE_IP=$(kubectl get node "$node" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
-        echo "   - $node ($NODE_IP)"
+        NODE_ROLES=$(kubectl get node "$node" -o jsonpath='{.metadata.labels.node-role\.kubernetes\.io/.*}' 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+        if [ -z "$NODE_ROLES" ]; then
+            NODE_ROLES="worker"
+        fi
+        echo "   - $node ($NODE_IP) [${NODE_ROLES}]"
         WORKER_NODE_LIST+=("$node")
     fi
 done <<< "$WORKER_NODES"
 echo ""
 
-# 첫 번째 워커 노드 사용 (여러 개일 경우 확장 가능)
-WORKER_NODE="${WORKER_NODE_LIST[0]}"
-WORKER_NODE_INTERNAL_IP=$(kubectl get node "$WORKER_NODE" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
-WORKER_NODE_EXTERNAL_IP=$(kubectl get node "$WORKER_NODE" -o jsonpath='{.status.addresses[?(@.type=="ExternalIP")].address}' 2>/dev/null || echo "")
+# 첫 번째 노드 사용 (단일 노드 모드)
+TARGET_NODE="${WORKER_NODE_LIST[0]}"
+TARGET_NODE_INTERNAL_IP=$(kubectl get node "$TARGET_NODE" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
+TARGET_NODE_EXTERNAL_IP=$(kubectl get node "$TARGET_NODE" -o jsonpath='{.status.addresses[?(@.type=="ExternalIP")].address}' 2>/dev/null || echo "")
 
 echo "📋 로드할 이미지 목록:"
 for IMAGE in "${REQUIRED_IMAGES[@]}"; do
@@ -376,193 +378,44 @@ fi
 
 echo ""
 echo "================================"
-echo "📤 워커 노드로 전송"
+echo "📥 단일 노드에서 이미지 로드"
 echo "================================"
 echo ""
 
-# SSH 사용자 확인 (기본값: bonanza)
-read -p "워커 노드 SSH 사용자 (기본값: bonanza): " SSH_USER
-SSH_USER=${SSH_USER:-bonanza}
-
-# SSH 포트 확인 (기본값: 22)
-read -p "SSH 포트 (기본값: 22): " SSH_PORT
-SSH_PORT=${SSH_PORT:-22}
-
-# IP 주소 선택
-DEFAULT_WORKER_IP="121.88.4.57"
-echo ""
-echo "📡 IP 주소 선택:"
-echo "   1) Internal IP: $WORKER_NODE_INTERNAL_IP"
-if [ ! -z "$WORKER_NODE_EXTERNAL_IP" ]; then
-    echo "   2) External IP: $WORKER_NODE_EXTERNAL_IP"
-fi
-echo "   3) 공인 IP (기본값: $DEFAULT_WORKER_IP)"
-echo ""
-read -p "선택하세요 (1-3, 기본값: 3): " IP_CHOICE
-IP_CHOICE=${IP_CHOICE:-3}
-
-case $IP_CHOICE in
-    1)
-        WORKER_NODE_IP="$WORKER_NODE_INTERNAL_IP"
-        ;;
-    2)
-        if [ ! -z "$WORKER_NODE_EXTERNAL_IP" ]; then
-            WORKER_NODE_IP="$WORKER_NODE_EXTERNAL_IP"
-        else
-            echo "⚠️  External IP가 없습니다. 공인 IP를 사용합니다."
-            WORKER_NODE_IP="$DEFAULT_WORKER_IP"
-        fi
-        ;;
-    3)
-        read -p "워커 노드 IP 주소를 입력하세요 (기본값: $DEFAULT_WORKER_IP): " WORKER_NODE_IP
-        WORKER_NODE_IP=${WORKER_NODE_IP:-$DEFAULT_WORKER_IP}
-        ;;
-    *)
-        echo "❌ 잘못된 선택입니다"
-        exit 1
-        ;;
-esac
-
-echo ""
-echo "📤 워커 노드 ($WORKER_NODE - $WORKER_NODE_IP)로 전송 중..."
-echo ""
-
-# 각 파일 전송
-for FILE in "${SAVED_FILES[@]}"; do
-    FILENAME=$(basename "$FILE")
-    echo "   📤 ${FILENAME} 전송 중..."
-    
-    if scp -P "$SSH_PORT" "$FILE" "${SSH_USER}@${WORKER_NODE_IP}:/tmp/" 2>/dev/null; then
-        echo "   ✅ ${FILENAME} 전송 완료"
-    else
-        echo "   ❌ ${FILENAME} 전송 실패"
-        echo "      SSH 연결 확인: ssh -p $SSH_PORT ${SSH_USER}@${WORKER_NODE_IP}"
-    fi
-done
-
-echo ""
-echo "================================"
-echo "📥 워커 노드에서 이미지 로드"
-echo "================================"
+# 단일 노드 모드: SSH 전송 불필요, 로컬에서 직접 로드
+echo "✅ 단일 노드 모드: 로컬에서 직접 이미지 로드"
 echo ""
 
 # k3s containerd 소켓 경로 찾기
 K3S_SOCKET="/run/k3s/containerd/containerd.sock"
 
-# 자동 실행 스크립트 생성
-LOAD_SCRIPT="/tmp/load-images.sh"
-echo "📝 자동 실행 스크립트 생성 중..."
-cat > /tmp/load-images-remote.sh << EOF
-#!/bin/bash
-set -e
-echo "📦 이미지 로드 시작..."
-echo ""
-EOF
+# containerd 확인
+if ! command -v ctr &> /dev/null; then
+    echo "❌ ctr 명령어를 찾을 수 없습니다"
+    exit 1
+fi
 
+# 이미지 로드
 for FILE in "${SAVED_FILES[@]}"; do
     FILENAME=$(basename "$FILE")
     SERVICE=$(basename "$FILENAME" .tar.gz)
-    cat >> /tmp/load-images-remote.sh << EOF
-echo "📦 $SERVICE 이미지 로드 중..."
-if sudo ctr --address $K3S_SOCKET -n k8s.io images import /tmp/${FILENAME} 2>/dev/null; then
-    echo "   ✅ $SERVICE 완료"
-else
-    echo "   ❌ $SERVICE 실패"
-fi
-echo ""
-EOF
+    echo "📦 $SERVICE 이미지 로드 중..."
+    
+    if sudo ctr --address "$K3S_SOCKET" -n k8s.io images import "$FILE" 2>&1; then
+        echo "   ✅ $SERVICE 완료"
+    else
+        echo "   ❌ $SERVICE 실패"
+    fi
+    echo ""
 done
 
-cat >> /tmp/load-images-remote.sh << EOF
 echo "📋 로드된 이미지 확인:"
-sudo ctr --address $K3S_SOCKET -n k8s.io images list | grep bonanza-index || echo "   이미지가 없습니다"
-echo ""
-echo "✅ 이미지 로드 완료"
-EOF
-
-# 스크립트를 워커 노드로 전송
-echo "📤 로드 스크립트 전송 중..."
-if scp -P "$SSH_PORT" /tmp/load-images-remote.sh "${SSH_USER}@${WORKER_NODE_IP}:/tmp/load-images.sh" 2>/dev/null; then
-    echo "   ✅ 스크립트 전송 완료"
-else
-    echo "   ⚠️  스크립트 전송 실패 (수동 실행 필요)"
-fi
-
-# 자동 실행 여부 확인
-echo ""
-read -p "워커 노드에서 이미지를 자동으로 로드하시겠습니까? (y/N): " -n 1 -r
-echo ""
-
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo ""
-    echo "🚀 워커 노드에서 이미지 로드 중..."
-    echo ""
-    echo "⚠️  SSH 비밀번호 입력이 필요할 수 있습니다."
-    echo ""
-    
-    # SSH 키 기반 인증 확인
-    if ssh -o BatchMode=yes -o ConnectTimeout=5 -p "$SSH_PORT" "${SSH_USER}@${WORKER_NODE_IP}" "echo 'SSH key auth OK'" 2>/dev/null; then
-        # SSH 키 기반 인증 성공 - 비밀번호 없이 실행
-        echo "✅ SSH 키 기반 인증 확인됨"
-        echo ""
-        ssh -p "$SSH_PORT" "${SSH_USER}@${WORKER_NODE_IP}" << 'REMOTE_EOF'
-            chmod +x /tmp/load-images.sh
-            if sudo -n true 2>/dev/null; then
-                # 비밀번호 없는 sudo 사용 가능
-                sudo /tmp/load-images.sh
-            else
-                echo "⚠️  sudo 비밀번호가 필요합니다. 수동으로 실행하세요:"
-                echo "   sudo /tmp/load-images.sh"
-                exit 1
-            fi
-REMOTE_EOF
-    else
-        # SSH 비밀번호 인증 또는 키 없음
-        echo "⚠️  SSH 키 기반 인증이 설정되지 않았습니다."
-        echo ""
-        echo "💡 수동 실행 방법:"
-        echo ""
-        echo "   ssh -p $SSH_PORT ${SSH_USER}@${WORKER_NODE_IP}"
-        echo "   sudo /tmp/load-images.sh"
-        echo ""
-        echo "또는 SSH 키를 설정하면 자동으로 실행됩니다:"
-        echo "   ssh-copy-id -p $SSH_PORT ${SSH_USER}@${WORKER_NODE_IP}"
-        echo ""
-        exit 1
-    fi
-    
-    if [ $? -eq 0 ]; then
-        echo ""
-        echo "✅ 이미지 로드 완료"
-    else
-        echo ""
-        echo "⚠️  자동 로드 실패. 수동으로 실행하세요."
-        echo ""
-        echo "   ssh -p $SSH_PORT ${SSH_USER}@${WORKER_NODE_IP}"
-        echo "   sudo /tmp/load-images.sh"
-    fi
-else
-    echo ""
-    echo "💡 수동 실행 방법:"
-    echo ""
-    echo "   ssh -p $SSH_PORT ${SSH_USER}@${WORKER_NODE_IP}"
-    echo "   sudo /tmp/load-images.sh"
-    echo ""
-fi
-
-echo ""
-echo "📋 수동 실행 명령어 (참고용):"
-echo ""
-for FILE in "${SAVED_FILES[@]}"; do
-    FILENAME=$(basename "$FILE")
-    SERVICE=$(basename "$FILENAME" .tar.gz)
-    echo "   sudo ctr --address $K3S_SOCKET -n k8s.io images import /tmp/${FILENAME}"
-done
+sudo ctr --address "$K3S_SOCKET" -n k8s.io images list | grep bonanza-index || echo "   이미지가 없습니다"
 echo ""
 
 echo ""
 echo "================================"
-echo "✅ 전송 완료"
+echo "✅ 이미지 로드 완료"
 echo "================================"
 echo ""
 
@@ -570,9 +423,7 @@ echo ""
 rm -rf "$TEMP_DIR"
 
 echo "💡 다음 단계:"
-echo "   1. 워커 노드에 SSH 접속: ssh -p $SSH_PORT ${SSH_USER}@${WORKER_NODE_IP}"
-echo "   2. 위의 명령어들을 실행하여 이미지를 containerd로 로드"
-echo "   3. 이미지 로드 확인: sudo ctr --address $K3S_SOCKET -n k8s.io images list | grep bonanza-index"
-echo "   4. Pod 상태 확인: kubectl get pods -n bonanza-index"
+echo "   1. 이미지 로드 확인: sudo ctr --address $K3S_SOCKET -n k8s.io images list | grep bonanza-index"
+echo "   2. Pod 상태 확인: kubectl get pods -n bonanza-index"
 echo ""
 

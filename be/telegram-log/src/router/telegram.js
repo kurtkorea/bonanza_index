@@ -2,7 +2,7 @@
 
 const { Router } = require("express");
 const router = Router();
-const { sendTelegramMessageSource } = require("../utils/telegram_push");
+const { sendTelegramMessageSource, sendTelegramMessageQueue } = require("../utils/telegram_push");
 
 router.use("/*", (req, resp, next) => {
 	//#swagger.tags = ["Index Calculation"]
@@ -20,12 +20,36 @@ router.post("/", async (req, resp, next) => {
             source: req.body.source,
             content: req.body.content
         }
-
-        // console.log("req.body", req.body.is_send);
-
         sendTelegramMessageSource(result.source, result.content, req.body.is_send);
 		resp.json({
-			result: true,
+			result: false,
+			...result
+		});
+	} catch (error) {
+		console.error('에러 발생:', error);
+		resp.json({
+			result: false,
+			error: error.message
+		});
+	}
+});
+
+router.post("/queue", async (req, resp, next) => {
+	// #swagger.description = '텔레그램 메시지 전송'
+    // #swagger.parameters['source'] = {in:"query",type:"string", description:"메시지 소스"}
+    // #swagger.parameters['content'] = {in:"query",type:"string", description:"메시지 내용"}
+
+    try {
+        const result = {
+            source: req.body.source,
+            content: req.body.content
+        }
+
+        // console.log("sendTelegramMessageQueue");
+
+        sendTelegramMessageQueue(result.source, result.content, req.body.is_send);
+		resp.json({
+			result: false,
 			...result
 		});
 	} catch (error) {
@@ -33,7 +57,6 @@ router.post("/", async (req, resp, next) => {
 		next(error);
 	}
 });
-
 
 
 module.exports = router;

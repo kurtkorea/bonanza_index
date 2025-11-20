@@ -140,6 +140,11 @@ async function initializeApp() {
 		console.log('[APP] 데이터베이스 스키마 생성 중...');
 		await systemlog_schema(db);
 		console.log('[APP] 애플리케이션 초기화 완료');
+
+		console.log('process.env.TELEGRAM_LOG_TOKEN :', process.env.TELEGRAM_LOG_TOKEN);
+		console.log('process.env.TELEGRAM_STATUS_LOG_TOKEN :', process.env.TELEGRAM_STATUS_LOG_TOKEN);
+
+
 	} catch (error) {
 		console.error('애플리케이션 초기화 실패:', {
 			message: error.message,

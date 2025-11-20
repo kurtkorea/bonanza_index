@@ -34,37 +34,94 @@ echo ""
 echo "📡 Ingress 상태:"
 kubectl get ingress -n bonanza-index 2>/dev/null || echo "Ingress 없음"
 
+# 배포할 서비스 목록 정의 (deploy-worker.sh와 동일)
+APP_SERVICES=(
+    "index-endpoint:index-endpoint"
+    "index-calculator:index-calculator"
+    "orderbook-collector:orderbook-collector"
+    "ticker-collector:ticker-collector"
+    "orderbook-storage-worker:orderbook-storage-worker"
+    "ticker-storage-worker:ticker-storage-worker"
+    "orderbook-aggregator:orderbook-aggregator"
+    "telegram-log:telegram-log"
+    "index-calc-fe:index-calc-fe"
+)
+
+# 서비스 선택 메뉴
 echo ""
 echo "================================"
-echo "⚠️  삭제 대상 리소스"
+echo "📋 삭제할 서비스 선택"
 echo "================================"
 echo ""
-echo "다음 리소스들이 삭제됩니다:"
-echo "  📦 Deployment:"
-echo "    - index-endpoint"
-echo "    - index-calculator"
-echo "    - orderbook-collector"
-echo "    - ticker-collector"
-echo "    - orderbook-storage-worker"
-echo "    - ticker-storage-worker"
-echo "    - orderbook-aggregator"
-echo "    - telegram-log"
-echo "    - index-calc-fe"
+echo "  0) 전체 삭제"
+for i in "${!APP_SERVICES[@]}"; do
+    INDEX=$((i + 1))
+    SERVICE_NAME=$(echo "${APP_SERVICES[$i]}" | cut -d: -f1)
+    DEPLOYMENT_NAME=$(echo "${APP_SERVICES[$i]}" | cut -d: -f2)
+    
+    # 현재 상태 확인
+    CURRENT_STATUS=$(kubectl get pods -n bonanza-index -l app=$DEPLOYMENT_NAME -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+    if [ "$CURRENT_STATUS" = "Running" ]; then
+        STATUS_ICON="🟢"
+    elif [ "$CURRENT_STATUS" = "N/A" ]; then
+        STATUS_ICON="⚪"
+    else
+        STATUS_ICON="🟡"
+    fi
+    
+    echo "  ${INDEX}) ${STATUS_ICON} ${SERVICE_NAME}"
+done
 echo ""
-echo "  🔍 Service:"
-echo "    - index-endpoint-service"
-echo "    - index-calculator-service"
-echo "    - orderbook-collector-service"
-echo "    - ticker-collector-service"
-echo "    - orderbook-storage-worker-service"
-echo "    - ticker-storage-worker-service"
-echo "    - orderbook-aggregator-service (없을 수 있음)"
-echo "    - telegram-log-service"
-echo "    - index-calc-fe-service"
+read -p "선택하세요 (0-${#APP_SERVICES[@]}, 여러 개 선택 시 쉼표로 구분): " SELECTIONS
+
+# 선택된 서비스 확인
+SELECTED_SERVICES=()
+if [ -z "$SELECTIONS" ]; then
+    echo "❌ 선택이 없습니다. 종료합니다."
+    exit 1
+fi
+
+# 선택 파싱 (쉼표로 구분)
+if [ "$SELECTIONS" = "0" ]; then
+    # 전체 선택
+    SELECTED_SERVICES=("${APP_SERVICES[@]}")
+elif [[ "$SELECTIONS" =~ ^[0-9,]+$ ]]; then
+    # 쉼표로 구분된 선택 처리
+    IFS=',' read -ra SELECTED <<< "$SELECTIONS"
+    for SEL in "${SELECTED[@]}"; do
+        # 공백 제거
+        SEL=$(echo "$SEL" | xargs)
+        
+        if [ "$SEL" = "0" ]; then
+            # 전체 선택
+            SELECTED_SERVICES=("${APP_SERVICES[@]}")
+            break
+        elif [[ "$SEL" =~ ^[1-9][0-9]*$ ]] && [ "$SEL" -ge 1 ] && [ "$SEL" -le ${#APP_SERVICES[@]} ]; then
+            INDEX=$((SEL - 1))
+            SELECTED_SERVICES+=("${APP_SERVICES[$INDEX]}")
+        else
+            echo ""
+            echo "⚠️  잘못된 선택: $SEL (건너뜀)"
+        fi
+    done
+else
+    echo "❌ 잘못된 입력입니다. 숫자 또는 쉼표로 구분된 숫자를 입력하세요."
+    exit 1
+fi
+
+if [ ${#SELECTED_SERVICES[@]} -eq 0 ]; then
+    echo "❌ 선택된 서비스가 없습니다. 종료합니다."
+    exit 1
+fi
+
 echo ""
-echo "  📡 Ingress:"
-echo "    - bonanza-index-ingress"
+echo "✅ 선택된 서비스 (삭제 대상):"
+for SERVICE in "${SELECTED_SERVICES[@]}"; do
+    SERVICE_NAME=$(echo "$SERVICE" | cut -d: -f1)
+    echo "   - $SERVICE_NAME"
+done
 echo ""
+
 echo "⚠️  주의사항:"
 echo "  - 데이터베이스 리소스(QuestDB, Redis, MariaDB)는 유지됩니다"
 echo "  - Nginx는 유지됩니다"
@@ -86,38 +143,38 @@ echo ""
 echo "⏳ 삭제 시작..."
 echo ""
 
-# Deployment 삭제
-echo "🗑️  Deployment 삭제 중..."
-kubectl delete deployment index-endpoint -n bonanza-index --ignore-not-found=true
-kubectl delete deployment index-calculator -n bonanza-index --ignore-not-found=true
-kubectl delete deployment orderbook-collector -n bonanza-index --ignore-not-found=true
-kubectl delete deployment ticker-collector -n bonanza-index --ignore-not-found=true
-kubectl delete deployment orderbook-storage-worker -n bonanza-index --ignore-not-found=true
-kubectl delete deployment ticker-storage-worker -n bonanza-index --ignore-not-found=true
-kubectl delete deployment orderbook-aggregator -n bonanza-index --ignore-not-found=true
-kubectl delete deployment telegram-log -n bonanza-index --ignore-not-found=true
-kubectl delete deployment index-calc-fe -n bonanza-index --ignore-not-found=true
-echo "  ✅ Deployment 삭제 완료"
+# 선택된 서비스 삭제
+echo "🗑️  선택된 서비스 삭제 중..."
+for SERVICE in "${SELECTED_SERVICES[@]}"; do
+    DEPLOYMENT_NAME=$(echo "$SERVICE" | cut -d: -f1)
+    SERVICE_NAME=$(echo "$SERVICE" | cut -d: -f1)
+    
+    echo "  🗑️  ${SERVICE_NAME} 삭제 중..."
+    
+    # Deployment 삭제
+    kubectl delete deployment $DEPLOYMENT_NAME -n bonanza-index --ignore-not-found=true
+    
+    # Service 삭제
+    kubectl delete service ${SERVICE_NAME}-service -n bonanza-index --ignore-not-found=true
+done
+echo "  ✅ 선택된 서비스 삭제 완료"
 
-# Service 삭제
-echo ""
-echo "🗑️  Service 삭제 중..."
-kubectl delete service index-endpoint-service -n bonanza-index --ignore-not-found=true
-kubectl delete service index-calculator-service -n bonanza-index --ignore-not-found=true
-kubectl delete service orderbook-collector-service -n bonanza-index --ignore-not-found=true
-kubectl delete service ticker-collector-service -n bonanza-index --ignore-not-found=true
-kubectl delete service orderbook-storage-worker-service -n bonanza-index --ignore-not-found=true
-kubectl delete service ticker-storage-worker-service -n bonanza-index --ignore-not-found=true
-kubectl delete service orderbook-aggregator-service -n bonanza-index --ignore-not-found=true
-kubectl delete service telegram-log-service -n bonanza-index --ignore-not-found=true
-kubectl delete service index-calc-fe-service -n bonanza-index --ignore-not-found=true
-echo "  ✅ Service 삭제 완료"
+# Ingress는 별도 선택 (index-endpoint 또는 index-calc-fe가 선택된 경우)
+INGRESS_SELECTED=false
+for SERVICE in "${SELECTED_SERVICES[@]}"; do
+    SERVICE_NAME=$(echo "$SERVICE" | cut -d: -f1)
+    if [ "$SERVICE_NAME" = "index-calc-fe" ] || [ "$SERVICE_NAME" = "index-endpoint" ]; then
+        INGRESS_SELECTED=true
+        break
+    fi
+done
 
-# Ingress 삭제
-echo ""
-echo "🗑️  Ingress 삭제 중..."
-kubectl delete ingress -n bonanza-index --all --ignore-not-found=true
-echo "  ✅ Ingress 삭제 완료"
+if [ "$INGRESS_SELECTED" = true ]; then
+    echo ""
+    echo "🗑️  Ingress 삭제 중..."
+    kubectl delete ingress -n bonanza-index --all --ignore-not-found=true
+    echo "  ✅ Ingress 삭제 완료"
+fi
 
 echo ""
 echo "⏳ 리소스 정리 대기 중 (5초)..."
@@ -128,44 +185,81 @@ done
 echo -ne "⏳ 대기 종료          \n"
 
 echo ""
-echo "✅ 애플리케이션 서비스 삭제 상태 확인"
+echo "✅ 선택된 서비스 삭제 상태 확인"
 echo "================================"
 echo ""
 
-echo "📦 애플리케이션 Pod 상태:"
-APP_PODS=$(kubectl get pods -n bonanza-index -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | grep -E "(index|orderbook|ticker|telegram)" || echo "")
-if [ -z "$APP_PODS" ]; then
-    echo "  ✅ 애플리케이션 Pod가 모두 삭제되었습니다"
-else
-    echo "  ⚠️  남아있는 Pod:"
-    kubectl get pods -n bonanza-index | grep -E "(index|orderbook|ticker|telegram)"
-fi
+echo "📦 선택된 서비스 Pod 상태:"
+echo ""
+for SERVICE in "${SELECTED_SERVICES[@]}"; do
+    DEPLOYMENT_NAME=$(echo "$SERVICE" | cut -d: -f1)
+    SERVICE_NAME=$(echo "$SERVICE" | cut -d: -f1)
+    
+    SERVICE_PHASE=$(kubectl get pods -n bonanza-index -l app=$DEPLOYMENT_NAME -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+    SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=$DEPLOYMENT_NAME -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+    
+    if [ "$SERVICE_PHASE" = "N/A" ]; then
+        echo "  ✅ ${SERVICE_NAME}: 삭제됨"
+    else
+        echo "  ⚠️  ${SERVICE_NAME}: Phase=$SERVICE_PHASE, Ready=$SERVICE_READY"
+    fi
+done
 
 echo ""
-echo "🔍 서비스 상태:"
-APP_SVC=$(kubectl get svc -n bonanza-index -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | grep -E "(index|orderbook|ticker|telegram)" || echo "")
-if [ -z "$APP_SVC" ]; then
-    echo "  ✅ 애플리케이션 서비스가 모두 삭제되었습니다"
-else
-    echo "  ⚠️  남아있는 서비스:"
-    kubectl get svc -n bonanza-index | grep -E "(index|orderbook|ticker|telegram)"
-fi
-
+echo "🔍 선택된 서비스 상태:"
 echo ""
-echo "📡 Ingress 상태:"
-INGRESS=$(kubectl get ingress -n bonanza-index -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
-if [ -z "$INGRESS" ]; then
-    echo "  ✅ Ingress가 삭제되었습니다"
-else
-    echo "  ⚠️  남아있는 Ingress:"
-    kubectl get ingress -n bonanza-index
+for SERVICE in "${SELECTED_SERVICES[@]}"; do
+    SERVICE_NAME=$(echo "$SERVICE" | cut -d: -f1)
+    
+    if kubectl get service ${SERVICE_NAME}-service -n bonanza-index &>/dev/null; then
+        echo "  ⚠️  ${SERVICE_NAME}-service: 아직 존재함"
+    else
+        echo "  ✅ ${SERVICE_NAME}-service: 삭제됨"
+    fi
+done
+
+if [ "$INGRESS_SELECTED" = true ]; then
+    echo ""
+    echo "📡 Ingress 상태:"
+    INGRESS=$(kubectl get ingress -n bonanza-index -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+    if [ -z "$INGRESS" ]; then
+        echo "  ✅ Ingress가 삭제되었습니다"
+    else
+        echo "  ⚠️  남아있는 Ingress:"
+        kubectl get ingress -n bonanza-index
+    fi
 fi
 
 echo ""
 echo "================================"
-echo "✅ 애플리케이션 서비스 삭제 완료!"
+echo "✅ 선택된 서비스 삭제 완료!"
 echo "================================"
 echo ""
+
+# 전체 서비스 목록 (상태 확인용)
+ALL_SERVICES=(
+    "index-endpoint"
+    "index-calculator"
+    "orderbook-collector"
+    "ticker-collector"
+    "orderbook-storage-worker"
+    "ticker-storage-worker"
+    "orderbook-aggregator"
+    "telegram-log"
+    "index-calc-fe"
+)
+
+echo "📊 전체 애플리케이션 서비스 상태:"
+echo ""
+for SERVICE in "${ALL_SERVICES[@]}"; do
+    SERVICE_PHASE=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+    SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+    SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+    echo "$SERVICE:"
+    echo "  Phase: $SERVICE_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+    echo ""
+done
+
 echo "💡 참고사항:"
 echo "  - 데이터베이스 리소스(QuestDB, Redis, MariaDB)는 유지됩니다"
 echo "  - Nginx는 유지됩니다"
@@ -178,6 +272,9 @@ echo "  ./k8s/scripts/delete-master.sh"
 echo ""
 echo "💡 전체 시스템 재배포:"
 echo "  kubectl apply -f k8s/"
+echo ""
+echo "💡 선택된 서비스 재배포:"
+echo "  ./k8s/scripts/deploy-worker.sh"
 echo ""
 
 
