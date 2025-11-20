@@ -11,9 +11,11 @@
 	"author": "kurtkorea@gmail.com",
 	"license": "MIT",
 	"dependencies": {
+		"-": "^0.0.1",
 		"@aws-sdk/client-s3": "^3.423.0",
 		"@stomp/stompjs": "^7.1.1",
 		"axios": "^1.5.1",
+		"baseline-browser-mapping": "^2.8.30",
 		"cors": "^2.8.5",
 		"cross-env": "^7.0.3",
 		"dotenv": "^16.6.1",

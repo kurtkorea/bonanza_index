@@ -5,6 +5,7 @@
 */
 
 const zmq = require("zeromq");
+const logger = require('./logger.js');
 
 class ZmqSendQueuePush {
   constructor(sock) {
@@ -24,6 +25,7 @@ class ZmqSendQueuePush {
     return new Promise((resolve, reject) => {
       // 소켓이 null이면 즉시 reject
       if (!this.sock) {
+        logger.error({ ex: "ZMQ", err: "ZMQ socket is not initialized" });
         reject(new Error("ZMQ socket is not initialized"));
         return;
       }
@@ -33,9 +35,11 @@ class ZmqSendQueuePush {
           // 가장 오래된 메시지 제거 및 reject 호출
           const dropped = this.q.shift();
           if (dropped && typeof dropped.reject === "function") {
+            logger.warn({ ex: "ZMQ", err: "Dropped due to queue overflow" });
             dropped.reject(new Error("Dropped due to queue overflow"));
           }
         } else {
+          logger.error({ ex: "ZMQ", err: "Queue is full" });
           reject(new Error("Queue is full"));
           return;
         }
@@ -56,6 +60,7 @@ class ZmqSendQueuePush {
         }
         resolve();
       } catch (err) {
+        logger.error({ ex: "ZMQ", err: String(err) });
         reject(err);
       }
     }

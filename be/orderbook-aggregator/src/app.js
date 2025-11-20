@@ -5,7 +5,7 @@
 const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
-const log = require('./utils/logger');
+const logger = require('./utils/logger');
 const { connect, db } = require('./db/db.js');
 const { systemlog_schema } = require('./ddl/systemlog_ddl.js');
 
@@ -13,16 +13,10 @@ const  { sendTelegramMessage } = require('./utils/telegram_push.js')
 
 const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
 
-// Start of Selection
-global.logging = false;
-global.sock = null;
-
 if (process.env.NODE_ENV === "production") {
 	dotenv.config({ path: path.join(__dirname, "../env/prod.env") });
-	global.logging = false;
 } else {
 	dotenv.config({ path: path.join(__dirname, "../env/dev.env") });
-	global.logging = true;
 }
 const express = require("express");
 const app = express();
@@ -73,7 +67,7 @@ app.use((req, res) => {
 
 //error handling middleware
 app.use((err, req, res, next) => {
-	console.log(err.name, err.message);
+	logger.error({ ex: "APP", err: `${err.name}: ${err.message}`, stack: err.stack }, "Error handling middleware:");
 	respMsg(res, "server_error");
 });
 
@@ -81,20 +75,23 @@ async function initializeApp() {
 	try {
 		await connect(process.env.QDB_HOST, process.env.QDB_PORT);
 		await systemlog_schema(db);
-		await sendTelegramMessage("system", "OrderBook-Collector Initialization.");
+		await sendTelegramMessage("system", "OrderBook-Aggregator Initialization.");
 	} catch (error) {
-		console.error('Application initialization failed:', error);
+		logger.error({ ex: "APP", err: String(error), stack: error.stack }, "Application initialization failed:");
 		process.exit(1);
 	}
 }
 
-initializeApp();
+initializeApp().catch((error) => {
+	logger.error({ ex: "APP", err: String(error), stack: error.stack }, "Unhandled error in initializeApp():");
+	process.exit(1);
+});
 
 async function handleAppShutdown(signal) {
 	try {
-		await sendTelegramMessage("system", `[${signal}] OrderBook-Collector shutting down.`);
+		await sendTelegramMessage("system", `[${signal}] OrderBook-Aggregator shutting down.`);
 	} catch (e) {
-		console.error('Failed to send shutdown telegram notification:', e);
+		logger.error({ ex: "APP", err: String(e) }, "Failed to send shutdown telegram notification:");
 	}
 	process.exit(0);
 }

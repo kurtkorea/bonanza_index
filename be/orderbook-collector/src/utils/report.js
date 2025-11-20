@@ -5,6 +5,7 @@
  * @param {Array} clients - 거래소 클라이언트 배열
  * @returns {string} 텔레그램 리포트 문자열
  */
+
 function generateQueueReport(clients) {
   const report = [];
   report.push("📊 큐 상태 리포트(ORDER-BOOK)");

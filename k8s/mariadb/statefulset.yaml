@@ -31,7 +31,7 @@ spec:
               name: bonanza-secrets
               key: MARIADB_ROOT_PASSWORD
         - name: MYSQL_DATABASE
-          value: "bonanza"
+          value: "dayfin"
         - name: MYSQL_USER
           valueFrom:
             secretKeyRef:

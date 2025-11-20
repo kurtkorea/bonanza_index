@@ -10,47 +10,14 @@
  */
 
 const WebSocket = require("ws");
-const winston = require("winston");
 const { execAvgBuyFromAsk, execAvgSellFromBid } = require("../utils/vwap_exec.js");
 const { MARKET_NO_ENUM, MARKET_NAME_ENUM, RECONNECT_INTERVAL, PING_INTERVAL, isJsonValue } = require("../utils/common.js");
 const { send_push } = require("../utils/zmq-sender-push.js");
 const { send_publisher } = require("../utils/zmq-sender-pub.js");
 const  { sendTelegramMessage, sendTelegramMessageQueue } = require('../utils/telegram_push.js')
 const { generateQueueReport } = require('../utils/report.js')
-
-// utils 폴더 경로를 동적으로 찾기
-// 프로덕션: /app/dist/service에서 ../../../utils/utils.js → /app/utils/utils.js
-// 로컬: be/orderbook-collector/src/service에서 ../../../utils/utils.js → be/utils/utils.js
-const path = require('path');
-const fs = require('fs');
-let utilsPath = null;
-const possibleUtilsPaths = [
-  path.join(__dirname, '../../../utils/utils.js'), // 로컬: be/utils/utils.js
-  path.join(process.cwd(), 'utils/utils.js'), // 프로덕션: /app/utils/utils.js
-  path.join(__dirname, '../../../../utils/utils.js'), // 대안 경로
-];
-
-for (const testPath of possibleUtilsPaths) {
-  if (fs.existsSync(testPath)) {
-    utilsPath = testPath;
-    break;
-  }
-}
-
-if (!utilsPath) {
-  throw new Error(`utils/utils.js not found. Tried paths: ${possibleUtilsPaths.join(', ')}`);
-}
-
-const { logger } = require(utilsPath);
-
-// db는 필요할 때만 import (순환 참조 방지)
-let db = null;
-function getDb() {
-  if (!db) {
-    db = require('../db/db.js').db;
-  }
-  return db;
-}
+const logger = require('../utils/logger.js');
+const { db } = require('../db/db.js');
 
 // ===== 설정 =====
 const DEPTH    = 15;
@@ -66,7 +33,6 @@ const QUEUE_PROCESS_INTERVAL = Number(process.env.WS_QUEUE_PROCESS_INTERVAL || 2
 const QUEUE_BATCH_SIZE = Number(process.env.WS_QUEUE_BATCH_SIZE || 50); // 배치 처리 크기 - 2 vCPU에 맞게 조정
 const QUEUE_MONITOR_INTERVAL = Number(process.env.WS_QUEUE_MONITOR_INTERVAL || 30000); // 모니터링 간격 (ms, 기본 30초)
 
-
 // CPU 코어 수 기반 동적 조정 (2 vCPU 환경 최적화)
 const CPU_CORES = Number(process.env.CPU_CORES || require('os').cpus().length);
 // 배치 크기: 2 vCPU 기준으로 조정 (4개 클라이언트가 동시 처리하므로 코어당 적절한 크기)
@@ -76,17 +42,20 @@ const OPTIMAL_PROCESS_INTERVAL = Math.max(10, Math.floor(QUEUE_PROCESS_INTERVAL 
 
 // 시작 시 최적화 설정 로깅 (initializeClients에서 호출)
 function logQueueConfiguration() {
+
+  const config = {
+    cpuCores: CPU_CORES,
+    queueMaxSize: QUEUE_MAX_SIZE,
+    queueBatchSize: QUEUE_BATCH_SIZE,
+    optimalBatchSize: OPTIMAL_BATCH_SIZE,
+    queueProcessInterval: QUEUE_PROCESS_INTERVAL,
+    optimalProcessInterval: OPTIMAL_PROCESS_INTERVAL,
+    queueMonitorInterval: QUEUE_MONITOR_INTERVAL
+  };
+
   logger.info(
-    "Queue processing configuration optimized for CPU cores",
-    {
-      cpuCores: CPU_CORES,
-      queueMaxSize: QUEUE_MAX_SIZE,
-      queueBatchSize: QUEUE_BATCH_SIZE,
-      optimalBatchSize: OPTIMAL_BATCH_SIZE,
-      queueProcessInterval: QUEUE_PROCESS_INTERVAL,
-      optimalProcessInterval: OPTIMAL_PROCESS_INTERVAL,
-      queueMonitorInterval: QUEUE_MONITOR_INTERVAL
-    }
+    "CPU코어에 최적화된 큐 배치 사이즈 설정\n" +
+    JSON.stringify(config, null, 2)
   );
 }
 
@@ -485,8 +454,6 @@ class UpbitClient {
         if (cb && typeof cb === 'function') {
           cb(this.market_no, normalize(bids, asks));
         }
-      } else {
-        // console.log(`${this.name} ORDERBOOK PONG`, raw.toString());
       }
     } catch (e) {
       logger.error({ ex: this.name, err: String(e), stack: e.stack }, "handleMessage error");
@@ -503,7 +470,6 @@ class UpbitClient {
       ];
       try { 
         this.ws?.send("PING"); 
-        // console.log( `${this.name} ORDERBOOK PING` );
       } catch {}
       this.ws.send(Buffer.from(JSON.stringify(req), "utf8"));
       logger.info({ ex: this.name, msg: "subscribed", code: this.code });
@@ -780,8 +746,6 @@ class BithumbClient {
       if (cb && typeof cb === 'function') {
         cb(this.market_no, normalize(bids, asks));
       }
-    } else {
-      // console.log(`${this.name} ORDERBOOK PONG`, raw.toString());
     }
   }
   start(cb) {
@@ -794,7 +758,6 @@ class BithumbClient {
       ];
       try { 
         this.ws?.send("PING"); 
-        // console.log( `${this.name} ORDERBOOK PING` );
       } catch {
 
       }
@@ -1109,7 +1072,6 @@ class KorbitClient {
   // 메시지 처리 로직
   async handleMessage(raw, cb) {
     if (!isJsonValue(raw.toString())) {
-      // console.log(`${this.name} ORDERBOOK PONG`, raw.toString());
       return;
     }
 
@@ -1169,7 +1131,6 @@ class KorbitClient {
       this.pingInterval = setInterval(() => {
         try { 
           this.ws?.send("PING"); 
-          // console.log( `${this.name} ORDERBOOK PING` );
         } catch {}
       }, PING_INTERVAL);
     });
@@ -1440,7 +1401,7 @@ class CoinoneClient {
         cb(this.market_no, normalize(bids, asks));
       }
     } else {
-      // console.log(`${this.name} ORDERBOOK PONG`, raw.toString());
+
     }
   }
   start(cb) {
@@ -1458,7 +1419,6 @@ class CoinoneClient {
       // 권장: 주기적 PING
       this.pingInterval = setInterval(() => {
         try { 
-          // console.log( `${this.name} ORDERBOOK PING` );
           this.ws?.send(JSON.stringify({ request_type: "PING" })); 
         } catch {}
       }, 20 * 60 * 1000);
@@ -1550,9 +1510,9 @@ function initializeClients() {
 
     clients = [
       new UpbitClient("KRW-BTC"),
-      new BithumbClient("KRW-BTC"),
-      new KorbitClient("btc_krw"),
-      new CoinoneClient("KRW", "BTC"),
+      // new BithumbClient("KRW-BTC"),
+      // new KorbitClient("btc_krw"),
+      // new CoinoneClient("KRW", "BTC"),
     ];
 
     logger.info(`Created ${clients.length} clients`);
@@ -1571,7 +1531,7 @@ function initializeClients() {
     startIntervals();
     
     // 일일 리포트 스케줄러 시작
-    // scheduleDailyReport();
+    scheduleDailyReport();
     
     logger.info("All clients initialized and started");
   } catch (error) {
@@ -1663,21 +1623,21 @@ function startIntervals() {
   }
 
   // 집계
-  // accumulate(aggAcc, now);
-  // const aggRep = reportTW(aggAcc);
-  // if (aggRep) {
-  //   const sources = Object.keys(latestBook).filter(k => latestBook[k]);
+  accumulate(aggAcc, now);
+  const aggRep = reportTW(aggAcc);
+  if (aggRep) {
+    const sources = Object.keys(latestBook).filter(k => latestBook[k]);
 
-  //   const orderbook_item = {
-  //     exchange_no: 999,
-  //     exchange_name: "aggregate",
-  //     bid:  Number(aggRep.buy.toFixed(2)),
-  //     ask: Number(aggRep.sell.toFixed(2)),
-  //     mid:  Number(aggRep.mid.toFixed(2)),
-  //     createdAt: new Date(now),
-  //     sources,
-  //   };
-  // }
+    const orderbook_item = {
+      exchange_no: 999,
+      exchange_name: "aggregate",
+      bid:  Number(aggRep.buy.toFixed(2)),
+      ask: Number(aggRep.sell.toFixed(2)),
+      mid:  Number(aggRep.mid.toFixed(2)),
+      createdAt: new Date(now),
+      sources,
+    };
+  }
 
     resetSums(aggAcc);
     aggAcc.lastTs = now; // 기준시각 갱신
@@ -1723,7 +1683,6 @@ function scheduleDailyReport() {
     }, null, 2));
 
     try {
-      const db = getDb();
       if (db && db.sequelize) {
         await db.sequelize.query(
           `INSERT INTO tb_report (title, content, createdAt) VALUES (?, ?, ?)`,

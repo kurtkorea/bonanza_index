@@ -5,10 +5,7 @@
 const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
-const log = require('./utils/logger');
-
-// 전역 로거 설정
-global.logger = log;
+const logger = require('./utils/logger');
 // const { send_push, getZMQStatus, healthCheckZMQ } = require("./utils/zmq-sender-push.js");
 
 // const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
@@ -25,34 +22,18 @@ global.sock = null;
 
 // 전역 에러 핸들러 설정
 process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', {
-        message: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString()
-    });
-    
-    if (global.logger) {
-        global.logger.error('Uncaught Exception', { error });
-    }
-    
-    // 애플리케이션을 안전하게 종료
+    logger.error({ ex: "APP", err: error.message, stack: error.stack }, "Uncaught Exception:");
     process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    
-    if (global.logger) {
-        global.logger.error('Unhandled Rejection', { reason, promise });
-    }
+    logger.error({ ex: "APP", err: String(reason) }, "Unhandled Rejection:");
 });
 
 if (process.env.NODE_ENV === "production") {
 	dotenv.config({ path: path.join(__dirname, "../env/prod.env") });
-	global.logging = false;
 } else {
 	dotenv.config({ path: path.join(__dirname, "../env/dev.env") });
-	global.logging = true;
 }
 const express = require("express");
 const app = express();
@@ -119,33 +100,19 @@ app.use((req, res) => {
 
 //error handling middleware
 app.use((err, req, res, next) => {
-	console.error('서버 에러 발생:', {
-		name: err.name,
-		message: err.message,
+	logger.error({ 
+		ex: "APP", 
+		err: `${err.name}: ${err.message}`, 
 		stack: err.stack,
 		url: req.url,
-		method: req.method,
-		timestamp: new Date().toISOString()
-	});
-	
-	// 로거가 있다면 사용
-	if (global.logger) {
-		global.logger.error('서버 에러', {
-			error: err,
-			request: {
-				url: req.url,
-				method: req.method,
-				headers: req.headers
-			}
-		});
-	}
-	
+		method: req.method
+	}, "서버 에러 발생:");
 	respMsg(res, "server_error");
 });
 
 async function initializeApp() {
 	try {
-		console.log('애플리케이션 초기화 시작...');
+		logger.info('애플리케이션 초기화 시작...');
 
 		// 환경 변수 검증
 		if (!process.env.ZMQ_SUB_DEPTH_HOST) {
@@ -157,13 +124,12 @@ async function initializeApp() {
 		}
 
 		// DB 연결
-		console.log('DB 연결 중...');
+		logger.info('DB 연결 중...');
 		await connect();
 		await fkbrti_1sec_schema(db);
-		console.log('DB 연결 완료');
+		logger.info('DB 연결 완료');
 
-		console.log('ZMQ depth Subscriber 초기화 중...');
-		console.log('ZMQ ticker Subscriber 초기화 중...');
+		logger.info('ZMQ 초기화 중...');
 
 		await Promise.all([
 			init_zmq_pub(),
@@ -172,39 +138,20 @@ async function initializeApp() {
 			start_fkbrti_engine(),
 		]);
 
-		console.log('ZMQ depth Subscriber 초기화 완료');
-		console.log('ZMQ ticker Subscriber 초기화 완료');
-
-		// 메시지 초기화 (필요시)
-		// (await Message.findAll({ where: { message_use: true }, attributes: { exclude: ["message_desc", "createdAt", "updatedAt"] }, logging, raw: true })).forEach(
-		// 	(row) => (message[row.message_key] = { msg: row.message_msg, code: row.message_code }),
-		// );
-		
-		console.log('애플리케이션 초기화 완료');
+		logger.info('ZMQ 초기화 완료');
+		logger.info('애플리케이션 초기화 완료');
 	} catch (error) {
-		console.error('애플리케이션 초기화 실패:', {
-			message: error.message,
-			stack: error.stack,
-			timestamp: new Date().toISOString()
-		});
-		
-		// 로거가 있다면 사용
-		if (global.logger) {
-			global.logger.error('애플리케이션 초기화 실패', { error });
-		}
-		
+		logger.error({ ex: "APP", err: String(error), stack: error.stack }, "애플리케이션 초기화 실패:");
 		process.exit(1);
 	}
 }
 
-initializeApp();
-
-// Start the server
-// const server = app.listen(app.get("port"), () => {
-// 	console.log(`Server is running on port ${app.get("port")}`);
-// });
+initializeApp().catch((error) => {
+	logger.error({ ex: "APP", err: String(error), stack: error.stack }, "Unhandled error in initializeApp():");
+	process.exit(1);
+});
 
 app.listen(app.get("port"), '0.0.0.0', () => {
-	console.log(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
 });
 

@@ -1,5 +1,5 @@
 const { Sequelize, DataTypes, Op } = require("sequelize");
-// const Messages = require("./messages");
+const logger = require("../utils/logger");
 const db = {};
 
 const { latestTickerByExchange, latestDepthByExchange, latestTradeByExchange } = require('../utils/common');
@@ -9,13 +9,14 @@ let sequelize = null;
 // 데이터베이스 연결 테스트 및 테이블 동기화
 async function connect() {
 	// 환경변수 디버깅
-	console.log("[DB] Environment variables:");
-	console.log("QDB_HOST:", process.env.QDB_HOST);
-	console.log("QDB_PORT:", process.env.QDB_PORT);
-	console.log("QDB_DB:", process.env.QDB_DB);
-	console.log("QDB_USER:", process.env.QDB_USER);
-	console.log("QDB_PASS:", process.env.QDB_PASS);
-	console.log("QDB_LOG:", process.env.QDB_LOG);
+	logger.info({
+		QDB_HOST: process.env.QDB_HOST,
+		QDB_PORT: process.env.QDB_PORT,
+		QDB_DB: process.env.QDB_DB,
+		QDB_USER: process.env.QDB_USER,
+		QDB_PASS: process.env.QDB_PASS ? "***" : undefined,
+		QDB_LOG: process.env.QDB_LOG
+	}, "[DB] Environment variables:");
 
 	// Sequelize 인스턴스 생성 (환경변수가 로드된 후)
 	sequelize = new Sequelize(
@@ -48,9 +49,9 @@ async function connect() {
 
 	await sequelize.authenticate();
 
-	console.log("[DB] QuestDB connected via PG(8812).");
+	logger.info("[DB] QuestDB connected via PG(8812).");
 
-	console.log( "Restore last-ticker Data from DB Start..." );
+	logger.info("Restore last-ticker Data from DB Start...");
 	const result_ticker = await sequelize.query(`SELECT symbol, exchange_no, exchange_name, open, high, low, close, volume,
 												 		marketAt, collectorAt, dbAt, diff_ms, diff_ms_db
 												 FROM tb_ticker
@@ -73,7 +74,7 @@ async function connect() {
 		latestTradeByExchange.set(last_key, item);
 	}
 
-	console.log( "Restore last-ticker Data from DB End..." );
+	logger.info("Restore last-ticker Data from DB End...");
 }
 
 module.exports = {db, connect, sequelize, DataTypes, Op, QueryTypes: Sequelize.QueryTypes};

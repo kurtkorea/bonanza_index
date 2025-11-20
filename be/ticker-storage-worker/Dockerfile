@@ -15,8 +15,8 @@ COPY ticker-storage-worker/src ./src
 COPY ticker-storage-worker/env ./env
 COPY ticker-storage-worker/models ./models
 
-# ddl 폴더 복사 (dist/app.js에서 ../../ddl을 찾을 수 있도록)
-COPY ddl ./ddl
+# src/ddl 폴더 확인
+RUN ls -la ./src/ddl
 
 # Babel 빌드
 RUN npm run build || (echo "Build failed!" && exit 1)

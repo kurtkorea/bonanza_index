@@ -2,135 +2,60 @@
 
 "use strict";
 
-console.log('[APP] Starting application...');
-console.log('[APP] Node version:', process.version);
-console.log('[APP] Working directory:', process.cwd());
+const logger = require('./utils/logger.js');
+const path = require("path");
+const dotenv = require("dotenv");
+const fs = require('fs');
+const { connect, db } = require('./db/db.js');
+const { systemlog_schema } = require('./ddl/systemlog_ddl.js');
+const { report_schema } = require('./ddl/report_ddl.js');
+const { sendTelegramMessage } = require('./utils/telegram_push.js');
+const { initializeClients } = require('./service/websocket_order_book_broker.js');
+const { respMsg } = require('./utils/common.js');
+const commandRouter = require('./router/command.js');
+const express = require("express");
+const app = express();
+const morgan = require("morgan");
 
-// 전역으로 사용할 모듈들을 먼저 선언
-let path, dotenv, http, fs, connect, db, systemlog_schema, report_schema, sendTelegramMessage, initializeClients;
-
-try {
-  console.log('[APP] Loading dependencies...');
-  path = require("path");
-  dotenv = require("dotenv");
-  http = require('http');
-  fs = require('fs');
-  console.log('[APP] Basic modules loaded');
-  
-  console.log('[APP] Loading logger...');
-  const log = require('./utils/logger');
-  console.log('[APP] Logger loaded');
-  
-  console.log('[APP] Loading database module...');
-  const dbModule = require('./db/db.js');
-  connect = dbModule.connect;
-  db = dbModule.db;
-  console.log('[APP] Database module loaded');
-  
-  console.log('[APP] Loading schema modules...');
-  // ddl 폴더 경로를 동적으로 찾기
-  // 프로덕션: process.cwd()는 /app이므로 /app/ddl
-  // 로컬: __dirname은 .../orderbook-collector/src이므로 ../../ddl (be/ddl)
-  let ddlPath = null;
-  const possiblePaths = [
-    path.join(process.cwd(), 'ddl'), // 프로덕션: /app/ddl
-    path.join(__dirname, '../../ddl'), // 로컬: be/ddl
-    path.join(__dirname, '../ddl'), // 대안: orderbook-collector/ddl
-  ];
-  
-  for (const testPath of possiblePaths) {
-    const testFile = path.join(testPath, 'systemlog_ddl.js');
-    if (fs.existsSync(testFile)) {
-      ddlPath = testPath;
-      break;
-    }
-  }
-  
-  if (!ddlPath) {
-    throw new Error(`DDL folder not found. Tried paths: ${possiblePaths.join(', ')}`);
-  }
-  
-  console.log('[APP] DDL path:', ddlPath);
-  const schemaModules = require(path.join(ddlPath, 'systemlog_ddl.js'));
-  systemlog_schema = schemaModules.systemlog_schema;
-  const reportModules = require(path.join(ddlPath, 'report_ddl.js'));
-  report_schema = reportModules.report_schema;
-  console.log('[APP] Schema modules loaded');
-  
-  console.log('[APP] Loading telegram module...');
-  const telegramModule = require('./utils/telegram_push.js');
-  sendTelegramMessage = telegramModule.sendTelegramMessage;
-  console.log('[APP] Telegram module loaded');
-  
-  console.log('[APP] Loading websocket broker module...');
-  const brokerModule = require('./service/websocket_order_book_broker.js');
-  initializeClients = brokerModule.initializeClients;
-  console.log('[APP] Websocket broker module loaded');
-} catch (error) {
-  console.error('[APP] FATAL ERROR during module loading:', error);
-  console.error('[APP] Error name:', error.name);
-  console.error('[APP] Error message:', error.message);
-  console.error('[APP] Error stack:', error.stack);
-  process.exit(1);
-}
-
-console.log('[APP] Module loading phase completed');
-
-// Start of Selection
-console.log('[APP] Starting application configuration...');
-global.logging = false;
-global.sock = null;
-
-console.log('[APP] Loading environment variables...');
-console.log('[APP] NODE_ENV:', process.env.NODE_ENV);
 try {
 	if (process.env.NODE_ENV === "production") {
 		const envPath = path.join(__dirname, "../env/prod.env");
-		console.log('[APP] Production env file path:', envPath);
 		if (fs.existsSync(envPath)) {
 			const result = dotenv.config({ path: envPath });
 			if (result.error) {
-				console.error('[APP] Error loading production env file:', result.error);
+				logger.error({ ex: "APP", err: String(result.error) }, "Error loading production env file:");
 			} else {
-				console.log('[APP] Production environment loaded successfully');
+				logger.info('Production environment loaded successfully');
 			}
 		} else {
-			console.warn('[APP] Production env file not found:', envPath);
-			console.log('[APP] Continuing without env file...');
+			logger.warn({ ex: "APP", err: envPath }, "Production env file not found:");
+			logger.info('Continuing without env file...');
 		}
-		global.logging = false;
 	} else {
 		const envPath = path.join(__dirname, "../env/dev.env");
-		console.log('[APP] Development env file path:', envPath);
+		logger.info({ ex: "APP", err: envPath }, "Development env file path:");
 		if (fs.existsSync(envPath)) {
 			const result = dotenv.config({ path: envPath });
 			if (result.error) {
-				console.error('[APP] Error loading development env file:', result.error);
+				logger.error({ ex: "APP", err: String(result.error) }, "Error loading development env file:");
 			} else {
-				console.log('[APP] Development environment loaded successfully');
+				logger.info('Development environment loaded successfully');
 			}
 		} else {
-			console.warn('[APP] Development env file not found:', envPath);
-			console.log('[APP] Continuing without env file...');
+			logger.warn({ ex: "APP", err: envPath }, "Development env file not found:");
+			logger.info('Continuing without env file...');
 		}
-		global.logging = true;
 	}
 } catch (envError) {
-	console.error('[APP] Fatal error loading environment variables:', envError);
+	logger.error({ ex: "APP", err: String(envError) }, "Fatal error loading environment variables:");
 	console.error('[APP] Error name:', envError.name);
-	console.error('[APP] Error message:', envError.message);
-	console.error('[APP] Error stack:', envError.stack);
-	console.log('[APP] Continuing without env file...');
+	logger.error({ ex: "APP", err: String(envError.name) }, "Error name:");
+	logger.error({ ex: "APP", err: String(envError.message) }, "Error message:");
+	logger.error({ ex: "APP", err: String(envError.stack) }, "Error stack:");
+	logger.info('Continuing without env file...');
 }
-console.log('[APP] Loading Express...');
-const express = require("express");
-const app = express();
-console.log('[APP] Express loaded');
-// const server = require("http").createServer(app);
 
 app.set("port", process.env.PORT || 6001);
-
-const morgan = require("morgan");
 
 //console log middleware
 app.use(morgan("dev", { skip: (req, resp) => resp.statusCode < 400 }));
@@ -145,16 +70,9 @@ if (process.env.NODE_ENV === "production") {
 	app.set("trust proxy", 1);
 }
 
-//routers
-console.log('[APP] Loading routers...');
-const { respMsg } = require("./utils/common");
-const commandRouter = require("./router/command");
-console.log('[APP] Routers loaded');
 
 // 라우터 등록
-console.log('[APP] Registering routes...');
 app.use("/api/command", commandRouter);
-console.log('[APP] Routes registered');
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -179,61 +97,49 @@ app.use((err, req, res, next) => {
 
 async function initializeApp() {
 	try {
-		console.log('Starting application initialization...');
 		await connect(process.env.QDB_HOST, process.env.QDB_PORT);
-		console.log('Database connected successfully');
-		
 		await systemlog_schema(db);
-		console.log('Systemlog schema initialized');
-		
 		await report_schema(db);
-		console.log('Report schema initialized');
-		
-		// DB 연결 완료 후 클라이언트 초기화
-		console.log('Initializing WebSocket clients...');
 		try {
 			initializeClients();
-			console.log('WebSocket clients initialized successfully');
+			logger.info('WebSocket clients initialized successfully');
 		} catch (clientError) {
-			console.error('Failed to initialize WebSocket clients:', clientError);
-			console.error('Client error stack:', clientError.stack);
+			logger.error({ ex: "APP", err: String(clientError) }, "Failed to initialize WebSocket clients:");
+			logger.error({ ex: "APP", err: String(clientError.stack) }, "Client error stack:");
 			throw clientError; // 재throw하여 상위 catch에서 처리
 		}
 		
 		await sendTelegramMessage("system", "OrderBook-Collector Initialization.");
-		console.log('Application initialization completed successfully');
+		logger.info('Application initialization completed successfully');
 	} catch (error) {
-		console.error('Application initialization failed:', error);
-		console.error('Error name:', error.name);
-		console.error('Error message:', error.message);
-		console.error('Error stack:', error.stack);
+		logger.error({ ex: "APP", err: String(error) }, "Application initialization failed:");
+		logger.error({ ex: "APP", err: String(error.name) }, "Error name:");
+		logger.error({ ex: "APP", err: String(error.message) }, "Error message:");
+		logger.error({ ex: "APP", err: String(error.stack) }, "Error stack:");
 		process.exit(1);
 	}
 }
 
-console.log('[APP] About to call initializeApp()...');
 initializeApp().catch((error) => {
-	console.error('[APP] Unhandled error in initializeApp():', error);
-	console.error('[APP] Error name:', error.name);
-	console.error('[APP] Error message:', error.message);
-	console.error('[APP] Error stack:', error.stack);
+	logger.error({ ex: "APP", err: String(error) }, "Unhandled error in initializeApp():");
+	logger.error({ ex: "APP", err: String(error.name) }, "Error name:");
+	logger.error({ ex: "APP", err: String(error.message) }, "Error message:");
+	logger.error({ ex: "APP", err: String(error.stack) }, "Error stack:");
 	process.exit(1);
 });
-console.log('[APP] initializeApp() called (async)');
 
 async function handleAppShutdown(signal) {
 	try {
 		await sendTelegramMessage("system", `[${signal}] OrderBook-Collector shutting down.`);
 	} catch (e) {
-		console.error('Failed to send shutdown telegram notification:', e);
+		logger.error({ ex: "APP", err: String(e) }, "Failed to send shutdown telegram notification:");
 	}
 	process.exit(0);
 }	
 
-console.log('[APP] About to start Express server...');
 app.listen(app.get("port"), '0.0.0.0', () => {
-	console.log(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
-	console.log('[APP] Express server started successfully');
+	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+	logger.info('[APP] Express server started successfully');
 });
 
 process.on('SIGINT', () => handleAppShutdown('SIGINT'));

@@ -1,6 +1,7 @@
 const axios = require("axios");
 const { Router } = require("express");
 const router = Router();
+const logger = require("./utils/logger");
 const endpoint = [];
 let serviceList = [];
 
@@ -43,7 +44,7 @@ const split = (thing) => {
 
 const init = (app) => {
 	try {
-		console.info(`init discovery service regist`);
+		logger.info("init discovery service regist");
 		app._router.stack.forEach(findEndpoint.bind(null, []));
 		axios
 			.post(`http://${process.env.DISCOVERY}/service`, { service: process.env.SERVICE, address: process.env.ADDRESS, port: process.env.PORT, endpoint })
@@ -51,7 +52,7 @@ const init = (app) => {
 				serviceList = data.list;
 			});
 	} catch (error) {
-		console.error(error.name, error.message);
+		logger.error({ ex: "DISCOVERY", err: `${error.name}: ${error.message}` }, "Discovery init error:");
 	}
 	return app.use("/health", router);
 };

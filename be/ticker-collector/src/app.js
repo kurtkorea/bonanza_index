@@ -8,7 +8,35 @@ const http = require('http');
 const log = require('./utils/logger');
 
 const { connect, db } = require('./db/db.js');
-const { systemlog_schema } = require('../../ddl/systemlog_ddl.js');
+
+// 각 프로젝트의 ddl 폴더를 우선적으로 사용
+// 프로덕션: process.cwd()는 /app이므로 /app/src/ddl
+// 로컬: __dirname은 .../ticker-collector/src이므로 ./ddl (ticker-collector/src/ddl)
+const path = require('path');
+const fs = require('fs');
+let ddlPath = null;
+const possiblePaths = [
+  path.join(__dirname, './ddl'), // 로컬: ticker-collector/src/ddl (우선)
+  path.join(process.cwd(), 'src/ddl'), // 프로덕션: /app/src/ddl (우선)
+  path.join(process.cwd(), 'ddl'), // 프로덕션: /app/ddl (대안)
+  path.join(__dirname, '../ddl'), // 로컬: ticker-collector/ddl (대안)
+  path.join(__dirname, '../../ddl'), // 로컬: be/ddl (fallback)
+];
+
+for (const testPath of possiblePaths) {
+  const testFile = path.join(testPath, 'systemlog_ddl.js');
+  if (fs.existsSync(testFile)) {
+    ddlPath = testPath;
+    break;
+  }
+}
+
+if (!ddlPath) {
+  throw new Error(`DDL folder not found. Tried paths: ${possiblePaths.join(', ')}`);
+}
+
+console.log('[APP] DDL path:', ddlPath);
+const { systemlog_schema } = require(path.join(ddlPath, 'systemlog_ddl.js'));
 const  { sendTelegramMessage } = require('./utils/telegram_push.js')
 
 

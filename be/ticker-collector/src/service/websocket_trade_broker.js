@@ -7,13 +7,13 @@
  */
 
 const WebSocket = require("ws");
-const winston = require("winston");
 const { MARKET_NO_ENUM, MARKET_NAME_ENUM, RECONNECT_INTERVAL, PING_INTERVAL, isJsonValue } = require("../utils/common.js");
 const { send_push } = require("../utils/zmq-sender-push.js");
 const { send_publisher } = require("../utils/zmq-sender-pub.js");
 
 const { sendTelegramMessage, sendTelegramMessageQueue } = require("../utils/telegram_push.js");
 const { generateQueueReport } = require("../utils/report.js");
+const logger = require("../utils/logger.js");
 
 // ===== 설정 =====
 // 큐 설정 (2 vCPU 환경 최적화)
@@ -24,13 +24,6 @@ const QUEUE_MAX_SIZE = Number(process.env.WS_QUEUE_MAX_SIZE || 5000); // 큐 최
 const QUEUE_PROCESS_INTERVAL = Number(process.env.WS_QUEUE_PROCESS_INTERVAL || 20); // 큐 처리 간격 (ms) - 2 vCPU에 맞게 조정
 const QUEUE_BATCH_SIZE = Number(process.env.WS_QUEUE_BATCH_SIZE || 50); // 배치 처리 크기 - 2 vCPU에 맞게 조정
 const QUEUE_MONITOR_INTERVAL = Number(process.env.WS_QUEUE_MONITOR_INTERVAL || 30000); // 모니터링 간격 (ms, 기본 30초)
-
-// ===== 로거 =====
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || "info",
-  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
-  transports: [new winston.transports.Console()],
-});
 
 // CPU 코어 수 기반 동적 조정 (2 vCPU 환경 최적화)
 const CPU_CORES = Number(process.env.CPU_CORES || require('os').cpus().length);

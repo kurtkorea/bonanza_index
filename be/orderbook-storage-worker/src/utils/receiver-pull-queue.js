@@ -1,9 +1,7 @@
 // receiver-pull-queue.js
 const zmq = require("zeromq");
- const net = require("net");
- const { sequelize, QueryTypes } = require("../db/db.js");                  // (옵션) raw SQL fallback 시 사용
- const { createOrderBookModel } = require("../models/orderbook.js");  // Sequelize 경로는 지금은 미사용
-
+const net = require("net");
+const logger = require('./logger.js');
 /** =========================
  *  ILP Writer (TCP 9009)
  *  - 자동 재연결, backpressure 처리, 대기버퍼
@@ -24,20 +22,20 @@ function createIlpWriter({ host = process.env.QDB_ILP_HOST || "127.0.0.1", port 
       connecting = false;
       backoff = reconnectBaseMs;
       flushPending();
-      console.log(`[ILP] connected ${host}:${port}`);
+      logger.info(`[ILP] connected ${host}:${port}`);
     });
 
     sock.on("error", (e) => {
       connected = false;
       connecting = false;
-      console.error("[ILP] socket error:", e.message);
+      logger.error({ ex: "ILP", err: e.message }, "[ILP] socket error:");
       scheduleReconnect();
     });
 
     sock.on("close", () => {
       connected = false;
       connecting = false;
-      console.warn("[ILP] socket closed");
+      logger.warn("[ILP] socket closed");
       scheduleReconnect();
     });
 
@@ -171,7 +169,7 @@ class AsyncWorkQueue {
   constructor({ concurrency = 4, maxQueue = 10000, onDrop = null } = {}) {
     this.concurrency = concurrency;
     this.maxQueue = maxQueue;
-    this.onDrop = onDrop || ((job) => console.warn("[QUEUE] dropped job"));
+    this.onDrop = onDrop || ((job) => logger.warn("[QUEUE] dropped job"));
     this.q = [];
     this.active = 0;
     this.closed = false;
@@ -190,7 +188,7 @@ class AsyncWorkQueue {
       this.active++;
       setImmediate(async () => {
         try { await fn(); }
-        catch (err) { console.error("[QUEUE] job error:", err); }
+        catch (err) { logger.error({ ex: "QUEUE", err: err }, "[QUEUE] job error:"); }
         finally {
           this.active--;
           if (!this.closed && this.q.length > 0) this.#pump();
@@ -223,7 +221,7 @@ class BatchProcessor {
     if (this.buf.length === 0) return;
     const batch = this.buf.splice(0, this.buf.length);
     try { await this.onFlush(batch); }
-    catch (e) { console.error("[BATCH] flush error:", e); }
+    catch (e) { logger.error({ ex: "BATCH", err: e }, "[BATCH] flush error:"); }
   }
   async close() {
     clearInterval(this.timer);
@@ -242,7 +240,7 @@ async function handleMessage(topicBuf, tsBuf, payloadBuf) {
   catch { data = { raw: payloadBuf.toString() }; }
 
   // 필요시 개별 로직…
-  console.log(`[WORK] ${topic} @ ${ts}`, data);
+  logger.info({ ex: "WORK", topic: topic, ts: ts, data: data }, "[WORK]");
 }
 
 /** =========================
@@ -256,13 +254,13 @@ async function startPullQueue() {
   // 1) ZMQ PULL
   const pull = new zmq.Pull();
   pull.connect(process.env.ZMQ_PULL_HOST);
-  console.log("[PULL] connected ", process.env.ZMQ_PULL_HOST);
+  logger.info({ ex: "PULL", host: process.env.ZMQ_PULL_HOST }, "[PULL] connected");
 
   // 2) 작업 큐 (개별 처리 경로 쓸 때)
   const workQueue = new AsyncWorkQueue({
     concurrency: 8,
     maxQueue: 50000,
-    onDrop: () => console.warn("[QUEUE] drop: incoming overload"),
+    onDrop: () => logger.warn("[QUEUE] drop: incoming overload"),
   });
 
   // 3) 배치 처리기 – ILP로 20ms마다 flush
@@ -271,6 +269,9 @@ async function startPullQueue() {
     maxBatchSize: 2000,
     onFlush: async (batch) => {
       // 데이터 정규화 → ILP 라인 생성
+
+      return;
+
       const lines = [];
       for (const item of batch) {
         const { topic, ts, data } = item;
@@ -374,14 +375,14 @@ async function startPullQueue() {
         }
       }
       if (workQueue.size() % 10000 === 0 && workQueue.size() > 0) {
-        console.log(`[PULL] queued: ${workQueue.size()}`);
+        logger.info({ ex: "PULL", size: workQueue.size() }, "[PULL] queued");
       }
     }
-  })().catch((e) => console.error("[PULL] loop error:", e));
+  })().catch((e) => logger.error({ ex: "PULL", err: String(e), stack: e.stack }, "[PULL] loop error:"));
 
   // 5) 종료 시그널
   async function shutdown() {
-    console.log("\n[SHUTDOWN] draining...");
+    logger.info({ ex: "SHUTDOWN" }, "[SHUTDOWN] draining...");
     try {
       await batcher.close();      // 남은 배치 flush
       workQueue.close();
@@ -389,9 +390,9 @@ async function startPullQueue() {
       pull.close();
       ilp.end();
     } catch (e) {
-      console.error("[SHUTDOWN] error:", e);
+      logger.error({ ex: "SHUTDOWN", err: e }, "[SHUTDOWN] error:");
     } finally {
-      console.log("[SHUTDOWN] done");
+      logger.info({ ex: "SHUTDOWN" }, "[SHUTDOWN] done");
       process.exit(0);
     }
   }

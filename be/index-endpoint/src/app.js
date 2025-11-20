@@ -5,11 +5,8 @@
 const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
-const log = require('./utils/logger');
+const logger = require('./utils/logger');
 const { init_server } = require('./service/realmgr');
-
-// 전역 로거 설정
-global.logger = log;
 // const { send_push, getZMQStatus, healthCheckZMQ } = require("./utils/zmq-sender-push.js");
 
 // const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
@@ -22,34 +19,18 @@ global.sock = null;
 
 // 전역 에러 핸들러 설정
 process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', {
-        message: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString()
-    });
-    
-    if (global.logger) {
-        global.logger.error('Uncaught Exception', { error });
-    }
-    
-    // 애플리케이션을 안전하게 종료
+    logger.error({ ex: "APP", err: error.message, stack: error.stack }, "Uncaught Exception:");
     process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    
-    if (global.logger) {
-        global.logger.error('Unhandled Rejection', { reason, promise });
-    }
+    logger.error({ ex: "APP", err: String(reason) }, "Unhandled Rejection:");
 });
 
 if (process.env.NODE_ENV === "production") {
 	dotenv.config({ path: path.join(__dirname, "../env/prod.env") });
-	global.logging = false;
 } else {
 	dotenv.config({ path: path.join(__dirname, "../env/dev.env") });
-	global.logging = true;
 }
 const express = require("express");
 const app = express();
@@ -129,65 +110,44 @@ app.use("/v1/file_download", fileDownloadRouter);
 
 //404 handling middleware
 app.use((req, res) => {
-	console.log('404 Not Found:', req.method, req.url);
+	logger.warn({ method: req.method, url: req.url }, "404 Not Found:");
 	respMsg(res, "missing_request");
 });
 
 //error handling middleware
 app.use((err, req, res, next) => {
-	console.error('서버 에러 발생:', {
-		name: err.name,
-		message: err.message,
+	logger.error({ 
+		ex: "APP", 
+		err: `${err.name}: ${err.message}`, 
 		stack: err.stack,
 		url: req.url,
-		method: req.method,
-		timestamp: new Date().toISOString()
-	});
-	
-	// 로거가 있다면 사용
-	if (global.logger) {
-		global.logger.error('서버 에러', {
-			error: err,
-			request: {
-				url: req.url,
-				method: req.method,
-				headers: req.headers
-			}
-		});
-	}
-	
+		method: req.method
+	}, "서버 에러 발생:");
 	respMsg(res, "server_error");
 });
 
 async function initializeApp() {
 	try {
-		console.log('애플리케이션 초기화 시작...');
+		logger.info('애플리케이션 초기화 시작...');
 
 		// DB 연결
-		console.log('DB 연결 중...');
+		logger.info('DB 연결 중...');
 		await connect();
-		console.log('DB 연결 완료');
+		logger.info('DB 연결 완료');
 
 		await init_server(server, app.get("port"));
 
-		console.log('애플리케이션 초기화 완료');
+		logger.info('애플리케이션 초기화 완료');
 	} catch (error) {
-		console.error('애플리케이션 초기화 실패:', {
-			message: error.message,
-			stack: error.stack,
-			timestamp: new Date().toISOString()
-		});
-		
-		// 로거가 있다면 사용
-		if (global.logger) {
-			global.logger.error('애플리케이션 초기화 실패', { error });
-		}
-		
+		logger.error({ ex: "APP", err: String(error), stack: error.stack }, "애플리케이션 초기화 실패:");
 		process.exit(1);
 	}
 }
 
-initializeApp();
+initializeApp().catch((error) => {
+	logger.error({ ex: "APP", err: String(error), stack: error.stack }, "Unhandled error in initializeApp():");
+	process.exit(1);
+});
 
 // server.listen(app.get("port"), async () => {
 // 	try {

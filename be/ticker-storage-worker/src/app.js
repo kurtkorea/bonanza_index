@@ -5,32 +5,20 @@
 const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
-const log = require('./utils/logger');
-// const { send_push } = require("./utils/zmq-sender-push.js");
-// const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/mockup_time_weight_execution');
-
+const logger = require('./utils/logger');
 const { startPullQueue } = require("./utils/receiver-pull-queue.js");
-
-
-// Start of Selection
-global.logging = false;
 
 if (process.env.NODE_ENV === "production") {
 	dotenv.config({ path: path.join(__dirname, "../env/prod.env") });
-	logging = false;
 } else {
 	dotenv.config({ path: path.join(__dirname, "../env/dev.env") });
-	logging = true;
 }
 const express = require("express");
 const app = express();
-// const server = require("http").createServer(app);
 app.set("port", process.env.PORT || 6004);
-var message = {};
 
 const cors = require("cors");
 const morgan = require("morgan");
-
 
 //cors setting
 app.use(cors({ 
@@ -40,8 +28,9 @@ app.use(cors({
 
 //db connection
 const { connect, db } = require("./db/db.js");
-const { ticker_schema } = require("../../ddl/ticker_ddl.js");
-const { trade_schema } = require("../../ddl/trade_ddl.js");
+// 각 프로젝트의 ddl 폴더 사용
+const { ticker_schema } = require("./ddl/ticker_ddl.js");
+const { trade_schema } = require("./ddl/trade_ddl.js");
 
 
 //console log middleware
@@ -74,7 +63,7 @@ app.use((req, res) => {
 
 //error handling middleware
 app.use((err, req, res, next) => {
-	console.log(err.name, err.message);
+	logger.error({ ex: "APP", err: `${err.name}: ${err.message}`, stack: err.stack }, "Error handling middleware:");
 	respMsg(res, "server_error");
 });
 
@@ -87,32 +76,25 @@ async function initializeApp() {
 		
 		// ZMQ 큐 시작
 		await startPullQueue();
-
-		// servier 초기화
-		// (await Message.findAll({ where: { message_use: true }, attributes: { exclude: ["message_desc", "createdAt", "updatedAt"] }, logging, raw: true })).forEach(
-		// 	(row) => (message[row.message_key] = { msg: row.message_msg, code: row.message_code }),
-		// );
 	} catch (error) {
-		console.error('Application initialization failed:', error);
+		logger.error({ ex: "APP", err: String(error), stack: error.stack }, "Application initialization failed:");
 		process.exit(1);
 	}
 }
 
-initializeApp();
-
-// Start the server
-// const server = app.listen(app.get("port"), () => {
-// 	console.log(`Server is running on port ${app.get("port")}`);
-// });
+initializeApp().catch((error) => {
+	logger.error({ ex: "APP", err: String(error), stack: error.stack }, "Unhandled error in initializeApp():");
+	process.exit(1);
+});
 
 app.listen(app.get("port"), '0.0.0.0', () => {
-	console.log(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
 });
 
 process.on('unhandledRejection', (reason, p) => {
-	console.error('[unhandledRejection]', reason);
+	logger.error({ ex: "APP", err: String(reason) }, "[unhandledRejection]");
 });
 
 process.on('uncaughtException', (err) => {
-console.error('[uncaughtException]', err);
+	logger.error({ ex: "APP", err: String(err), stack: err.stack }, "[uncaughtException]");
 });

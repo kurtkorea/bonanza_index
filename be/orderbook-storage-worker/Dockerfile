@@ -10,16 +10,17 @@ COPY orderbook-storage-worker/package*.json ./
 # package-lock.json이 있으면 npm ci, 없으면 npm install 사용
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# orderbook-storage-worker 소스 코드 복사
+# orderbook-storage-worker 소스 코드 복사 (src/ddl 폴더 포함)
 COPY orderbook-storage-worker/src ./src
 COPY orderbook-storage-worker/env ./env
 COPY orderbook-storage-worker/models ./models
 
-# ddl 폴더 복사 (dist/app.js에서 ../../ddl을 찾을 수 있도록)
-COPY ddl ./ddl
-
 # Babel 빌드
 RUN npm run build || (echo "Build failed!" && exit 1)
+
+# 빌드 후 src/ddl 폴더가 여전히 존재하는지 확인
+# src 폴더를 복사할 때 ddl 폴더도 함께 복사되므로 별도 복사 불필요
+RUN ls -la ./src/ddl 2>/dev/null || (echo "ERROR: src/ddl folder not found after build" && exit 1)
 
 # 로그가 실시간으로 출력되도록 환경 변수 설정
 ENV NODE_ENV=production

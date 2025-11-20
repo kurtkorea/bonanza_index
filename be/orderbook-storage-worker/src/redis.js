@@ -1,6 +1,7 @@
 "use strict";
 
 const redis = require("redis");
+const logger = require('./utils/logger.js');
 
 class RedisManager {
     constructor() {
@@ -14,14 +15,14 @@ class RedisManager {
 
     async initialize() {
         try {
-            console.log("Redis 연결 시도 중...");
+            logger.info("[REDIS] 연결 시도 중...");
             
             if (this.client) {
                 try {
                     await this.client.quit();
-                    console.log("기존 Redis 연결 종료");
+                    logger.info("[REDIS] 기존 연결 종료");
                 } catch (error) {
-                    console.error("기존 Redis 연결 종료 실패:", error);
+                    logger.error({ ex: "REDIS", err: error }, "[REDIS] 기존 연결 종료 실패:");
                 }
             }
 
@@ -32,7 +33,7 @@ class RedisManager {
                     connectTimeout: 10000,
                     reconnectStrategy: (retries) => {
                         if (retries > this.maxRetries) {
-                            console.error("Redis 최대 재연결 시도 횟수 초과");
+                            logger.error({ ex: "REDIS", retries: retries, maxRetries: this.maxRetries }, "[REDIS] 최대 재연결 시도 횟수 초과");
                             return new Error("Redis 연결 실패");
                         }
                         return Math.min(retries * 100, 3000);
@@ -41,39 +42,40 @@ class RedisManager {
                 password: process.env.REDIS_PASSWORD || undefined
             };
 
-            console.log("Redis 설정:", {
+            logger.info({
+                ex: "REDIS",
                 host: redisConfig.socket.host,
                 port: redisConfig.socket.port,
                 hasPassword: !!redisConfig.password
-            });
-
+            }, "[REDIS] 설정:");
+        
             this.client = redis.createClient(redisConfig);
 
             this.client.on('error', (err) => {
-                console.error('Redis Client Error:', err);
+                logger.error({ ex: "REDIS", err: err }, "[REDIS] Client Error:");
                 this.isConnected = false;
                 this.scheduleReconnect();
             });
 
             this.client.on('connect', () => {
-                console.log('Redis Client Connected');
+                logger.info("[REDIS] Client Connected");
                 this.isConnected = true;
                 this.retryCount = 0;
                 this.clearReconnectTimer();
             });
 
             this.client.on('end', () => {
-                console.log('Redis Client Connection Ended');
+                logger.info("[REDIS] Client Connection Ended");
                 this.isConnected = false;
                 this.scheduleReconnect();
             });
 
             await this.client.connect();
-            console.log('Redis 연결 성공');
+            logger.info("[REDIS] 연결 성공");
             return this.client;
 
         } catch (error) {
-            console.error('Redis 연결 실패:', error);
+            logger.error({ ex: "REDIS", err: error }, "[REDIS] 연결 실패:");
             this.isConnected = false;
             this.scheduleReconnect();
             throw error;
@@ -87,16 +89,16 @@ class RedisManager {
 
         this.retryCount++;
         if (this.retryCount <= this.maxRetries) {
-            console.log(`${this.retryCount}번째 재연결 시도 예정...`);
+            logger.info({ ex: "REDIS", retryCount: this.retryCount }, "[REDIS] 재연결 시도 예정...");
             this.reconnectTimer = setTimeout(async () => {
                 try {
                     await this.initialize();
                 } catch (error) {
-                    console.error('재연결 시도 실패:', error);
+                    logger.error({ ex: "REDIS", err: error }, "[REDIS] 재연결 시도 실패:");
                 }
             }, this.retryDelay * this.retryCount);
         } else {
-            console.error('Redis 최대 재연결 시도 횟수 초과');
+            logger.error("[REDIS] 최대 재연결 시도 횟수 초과");
         }
     }
 
@@ -114,7 +116,7 @@ class RedisManager {
             }
             return await this.client.hGet(key, hkey, field);
         } catch (error) {
-            console.error('Redis get error:', error);
+            logger.error({ ex: "REDIS", err: error }, "[REDIS] get error:");
             throw error;
         }
     }
@@ -126,7 +128,7 @@ class RedisManager {
             }
             return await this.client.hSet(key, hkey, field);
         } catch (error) {
-            console.error('Redis set error:', error);
+            logger.error({ ex: "REDIS", err: error }, "[REDIS] set error:");
             throw error;
         }
     }
@@ -138,7 +140,7 @@ class RedisManager {
             }
             return await this.client.hDel(key, field);
         } catch (error) {
-            console.error('Redis delete error:', error);
+            logger.error({ ex: "REDIS", err: error }, "[REDIS] delete error:");
             throw error;
         }
     }
@@ -150,7 +152,7 @@ class RedisManager {
             }
             return await this.client.get(key);
         } catch (error) {
-            console.error('Redis get error:', error);
+            logger.error({ ex: "REDIS", err: error }, "[REDIS] get error:");
             throw error;
         }
     }
@@ -162,7 +164,7 @@ class RedisManager {
             }
             return await this.client.set(key, value);
         } catch (error) {
-            console.error('Redis set error:', error);
+            logger.error({ ex: "REDIS", err: error }, "[REDIS] set error:");
             throw error;
         }
     }
@@ -174,7 +176,7 @@ class RedisManager {
             }
             return await this.client.del(key);
         } catch (error) {
-            console.error('Redis delete error:', error);
+            logger.error({ ex: "REDIS", err: error }, "[REDIS] delete error:");
             throw error;
         }
     }
@@ -185,10 +187,10 @@ class RedisManager {
             if (this.client) {
                 await this.client.quit();
                 this.isConnected = false;
-                console.log('Redis connection closed');
+                logger.info("[REDIS] connection closed");
             }
         } catch (error) {
-            console.error('Error closing Redis connection:', error);
+            logger.error({ ex: "REDIS", err: error }, "[REDIS] error closing connection:");
             throw error;
         }
     }

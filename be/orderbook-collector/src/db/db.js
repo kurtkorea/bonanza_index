@@ -2,20 +2,21 @@ const { Sequelize, DataTypes, Op } = require("sequelize");
 // const Messages = require("./messages");
 const db = {};
 
+const logger = require('../utils/logger.js');
 let sequelize = null;
 
 // 데이터베이스 연결 테스트 및 테이블 동기화
 async function connect(host, port) {
 	// 환경변수 디버깅
 	try {
-		console.log("[DB] Environment variables:");
-		console.log("QDB_HOST:", process.env.QDB_HOST);
-		console.log("QDB_PORT:", process.env.QDB_PORT);
-		console.log("QDB_DB:", process.env.QDB_DB);
-		console.log("QDB_USER:", process.env.QDB_USER);
-		console.log("QDB_PASS:", process.env.QDB_PASS);
-		console.log("QDB_LOG:", process.env.QDB_LOG);
-		console.log("Connection params:", host, port);
+		logger.info("Environment variables:");
+		logger.info("QDB_HOST:", process.env.QDB_HOST);
+		logger.info("QDB_PORT:", process.env.QDB_PORT);
+		logger.info("QDB_DB:", process.env.QDB_DB);
+		logger.info("QDB_USER:", process.env.QDB_USER);
+		logger.info("QDB_PASS:", process.env.QDB_PASS);
+		logger.info("QDB_LOG:", process.env.QDB_LOG);
+		logger.info("Connection params:", host, port);
 
 		// Sequelize 인스턴스 생성 (환경변수가 로드된 후)
 		sequelize = new Sequelize(
@@ -48,9 +49,9 @@ async function connect(host, port) {
 
 		await sequelize.authenticate();
 
-		console.log("[DB] QuestDB connected via PG(8812).");	
+		logger.info("[DB] QuestDB connected via PG(8812).");	
 	} catch (error) {
-		console.error('Application initialization failed:', error);
+		logger.error({ ex: "DB", err: String(error) }, "Application initialization failed:");
 		process.exit(1);
 	}
 }

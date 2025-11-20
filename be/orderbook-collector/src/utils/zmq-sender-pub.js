@@ -16,6 +16,7 @@
 
 const zmq = require("zeromq");
 const { ZmqSendQueuePub } = require("./zmq-sender-pub.queue.js");
+const logger = require('./logger.js');
 
 let pub = null;
 let q = null;
@@ -27,7 +28,7 @@ const RECONNECT_DELAY = 5000; // 5초
 async function init_zmq_pub() {
   if (!pub) {
     try {
-      console.log(`Initializing ZMQ Pub socket on port ${process.env.ZMQ_PUB_PORT}...`);
+      logger.info(`Initializing ZMQ Pub socket on port ${process.env.ZMQ_PUB_PORT}...`);
       
       // ZMQ 소켓 생성
       pub = new zmq.Publisher();
@@ -43,16 +44,16 @@ async function init_zmq_pub() {
       // 큐 생성
       q = new ZmqSendQueuePub(pub);
       
-      console.log(`✅ ZMQ Pub socket initialized successfully on port ${process.env.ZMQ_PUB_PORT}`);
+      logger.info(`✅ ZMQ Pub socket initialized successfully on port ${process.env.ZMQ_PUB_PORT}`);
     } catch (error) {
-      console.error("❌ Failed to initialize ZMQ Pub socket:", error);
+      logger.error({ ex: "ZMQ", err: String(error) }, "❌ Failed to initialize ZMQ Pub socket:");
       
       // 정리
       if (pub) {
         try {
           pub.close();
         } catch (closeError) {
-          console.warn("Error closing failed socket:", closeError.message);
+          logger.warn({ ex: "ZMQ", err: String(closeError) }, "Error closing failed socket:");
         }
       }
       
@@ -75,13 +76,13 @@ async function send_publisher(topic, payload) {
     
     // 초기화 후에도 실패한 경우
     if (!q || !pub) {
-      console.error("ZMQ queue or socket is not initialized");
+      logger.error({ ex: "ZMQ", err: "ZMQ queue or socket is not initialized" });
       return Promise.resolve();
     }
     
     // 소켓 상태 확인
     if (typeof pub.send !== 'function') {
-      console.error("ZMQ socket is not properly initialized");
+      logger.error({ ex: "ZMQ", err: "ZMQ socket is not properly initialized" });
       return Promise.resolve();
     }
     
@@ -90,22 +91,22 @@ async function send_publisher(topic, payload) {
     // console.log("send_publisher", topic, payload_str);
     return await q.send([topic, payload_str]);
   } catch (error) {
-    console.error("send_pub error:", error);
+    logger.error({ ex: "ZMQ", err: "send_pub error:", error });
     
     // 연결 관련 에러인 경우 재연결 시도
     if (error.message.includes("socket") || error.message.includes("bind") || error.message.includes("ZMQ") || error.message.includes("not initialized")) {
-      console.log("Attempting to reconnect ZMQ due to error:", error.message);
+      logger.warn({ ex: "ZMQ", err: String(error) }, "Attempting to reconnect ZMQ due to error");
       try {
         const reconnectSuccess = await reconnectZMQ();
         if (reconnectSuccess && q && pub) {
-          console.log("Retrying message send after reconnection...");
+          logger.info("Retrying message send after reconnection...");
           const payload_str = JSON.stringify(payload);
           return await q.send([topic, ts, payload_str]);
         } else {
-          console.error("Reconnection failed, message will be dropped");
+          logger.error("Reconnection failed, message will be dropped");
         }
       } catch (reconnectError) {
-        console.error("Failed to reconnect ZMQ:", reconnectError);
+        logger.error({ ex: "ZMQ", err: String(reconnectError) }, "Failed to reconnect ZMQ");
       }
     }
     
@@ -151,19 +152,19 @@ async function healthCheckZMQ() {
 // ZMQ 재연결 함수
 async function reconnectZMQ() {
   if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    console.error(`Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);
+    logger.error(`Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);
     return false;
   }
   
   reconnectAttempts++;
-  console.log(`Starting ZMQ reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}...`);
+  logger.info(`Starting ZMQ reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}...`);
   
   try {
     // 기존 연결 정리
     if (pub) {
       try {
         pub.close();
-        console.log("Previous ZMQ socket closed");
+        logger.info("Previous ZMQ socket closed");
       } catch (closeError) {
         console.warn("Error closing previous socket:", closeError.message);
       }
@@ -178,19 +179,19 @@ async function reconnectZMQ() {
     
     // 새 연결 시도
     await init_zmq_pub();
-    console.log("✅ ZMQ reconnected successfully");
+    logger.info("✅ ZMQ reconnected successfully");
     
     // 성공 시 재연결 시도 횟수 리셋
     reconnectAttempts = 0;
     return true;
   } catch (error) {
-    console.error(`❌ Failed to reconnect ZMQ (attempt ${reconnectAttempts}):`, error);
+    logger.error({ ex: "ZMQ", err: String(error) }, `❌ Failed to reconnect ZMQ (attempt ${reconnectAttempts})`);
     pub = null;
     q = null;
     
     // 다음 재연결 시도까지 대기
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      console.log(`Waiting ${RECONNECT_DELAY/1000} seconds before next attempt...`);
+      logger.info(`Waiting ${RECONNECT_DELAY/1000} seconds before next attempt...`);
       await new Promise(resolve => setTimeout(resolve, RECONNECT_DELAY));
     }
     
@@ -201,7 +202,7 @@ async function reconnectZMQ() {
 // 재연결 시도 횟수 리셋 함수
 function resetReconnectAttempts() {
   reconnectAttempts = 0;
-  console.log("ZMQ reconnect attempts reset");
+  logger.info("ZMQ reconnect attempts reset");
 }
 
 module.exports = {

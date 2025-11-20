@@ -11,6 +11,7 @@ if (process.env.NODE_ENV === "production") {
 
 const zmq = require("zeromq");
 const net = require("net");
+const logger = require("../utils/logger");
 const { sequelize, QueryTypes } = require("../db/db.js");                  // (옵션) raw SQL fallback 시 사용
 
 /** =========================
@@ -33,20 +34,20 @@ function createIlpWriter({ host = process.env.QDB_ILP_HOST || "127.0.0.1", port 
       connecting = false;
       backoff = reconnectBaseMs;
       flushPending();
-      console.log(`[ILP] connected ${host}:${port}`);
+      logger.info(`[ILP] connected ${host}:${port}`);
     });
 
     sock.on("error", (e) => {
       connected = false;
       connecting = false;
-      console.error("[ILP] socket error:", e.message);
+      logger.error({ ex: "ILP", err: e.message }, "[ILP] socket error:");
       scheduleReconnect();
     });
 
     sock.on("close", () => {
       connected = false;
       connecting = false;
-      console.warn("[ILP] socket closed");
+      logger.warn("[ILP] socket closed");
       scheduleReconnect();
     });
 
@@ -201,7 +202,7 @@ class AsyncWorkQueue {
   constructor({ concurrency = 4, maxQueue = 10000, onDrop = null } = {}) {
     this.concurrency = concurrency;
     this.maxQueue = maxQueue;
-    this.onDrop = onDrop || ((job) => console.warn("[QUEUE] dropped job"));
+    this.onDrop = onDrop || ((job) => logger.warn("[QUEUE] dropped job"));
     this.q = [];
     this.active = 0;
     this.closed = false;
@@ -220,7 +221,7 @@ class AsyncWorkQueue {
       this.active++;
       setImmediate(async () => {
         try { await fn(); }
-        catch (err) { console.error("[QUEUE] job error:", err); }
+        catch (err) { logger.error({ ex: "QUEUE", err: String(err) }, "[QUEUE] job error:"); }
         finally {
           this.active--;
           if (!this.closed && this.q.length > 0) this.#pump();
@@ -253,7 +254,7 @@ class BatchProcessor {
     if (this.buf.length === 0) return;
     const batch = this.buf.splice(0, this.buf.length);
     try { await this.onFlush(batch); }
-    catch (e) { console.error("[BATCH] flush error:", e); }
+    catch (e) { logger.error({ ex: "BATCH", err: String(e) }, "[BATCH] flush error:"); }
   }
   async close() {
     clearInterval(this.timer);
@@ -272,7 +273,7 @@ async function handleMessage(topicBuf, tsBuf, payloadBuf) {
   catch { data = { raw: payloadBuf.toString() }; }
 
   // 필요시 개별 로직…
-  console.log(`[WORK] ${topic} @ ${ts}`, data);
+  logger.info({ topic, ts, data }, `[WORK] ${topic} @ ${ts}`);
 }
 
 async function processMessage(topicBuf, tsBuf, payloadBuf) {
@@ -306,13 +307,13 @@ async function startPullQueue() {
   // 1) ZMQ PULL
   const pull = new zmq.Pull();
   pull.connect( process.env.ZMQ_PUSH_HOST );
-  console.log("[PULL] connected ", process.env.ZMQ_PUSH_HOST);
+  logger.info(`[PULL] connected ${process.env.ZMQ_PUSH_HOST}`);
 
   // 2) 작업 큐 (개별 처리 경로 쓸 때)
   const workQueue = new AsyncWorkQueue({
     concurrency: 8,
     maxQueue: 50000,
-    onDrop: () => console.warn("[QUEUE] drop: incoming overload"),
+    onDrop: () => logger.warn("[QUEUE] drop: incoming overload"),
   });
 
   // 3) 배치 처리기 – ILP로 20ms마다 flush
@@ -337,7 +338,7 @@ async function startPullQueue() {
 
          if (typeof topic === "string" && topic.includes("ticker")) {
             if ( d.open == null || d.high == null || d.low == null || d.close == null || d.volume == null ) {
-              console.log("d", d);
+              logger.warn({ data: d }, "Invalid ticker data:");
               continue;
             }
             const ticker_row = {
@@ -358,10 +359,8 @@ async function startPullQueue() {
             // console.log("ticker_row", ticker_row);
             ticker_lines.push(toILP_Ticker(ticker_row));
          } else if (typeof topic === "string" && topic.includes("trade")) {
-          //  console.log(`[LOG] trade topic 감지: topic=${topic}, data=`, d);
-
             if ( d.price == null || d.volume == null || d.side == null ) {
-              console.log("d", d);
+              logger.warn({ data: d }, "Invalid trade data:");
               continue;
             }
 
@@ -422,14 +421,14 @@ async function startPullQueue() {
         }
       }
       if (workQueue.size() % 10000 === 0 && workQueue.size() > 0) {
-        console.log(`[PULL] queued: ${workQueue.size()}`);
+        logger.info(`[PULL] queued: ${workQueue.size()}`);
       }
     }
-  })().catch((e) => console.error("[PULL] loop error:", e));
+  })().catch((e) => logger.error({ ex: "PULL", err: String(e) }, "[PULL] loop error:"));
 
   // 5) 종료 시그널
   async function shutdown() {
-    console.log("\n[SHUTDOWN] draining...");
+    logger.info("\n[SHUTDOWN] draining...");
     try {
       await batcher.close();      // 남은 배치 flush
       workQueue.close();
@@ -437,9 +436,9 @@ async function startPullQueue() {
       pull.close();
       ilp.end();
     } catch (e) {
-      console.error("[SHUTDOWN] error:", e);
+      logger.error({ ex: "SHUTDOWN", err: String(e) }, "[SHUTDOWN] error:");
     } finally {
-      console.log("[SHUTDOWN] done");
+      logger.info("[SHUTDOWN] done");
       process.exit(0);
     }
   }
