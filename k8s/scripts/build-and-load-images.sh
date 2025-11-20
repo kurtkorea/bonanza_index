@@ -180,6 +180,9 @@ cd "$PROJECT_ROOT/be"
 BUILD_SUCCESS=0
 BUILD_FAILED=0
 
+# ddl 폴더를 사용하는 서비스 목록
+DDL_SERVICES=("orderbook-collector" "ticker-collector" "orderbook-storage-worker" "ticker-storage-worker")
+
 for SERVICE in "${BACKEND_SERVICES[@]}"; do
     IMAGE_NAME="bonanza-index/${SERVICE}:latest"
     
@@ -190,25 +193,55 @@ for SERVICE in "${BACKEND_SERVICES[@]}"; do
     fi
     
     echo "🔨 ${SERVICE} 빌드 중..."
-    cd "$SERVICE"
     
-    if docker_cmd build -t "$IMAGE_NAME" . 2>&1; then
-        echo "   ✅ ${SERVICE} 빌드 완료"
-        BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
-        
-        # k3s containerd에 로드
-        echo "   📥 ${SERVICE} 이미지 로드 중..."
-        if docker_cmd save "$IMAGE_NAME" | sudo ctr --address "$CONTAINERD_SOCKET" -n k8s.io images import - 2>&1; then
-            echo "   ✅ ${SERVICE} 로드 완료"
+    # ddl 폴더를 사용하는 서비스인지 확인
+    USE_DDL_CONTEXT=false
+    for DDL_SERVICE in "${DDL_SERVICES[@]}"; do
+        if [ "$SERVICE" = "$DDL_SERVICE" ]; then
+            USE_DDL_CONTEXT=true
+            break
+        fi
+    done
+    
+    if [ "$USE_DDL_CONTEXT" = true ]; then
+        # ddl 폴더를 사용하는 서비스는 be 디렉토리를 빌드 컨텍스트로 사용
+        echo "   📁 빌드 컨텍스트: $PROJECT_ROOT/be"
+        if docker_cmd build -f "$SERVICE/Dockerfile" -t "$IMAGE_NAME" "$PROJECT_ROOT/be" 2>&1; then
+            echo "   ✅ ${SERVICE} 빌드 완료"
+            BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
+            
+            # k3s containerd에 로드
+            echo "   📥 ${SERVICE} 이미지 로드 중..."
+            if docker_cmd save "$IMAGE_NAME" | sudo ctr --address "$CONTAINERD_SOCKET" -n k8s.io images import - 2>&1; then
+                echo "   ✅ ${SERVICE} 로드 완료"
+            else
+                echo "   ⚠️  ${SERVICE} 로드 실패 (수동으로 로드 필요)"
+            fi
         else
-            echo "   ⚠️  ${SERVICE} 로드 실패 (수동으로 로드 필요)"
+            echo "   ❌ ${SERVICE} 빌드 실패"
+            BUILD_FAILED=$((BUILD_FAILED + 1))
         fi
     else
-        echo "   ❌ ${SERVICE} 빌드 실패"
-        BUILD_FAILED=$((BUILD_FAILED + 1))
+        # 다른 서비스는 기존 방식대로
+        cd "$SERVICE"
+        echo "   📁 빌드 컨텍스트: $PROJECT_ROOT/be/$SERVICE"
+        if docker_cmd build -t "$IMAGE_NAME" . 2>&1; then
+            echo "   ✅ ${SERVICE} 빌드 완료"
+            BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
+            
+            # k3s containerd에 로드
+            echo "   📥 ${SERVICE} 이미지 로드 중..."
+            if docker_cmd save "$IMAGE_NAME" | sudo ctr --address "$CONTAINERD_SOCKET" -n k8s.io images import - 2>&1; then
+                echo "   ✅ ${SERVICE} 로드 완료"
+            else
+                echo "   ⚠️  ${SERVICE} 로드 실패 (수동으로 로드 필요)"
+            fi
+        else
+            echo "   ❌ ${SERVICE} 빌드 실패"
+            BUILD_FAILED=$((BUILD_FAILED + 1))
+        fi
+        cd "$PROJECT_ROOT/be"
     fi
-    
-    cd "$PROJECT_ROOT/be"
     echo ""
 done
 

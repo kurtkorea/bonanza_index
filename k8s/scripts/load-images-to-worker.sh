@@ -191,6 +191,9 @@ if [ ${#IMAGES_TO_BUILD[@]} -gt 0 ]; then
     # 프로젝트 루트 확인
     PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
     
+    # ddl 폴더를 사용하는 서비스 목록
+    DDL_SERVICES=("orderbook-collector" "ticker-collector" "orderbook-storage-worker" "ticker-storage-worker")
+    
     # 선택된 이미지 빌드
     BUILD_SUCCESS=0
     BUILD_FAILED=0
@@ -204,8 +207,10 @@ if [ ${#IMAGES_TO_BUILD[@]} -gt 0 ]; then
         # 서비스 디렉토리 확인
         if [[ "$SERVICE" == "index-calc-fe" ]]; then
             SERVICE_DIR="$PROJECT_ROOT/fe/$SERVICE"
+            BE_DIR="$PROJECT_ROOT/be"
         else
             SERVICE_DIR="$PROJECT_ROOT/be/$SERVICE"
+            BE_DIR="$PROJECT_ROOT/be"
         fi
         
         if [ ! -d "$SERVICE_DIR" ]; then
@@ -220,22 +225,59 @@ if [ ${#IMAGES_TO_BUILD[@]} -gt 0 ]; then
             continue
         fi
         
-        cd "$SERVICE_DIR"
-        
-        if docker build -t "$IMAGE_NAME" . 2>&1; then
-            echo "   ✅ ${SERVICE} 빌드 완료"
-            BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
-            
-            # 빌드된 이미지를 AVAILABLE_IMAGES에 추가 (중복 방지)
-            if [[ ! " ${AVAILABLE_IMAGES[@]} " =~ " ${IMAGE_NAME} " ]]; then
-                AVAILABLE_IMAGES+=("$IMAGE_NAME")
-            fi
-        else
-            echo "   ❌ ${SERVICE} 빌드 실패"
-            BUILD_FAILED=$((BUILD_FAILED + 1))
+        # ddl 폴더를 사용하는 서비스인지 확인
+        USE_DDL_CONTEXT=false
+        if [[ "$SERVICE" != "index-calc-fe" ]]; then
+            for DDL_SERVICE in "${DDL_SERVICES[@]}"; do
+                if [ "$SERVICE" = "$DDL_SERVICE" ]; then
+                    USE_DDL_CONTEXT=true
+                    break
+                fi
+            done
         fi
         
-        cd "$PROJECT_ROOT"
+        if [ "$USE_DDL_CONTEXT" = true ]; then
+            # ddl 폴더를 사용하는 서비스는 be 디렉토리를 빌드 컨텍스트로 사용
+            echo "   📁 빌드 컨텍스트: $BE_DIR"
+            
+            # ddl 폴더 존재 확인
+            if [ ! -d "$BE_DIR/ddl" ]; then
+                echo "   ❌ ${BE_DIR}/ddl 폴더를 찾을 수 없습니다"
+                BUILD_FAILED=$((BUILD_FAILED + 1))
+                continue
+            fi
+            echo "   ✅ ddl 폴더 확인: $BE_DIR/ddl"
+            
+            if docker build -f "$SERVICE_DIR/Dockerfile" -t "$IMAGE_NAME" "$BE_DIR" 2>&1; then
+                echo "   ✅ ${SERVICE} 빌드 완료"
+                BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
+                
+                # 빌드된 이미지를 AVAILABLE_IMAGES에 추가 (중복 방지)
+                if [[ ! " ${AVAILABLE_IMAGES[@]} " =~ " ${IMAGE_NAME} " ]]; then
+                    AVAILABLE_IMAGES+=("$IMAGE_NAME")
+                fi
+            else
+                echo "   ❌ ${SERVICE} 빌드 실패"
+                BUILD_FAILED=$((BUILD_FAILED + 1))
+            fi
+        else
+            # 다른 서비스는 기존 방식대로
+            cd "$SERVICE_DIR"
+            echo "   📁 빌드 컨텍스트: $SERVICE_DIR"
+            if docker build -t "$IMAGE_NAME" . 2>&1; then
+                echo "   ✅ ${SERVICE} 빌드 완료"
+                BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
+                
+                # 빌드된 이미지를 AVAILABLE_IMAGES에 추가 (중복 방지)
+                if [[ ! " ${AVAILABLE_IMAGES[@]} " =~ " ${IMAGE_NAME} " ]]; then
+                    AVAILABLE_IMAGES+=("$IMAGE_NAME")
+                fi
+            else
+                echo "   ❌ ${SERVICE} 빌드 실패"
+                BUILD_FAILED=$((BUILD_FAILED + 1))
+            fi
+            cd "$PROJECT_ROOT"
+        fi
         echo ""
     done
     

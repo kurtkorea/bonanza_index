@@ -83,22 +83,46 @@ echo ""
 
 cd "$PROJECT_ROOT/be"
 
+# ddl 폴더를 사용하는 서비스 목록
+DDL_SERVICES=("orderbook-collector" "ticker-collector" "orderbook-storage-worker" "ticker-storage-worker")
+
 # 빌드할 서비스별로 실행
 for SERVICE in "${SELECTED_SERVICES[@]}"; do
     echo "🔨 ${SERVICE} 빌드 중..."
-    cd "$SERVICE"
     
     IMAGE_NAME="bonanza-index/${SERVICE}:latest"
     
-    # Docker 이미지 빌드
-    if docker build -t "$IMAGE_NAME" . 2>&1; then
-        echo "   ✅ ${SERVICE} 빌드 완료"
-    else
-        echo "   ❌ ${SERVICE} 빌드 실패"
-        exit 1
-    fi
+    # ddl 폴더를 사용하는 서비스인지 확인
+    USE_DDL_CONTEXT=false
+    for DDL_SERVICE in "${DDL_SERVICES[@]}"; do
+        if [ "$SERVICE" = "$DDL_SERVICE" ]; then
+            USE_DDL_CONTEXT=true
+            break
+        fi
+    done
     
-    cd ..
+    # Docker 이미지 빌드
+    if [ "$USE_DDL_CONTEXT" = true ]; then
+        # ddl 폴더를 사용하는 서비스는 be 디렉토리를 빌드 컨텍스트로 사용
+        echo "   📁 빌드 컨텍스트: $PROJECT_ROOT/be"
+        if docker build -f "$SERVICE/Dockerfile" -t "$IMAGE_NAME" "$PROJECT_ROOT/be" 2>&1; then
+            echo "   ✅ ${SERVICE} 빌드 완료"
+        else
+            echo "   ❌ ${SERVICE} 빌드 실패"
+            exit 1
+        fi
+    else
+        # 다른 서비스는 기존 방식대로
+        cd "$SERVICE"
+        echo "   📁 빌드 컨텍스트: $PROJECT_ROOT/be/$SERVICE"
+        if docker build -t "$IMAGE_NAME" . 2>&1; then
+            echo "   ✅ ${SERVICE} 빌드 완료"
+        else
+            echo "   ❌ ${SERVICE} 빌드 실패"
+            exit 1
+        fi
+        cd "$PROJECT_ROOT/be"
+    fi
     echo ""
 done
 
