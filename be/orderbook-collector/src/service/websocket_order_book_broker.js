@@ -17,7 +17,7 @@ const { send_publisher } = require("../utils/zmq-sender-pub.js");
 const  { sendTelegramMessage, sendTelegramMessageQueue } = require('../utils/telegram_push.js')
 const { generateQueueReport } = require('../utils/report.js')
 const logger = require('../utils/logger.js');
-const { db } = require('../db/db.js');
+const { quest_db } = require('../db/quest_db.js');
 
 // ===== 설정 =====
 const DEPTH    = 15;
@@ -54,7 +54,7 @@ function logQueueConfiguration() {
   };
 
   logger.info(
-    "CPU코어에 최적화된 큐 배치 사이즈 설정\n" +
+    "Customized queue configuration for CPU cores\n" +
     JSON.stringify(config, null, 2)
   );
 }
@@ -1119,6 +1119,11 @@ class KorbitClient {
     this.ws = new WebSocket(this.url);
     this.ws.on("open", () => {
       const req = JSON.stringify([{ method: "subscribe", type: "orderbook", symbols: [this.symbol] }]);
+
+      logger.info(
+        this.name + " subscribe\n" + req
+      );
+
       this.ws.send(req);
       logger.info({ ex: this.name, msg: "subscribed", symbol: this.symbol });
       if (this._reconnecting) {
@@ -1495,25 +1500,64 @@ async function SendToOrderBook_ZMQ(orderbook_item, raw = null) {
 let clients = [];
 
 // 클라이언트 초기화 및 시작 함수
-function initializeClients() {
+function initializeClients(process_info_detail_list) {
   if (clients.length > 0) {
     // 이미 초기화된 경우 스킵
-    logger.info("clients already initialized");
+    logger.info("WebSocket clients already initialized");
     return;    
   }
 
   try {
-    logger.info("DB connected, initializeClients start");
+    logger.info("Database connection has been established successfully, initializeClients start");
 
     // 큐 설정 로깅
     logQueueConfiguration();
 
-    clients = [
-      new UpbitClient("KRW-BTC"),
-      // new BithumbClient("KRW-BTC"),
-      // new KorbitClient("btc_krw"),
-      // new CoinoneClient("KRW", "BTC"),
-    ];
+    // process_info_detail_list가 없거나 비어있는 경우 경고
+    if (!process_info_detail_list || process_info_detail_list.length === 0) {
+      logger.warn("process_info_detail_list is empty or undefined. No clients will be created.");
+      return;
+    }
+
+    // process_info_detail_list를 순회하며 클라이언트 생성
+    process_info_detail_list.forEach((item) => {
+      const exchange_nm = item.exchange_nm?.toUpperCase();
+      
+      try {
+        let client = null;
+        
+        switch (exchange_nm) {
+          case "UPBIT":
+            client = new UpbitClient(item.exchange_won_code || item.symbol);
+            break;
+          case "BITHUMB":
+            client = new BithumbClient(item.exchange_won_code || item.symbol);
+            break;
+          case "KORBIT":
+            client = new KorbitClient(item.exchange_won_code || item.symbol);
+            break;
+          case "COINONE":
+            client = new CoinoneClient(item.price_id_cd || "KRW", item.product_id_cd || "BTC");
+            break;
+          default:
+            logger.warn({ exchange_nm, item }, `Unknown exchange: ${exchange_nm}. Skipping client creation.`);
+            return;
+        }
+        
+        if (client) {
+          clients.push(client);
+          logger.info({ exchange_nm, symbol: item.symbol || item.exchange_won_code }, `Created client for ${exchange_nm}`);
+        }
+      } catch (err) {
+        logger.error({ err: String(err), stack: err.stack, exchange_nm: item.exchange_nm, item }, `Failed to create client for ${exchange_nm}`);
+        throw err;
+      }
+    });
+
+    if (clients.length === 0) {
+      logger.warn("No clients were created. Check process_info_detail_list configuration.");
+      return;
+    }
 
     logger.info(`Created ${clients.length} clients`);
 
@@ -1626,8 +1670,6 @@ function startIntervals() {
   accumulate(aggAcc, now);
   const aggRep = reportTW(aggAcc);
   if (aggRep) {
-    const sources = Object.keys(latestBook).filter(k => latestBook[k]);
-
     const orderbook_item = {
       exchange_no: 999,
       exchange_name: "aggregate",
@@ -1635,7 +1677,6 @@ function startIntervals() {
       ask: Number(aggRep.sell.toFixed(2)),
       mid:  Number(aggRep.mid.toFixed(2)),
       createdAt: new Date(now),
-      sources,
     };
   }
 
@@ -1683,8 +1724,8 @@ function scheduleDailyReport() {
     }, null, 2));
 
     try {
-      if (db && db.sequelize) {
-        await db.sequelize.query(
+      if (quest_db && quest_db.sequelize) {
+        await quest_db.sequelize.query(
           `INSERT INTO tb_report (title, content, createdAt) VALUES (?, ?, ?)`,
           {
             replacements: [

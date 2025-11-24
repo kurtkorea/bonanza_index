@@ -8,7 +8,7 @@ const { respMsgStr, respData, respMsg } = require("../utils/common");
 const { verifyData, verifyTypes } = require("../middleware/verify");
 const { prePaging } = require("../middleware/paging");
 const common= require("../utils/common");
-const { db, Op } = require("../db/db");
+const { db, Op } = require("../db/quest_db");
 const { once } = require('events');
 
 router.use("/*", (req, resp, next) => {

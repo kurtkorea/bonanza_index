@@ -27,7 +27,7 @@ app.use(cors({
 }));
 
 //db connection
-const { connect, db } = require("./db/db.js");
+const { connect_quest_db, quest_db } = require("./db/quest_db.js");
 // 각 프로젝트의 ddl 폴더 사용
 const { ticker_schema } = require("./ddl/ticker_ddl.js");
 const { trade_schema } = require("./ddl/trade_ddl.js");
@@ -70,9 +70,9 @@ app.use((err, req, res, next) => {
 async function initializeApp() {
 	try {
 		// DB 연결
-		await connect();
-		await ticker_schema(db);
-		await trade_schema(db);
+		await connect_quest_db();
+		// await ticker_schema(db);
+		await trade_schema(quest_db);
 		
 		// ZMQ 큐 시작
 		await startPullQueue();

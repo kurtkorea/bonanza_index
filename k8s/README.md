@@ -42,7 +42,6 @@ k8s/
 ├── ticker-collector/              # 티커 수집 서비스
 ├── orderbook-storage-worker/      # 호가 저장 워커
 ├── ticker-storage-worker/         # 티커 저장 워커
-├── orderbook-aggregator/          # 호가 집계 서비스
 ├── telegram-log/                  # 텔레그램 로그 서비스
 └── index-calc-fe/                 # 프론트엔드
 ```
@@ -113,7 +112,6 @@ kubectl apply -f k8s/orderbook-collector/
 kubectl apply -f k8s/ticker-collector/
 kubectl apply -f k8s/orderbook-storage-worker/
 kubectl apply -f k8s/ticker-storage-worker/
-kubectl apply -f k8s/orderbook-aggregator/
 kubectl apply -f k8s/telegram-log/
 
 # 프론트엔드 배포
@@ -201,7 +199,6 @@ Ingress (nginx)     │  │ index-calc-fe            │  │
   │                 │  │ ticker-collector         │  │
   │                 │  │ orderbook-storage-worker│  │
   │                 │  │ ticker-storage-worker    │  │
-  │                 │  │ orderbook-aggregator     │  │
   │                 │  │ telegram-log            │  │
   │                 │  └──────────────────────────┘  │
   │                 │                                 │

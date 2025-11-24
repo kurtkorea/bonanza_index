@@ -12,7 +12,7 @@ if (process.env.NODE_ENV === "production") {
 const zmq = require("zeromq");
 const net = require("net");
 const logger = require("../utils/logger");
-const { sequelize, QueryTypes } = require("../db/db.js");                  // (옵션) raw SQL fallback 시 사용
+const { quest_db, QueryTypes } = require("../db/quest_db.js");                  // (옵션) raw SQL fallback 시 사용
 
 /** =========================
  *  ILP Writer (TCP 9009)
@@ -179,19 +179,45 @@ function toNs(anyTs, fallbackMs = Date.now()) {
  }
 
  function toILP_Trade(data) {
-  const tags = `symbol=${escTag(data.symbol)},exchange_name=${escTag(data.exchange_name)}`;
+  /*
+            tran_dt        STRING,     -- VARCHAR(8)
+            exchange_cd    SYMBOL CAPACITY 1024,    -- VARCHAR(8) -> SYMBOL 추천
+            sequential_id  STRING,                  -- VARCHAR(30)
+            price_id       LONG,                    -- BIGINT
+            product_id     LONG,                    -- BIGINT
+            tran_tm        STRING,                  -- VARCHAR(6)
+            buy_sell_gb    SYMBOL CAPACITY 4,       -- '1'/'2' or 'ASK'/'BID'
+            trade_price    DOUBLE,
+            trade_volumn   DOUBLE,
+            timestamp      LONG,                    -- BIGINT (ms/us timestamp)
+            cont_dtm       STRING,                  -- VARCHAR(20)
+            marketAt        TIMESTAMP,              -- 거래소에서 찍혀온 시간
+            coollectorAt    TIMESTAMP,              -- 수집 시간
+            dbAt            TIMESTAMP,              -- DB에 저장된 시간
+            diff_ms         DOUBLE,                 -- 거래소에서 찍혀온 시간과 수집 시간의 차이
+            diff_ms_db      DOUBLE                  -- 거래소에서 찍혀온 시간과 DB에 저장된 시간의 차이
+  */
+  const timestamp = new Date(data.marketAt).toISOString().split("T")[0] + " " + new Date(data.marketAt).toISOString().split("T")[1].split(".")[0];
+
+  const tran_dt = new Date(data.marketAt).toISOString().split("T")[0].replace(/-/g, "");
+  const tran_tm = new Date(data.marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
+  const tags = `exchange_cd=${escTag(data.exchange_cd)},tran_dt=${escTag(tran_dt)},tran_tm=${escTag(tran_tm)},sequential_id=${escTag(data.sequential_id)}`;
   const fields = [];
-  if (data.exchange_no != null) fields.push(`exchange_no=${intField(data.exchange_no)}`); // INT → i
-  if (data.price != null)        fields.push(`price=${floatField(data.price)}`);
-  if (data.volume != null)      fields.push(`volume=${floatField(data.volume)}`);
-  if (data.side != null)        fields.push(`side="${escTag(data.side)}"`); // 문자열 필드는 반드시 쌍따옴표
-  if (data.marketAt)              fields.push(`marketAt=${tsFieldMicros(data.marketAt)}`); // ★ TIMESTAMP → μs + t
-  if (data.collectorAt)           fields.push(`collectorAt=${tsFieldMicros(data.collectorAt)}`); // ★ TIMESTAMP → μs + t
-  if (data.dbAt)           fields.push(`dbAt=${tsFieldMicros(data.dbAt)}`); // ★ TIMESTAMP → μs + t
-  if (data.diff_ms != null && data.diff_ms !== undefined) fields.push(`diff_ms=${floatField(data.diff_ms)}`);
-  if (data.diff_ms_db != null && data.diff_ms_db !== undefined) fields.push(`diff_ms_db=${floatField(data.diff_ms_db)}`);
-  if (!fields.length) fields.push("dummy=1");
-  return `tb_trade,${tags} ${fields.join(",")}\n`;
+
+  if (data.price_id != null)         fields.push(`price_id=${intField(data.price_id)}`);
+  if (data.product_id != null)       fields.push(`product_id=${intField(data.product_id)}`);
+  if (data.buy_sell_gb != null)      fields.push(`buy_sell_gb=${`"${escTag(data.buy_sell_gb)}"`}`);
+  if (data.trade_price != null)      fields.push(`trade_price=${floatField(data.trade_price)}`);
+  if (data.trade_volumn != null)     fields.push(`trade_volumn=${floatField(data.trade_volumn)}`);
+  if (data.marketAt != null)         fields.push(`marketAt=${tsFieldMicros(data.marketAt)}`);
+  if (data.marketAt != null)         fields.push(`timestamp=${intField(data.marketAt)}`);
+  if (data.marketAt != null)         fields.push(`cont_dtm=${`"${escTag(timestamp)}"`}`);
+  if (data.collectorAt != null)      fields.push(`collectorAt=${tsFieldMicros(data.collectorAt)}`);
+  if (data.dbAt != null)             fields.push(`dbAt=${tsFieldMicros(data.dbAt)}`);
+  if (data.diff_ms != null)          fields.push(`diff_ms=${floatField(data.diff_ms)}`);
+  if (data.diff_ms_db != null)       fields.push(`diff_ms_db=${floatField(data.diff_ms_db)}`);
+
+  return `tb_exchange_trade,${tags} ${fields.join(",")}\n`;
 }
 
 
@@ -254,7 +280,14 @@ class BatchProcessor {
     if (this.buf.length === 0) return;
     const batch = this.buf.splice(0, this.buf.length);
     try { await this.onFlush(batch); }
-    catch (e) { logger.error({ ex: "BATCH", err: String(e) }, "[BATCH] flush error:"); }
+    catch (e) { 
+      logger.error({ 
+        ex: "BATCH", 
+        err: e?.message || String(e), 
+        stack: e?.stack,
+        batchSize: batch.length
+      }, "[BATCH] flush error:"); 
+    }
   }
   async close() {
     clearInterval(this.timer);
@@ -332,19 +365,21 @@ async function startPullQueue() {
           try { d = JSON.parse(d); } catch { d = { raw: d }; }
         }
 
+        // console.log("d", d);
+
         const dbAt = new Date().toISOString();
         // diff_ms_db 계산 로직 수정: 밀리초 단위로 계산 (초 단위 아님)
         const diff_ms_db = ( new Date().getTime() - new Date(d.marketAt).getTime() ) / 1000 > 0 ? ( new Date().getTime() - new Date(d.marketAt).getTime() ) / 1000 : 0;
 
-         if (typeof topic === "string" && topic.includes("ticker")) {
+         if ( d.type === "ticker" ) {
             if ( d.open == null || d.high == null || d.low == null || d.close == null || d.volume == null ) {
               logger.warn({ data: d }, "Invalid ticker data:");
               continue;
             }
             const ticker_row = {
               symbol: d.symbol,
-              exchange_no: d.exchange_no,
-              exchange_name: d.exchange_name,
+              exchange_cd: d.exchange_cd,
+              exchange_nm: d.exchange_nm,
               open: d.open,
               high: d.high,
               low: d.low,
@@ -358,25 +393,18 @@ async function startPullQueue() {
             };
             // console.log("ticker_row", ticker_row);
             ticker_lines.push(toILP_Ticker(ticker_row));
-         } else if (typeof topic === "string" && topic.includes("trade")) {
-            if ( d.price == null || d.volume == null || d.side == null ) {
+         } else if ( d.type === "trade" ) {
+            if ( d.trade_price == null || d.trade_volumn == null || d.buy_sell_gb == null ) {
               logger.warn({ data: d }, "Invalid trade data:");
               continue;
             }
 
             const trade_row = {
-              symbol: d.symbol,
-              exchange_no: d.exchange_no,
-              exchange_name: d.exchange_name,
-              price: d.price,
-              volume: d.volume,
-              side: d.side,
-              marketAt: d.marketAt,
-              collectorAt: d.collectorAt,
+              ...d,
               dbAt: dbAt,
-              diff_ms: d.diff_ms,
               diff_ms_db: diff_ms_db,
             };
+            // console.log("trade_row", trade_row);
             trade_lines.push(toILP_Trade(trade_row));
          } else {
           //  console.log(`[LOG] 기타 topic 감지: topic=${topic}, data=`, d);

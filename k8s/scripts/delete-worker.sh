@@ -42,7 +42,6 @@ APP_SERVICES=(
     "ticker-collector:ticker-collector"
     "orderbook-storage-worker:orderbook-storage-worker"
     "ticker-storage-worker:ticker-storage-worker"
-    "orderbook-aggregator:orderbook-aggregator"
     "telegram-log:telegram-log"
     "index-calc-fe:index-calc-fe"
 )
@@ -244,7 +243,6 @@ ALL_SERVICES=(
     "ticker-collector"
     "orderbook-storage-worker"
     "ticker-storage-worker"
-    "orderbook-aggregator"
     "telegram-log"
     "index-calc-fe"
 )

@@ -41,7 +41,6 @@ APP_SERVICES=(
     "ticker-collector:ticker-collector"
     "orderbook-storage-worker:orderbook-storage-worker"
     "ticker-storage-worker:ticker-storage-worker"
-    "orderbook-aggregator:orderbook-aggregator"
     "telegram-log:telegram-log"
     "index-calc-fe:index-calc-fe"
 )
@@ -216,7 +215,6 @@ ALL_SERVICES=(
     "ticker-collector"
     "orderbook-storage-worker"
     "ticker-storage-worker"
-    "orderbook-aggregator"
     "telegram-log"
     "index-calc-fe"
 )
@@ -232,11 +230,11 @@ done
 
 # 문제가 있는 Pod 확인
 echo ""
-FAILING_PODS=$(kubectl get pods -n bonanza-index -l 'app in (index-endpoint,index-calculator,orderbook-collector,ticker-collector,orderbook-storage-worker,ticker-storage-worker,orderbook-aggregator,telegram-log,index-calc-fe)' --field-selector=status.phase!=Running,status.phase!=Succeeded -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+FAILING_PODS=$(kubectl get pods -n bonanza-index -l 'app in (index-endpoint,index-calculator,orderbook-collector,ticker-collector,orderbook-storage-worker,ticker-storage-worker,telegram-log,index-calc-fe)' --field-selector=status.phase!=Running,status.phase!=Succeeded -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
 
 if [ ! -z "$FAILING_PODS" ]; then
     echo "⚠️  문제가 있는 Pod:"
-    kubectl get pods -n bonanza-index -l 'app in (index-endpoint,index-calculator,orderbook-collector,ticker-collector,orderbook-storage-worker,ticker-storage-worker,orderbook-aggregator,telegram-log,index-calc-fe)' --field-selector=status.phase!=Running,status.phase!=Succeeded 2>/dev/null || true
+    kubectl get pods -n bonanza-index -l 'app in (index-endpoint,index-calculator,orderbook-collector,ticker-collector,orderbook-storage-worker,ticker-storage-worker,telegram-log,index-calc-fe)' --field-selector=status.phase!=Running,status.phase!=Succeeded 2>/dev/null || true
     echo ""
     echo "💡 ImagePullBackOff 오류가 발생한 경우:"
     echo "  - Docker 이미지를 빌드하고 로드해야 합니다"

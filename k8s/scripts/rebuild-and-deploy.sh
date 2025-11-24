@@ -19,7 +19,6 @@ SERVICES=(
     "ticker-collector"
     "orderbook-storage-worker"
     "ticker-storage-worker"
-    "orderbook-aggregator"
     "telegram-log"
 )
 

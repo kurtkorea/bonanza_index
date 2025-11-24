@@ -5,16 +5,16 @@
 const zmq = require('zeromq');
 const { logError, safeAsync, validateObject } = require('../utils/errorHandler');
 const { FkbrtiEngine } = require("./fkbrti_engine");
+const logger = require('../utils/logger.js');
 
 const { latestTickerByExchange, latestTradeByExchange, latestDepthByExchange } = require('../utils/common');
 
 // 거래소별 ticker의 최종 데이터를 담기 위한 Map 추가
 
+let map_fkbrti_1sec = new Map();
 
-let _FkbrtiEngine_1sec_ = null;
-
-async function init_zmq_depth_subscriber() {
-    console.log('Initializing ZMQ depthSubscriber...');
+async function init_zmq_depth_subscriber(subscribe_exchange) {
+    logger.info({ ex: "ZMQ" }, 'Initializing ZMQ depthSubscriber...');
     
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
@@ -25,12 +25,12 @@ async function init_zmq_depth_subscriber() {
             const sub_depth = new zmq.Subscriber();
             
             // ZMQ 연결
-            await sub_depth.connect(process.env.ZMQ_SUB_DEPTH_HOST);
-            console.log('ZMQ Depth Subscriber connected to:', process.env.ZMQ_SUB_DEPTH_HOST);
+            sub_depth.connect(process.env.ZMQ_SUB_DEPTH_HOST);
+            logger.info({ ex: "ZMQ", host: process.env.ZMQ_SUB_DEPTH_HOST }, 'ZMQ Depth Subscriber connected to');
             
-            for (const topic of process.env.SUB_TOPICS.split(',')) {
-              sub_depth.subscribe(topic);
-              console.log('Subscribed to topic: ', topic);
+            for (const topic of subscribe_exchange) {
+              sub_depth.subscribe(topic.EXCHANGE_CD);
+              logger.info({ ex: "ZMQ", topic }, 'Subscribed Depth Topic');
             }
             
             // 연결 성공시 재연결 카운터 리셋
@@ -48,44 +48,48 @@ async function init_zmq_depth_subscriber() {
                             delete orderbook_item.raw;
                         }
 
-                        const last_key = orderbook_item.exchange_no + "_" + orderbook_item.symbol;
+                        const last_key = orderbook_item.exchange_cd + "_" + orderbook_item.symbol;
                         latestDepthByExchange.set(last_key, orderbook_item);
-
-                        // console.log ( "latestDepthByExchange", latestDepthByExchange);
-  
-                        if ( _FkbrtiEngine_1sec_ != null ) {
-                            _FkbrtiEngine_1sec_.onSnapshotOrderBook(orderbook_item);
+                        
+                        if ( !map_fkbrti_1sec.has(orderbook_item.symbol) ) {
+                            let fkbrti_1sec = new FkbrtiEngine( { symbol: orderbook_item.symbol, tickMs: 1000, table_name: "tb_fkbrti_1sec" } );
+                            fkbrti_1sec.start();
+                            map_fkbrti_1sec.set(orderbook_item.symbol, fkbrti_1sec);
+                        }
+                        const fkbrti_1sec = map_fkbrti_1sec.get(orderbook_item.symbol);
+                        if ( fkbrti_1sec != null ) {
+                            fkbrti_1sec.onSnapshotOrderBook(orderbook_item);
                         }
 
                         return true;
                     }, 'ZMQ 데이터 처리', false);
                     
                     if (!result) {
-                        console.error('원본 payload:', payload.toString());
+                        logger.error({ ex: "ZMQ", payload: payload.toString() }, '원본 payload');
                     }
                 }
             } catch (error) {
-                console.error('ZMQ 메시지 수신 중 에러:', error);
+                logger.error({ ex: "ZMQ", err: String(error), stack: error.stack }, 'ZMQ 메시지 수신 중 에러');
                 // 연결이 끊어진 경우 재연결 시도
                 break;
             }
         } catch (error) {
             reconnectAttempts++;
-            console.error(`ZMQ Depth Subscriber 연결 실패 (시도 ${reconnectAttempts}/${maxReconnectAttempts}):`, error.message);
+            logger.error({ ex: "ZMQ", err: error.message, attempt: reconnectAttempts, maxAttempts: maxReconnectAttempts }, `ZMQ Depth Subscriber 연결 실패 (시도 ${reconnectAttempts}/${maxReconnectAttempts})`);
             
             if (reconnectAttempts >= maxReconnectAttempts) {
-                console.error('최대 재연결 시도 횟수에 도달했습니다. ZMQ Depth Subscriber를 종료합니다.');
+                logger.error({ ex: "ZMQ" }, '최대 재연결 시도 횟수에 도달했습니다. ZMQ Depth Subscriber를 종료합니다.');
                 throw error;
             }
             
-            console.log(`${reconnectDelay/1000}초 후 재연결을 시도합니다...`);
+            logger.info({ ex: "ZMQ", delay: reconnectDelay/1000 }, `${reconnectDelay/1000}초 후 재연결을 시도합니다...`);
             await new Promise(resolve => setTimeout(resolve, reconnectDelay));
         }
     }
 }
 
-async function init_zmq_ticker_subscriber() {
-    console.log('Initializing ZMQ ticker Subscriber...');
+async function init_zmq_ticker_subscriber(subscribe_exchange) {
+    logger.info({ ex: "ZMQ" }, 'Initializing ZMQ ticker Subscriber...');
     
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
@@ -96,12 +100,12 @@ async function init_zmq_ticker_subscriber() {
             const sub_ticker = new zmq.Subscriber();
             
             // ZMQ 연결
-            await sub_ticker.connect(process.env.ZMQ_SUB_TICKER_HOST);
-            console.log('ZMQ Ticker Subscriber connected to:', process.env.ZMQ_SUB_TICKER_HOST);
+            sub_ticker.connect(process.env.ZMQ_SUB_TICKER_HOST);
+            logger.info({ ex: "ZMQ", host: process.env.ZMQ_SUB_TICKER_HOST }, 'ZMQ Ticker Subscriber connected to');
             
-            for (const topic of process.env.SUB_TOPICS.split(',')) {
-              sub_ticker.subscribe(topic);
-              console.log('Subscribed to topic: ', topic);
+            for (const topic of subscribe_exchange) {
+              sub_ticker.subscribe(topic.EXCHANGE_CD);
+              logger.info({ ex: "ZMQ", topic }, 'Subscribed Trade Topic');
             }
             
             // 연결 성공시 재연결 카운터 리셋
@@ -122,67 +126,47 @@ async function init_zmq_ticker_subscriber() {
                                 delete feed_item.raw;
                             }
 
-                            //메모리에 저장해둔다.
-                            if (topic.toString().includes('ticker')) {
-                                // console.log("feed_item", JSON.stringify(feed_item, null, 2));
-                                // if ( _FkbrtiEngine_ != null ) {
-                                //     _FkbrtiEngine_.onSnapshotTicker(feed_item);
-                                // }
-                                const last_key = feed_item.exchange_no + "_" + feed_item.symbol;
-                                if (feed_item.hasOwnProperty('raw')) {
-                                    delete feed_item.raw;
-                                }
-                                latestTickerByExchange.set(last_key, feed_item);
-                            } else if (topic.toString().includes('trade')) {
-                                // if ( _FkbrtiEngine_ != null ) {
-                                //     _FkbrtiEngine_.onSnapshotTrade(feed_item);
-                                // }
-                                const last_key = feed_item.exchange_no + "_" + feed_item.symbol;
+                            const last_key = feed_item.exchange_cd + "_" + feed_item.symbol;
+                            if ( feed_item.type == 'trade') {
                                 if (feed_item.hasOwnProperty('raw')) {
                                     delete feed_item.raw;
                                 }
                                 latestTradeByExchange.set(last_key, feed_item);
+                            } else if ( feed_item.type == 'ticker') {
+                                if (feed_item.hasOwnProperty('raw')) {
+                                    delete feed_item.raw;
+                                }
+                                latestTickerByExchange.set(last_key, feed_item);
                             }
                         }
                         return true;
                     }, 'ZMQ 데이터 처리', false);
                     
                     if (!result) {
-                        console.error('원본 payload:', payload.toString());
+                        logger.error({ ex: "ZMQ", payload: payload.toString() }, '원본 payload');
                     }
                 }
             } catch (error) {
-                console.error('ZMQ 메시지 수신 중 에러:', error);
+                logger.error({ ex: "ZMQ", err: String(error), stack: error.stack }, 'ZMQ 메시지 수신 중 에러');
                 // 연결이 끊어진 경우 재연결 시도
                 break;
             }
         } catch (error) {
             reconnectAttempts++;
-            console.error(`ZMQ Ticker Subscriber 연결 실패 (시도 ${reconnectAttempts}/${maxReconnectAttempts}):`, error.message);
+            logger.error({ ex: "ZMQ", err: error.message, attempt: reconnectAttempts, maxAttempts: maxReconnectAttempts }, `ZMQ Ticker Subscriber 연결 실패 (시도 ${reconnectAttempts}/${maxReconnectAttempts})`);
             
             if (reconnectAttempts >= maxReconnectAttempts) {
-                console.error('최대 재연결 시도 횟수에 도달했습니다. ZMQ Ticker Subscriber를 종료합니다.');
+                logger.error({ ex: "ZMQ" }, '최대 재연결 시도 횟수에 도달했습니다. ZMQ Ticker Subscriber를 종료합니다.');
                 throw error;
             }
             
-            console.log(`${reconnectDelay/1000}초 후 재연결을 시도합니다...`);
+            logger.info({ ex: "ZMQ", delay: reconnectDelay/1000 }, `${reconnectDelay/1000}초 후 재연결을 시도합니다...`);
             await new Promise(resolve => setTimeout(resolve, reconnectDelay));
         }
-    }
-}
-
-function start_fkbrti_engine() {
-    try {
-        _FkbrtiEngine_1sec_ = new FkbrtiEngine( { symbol: "KRW-BTC", tickMs: 1000, table_name: "tb_fkbrti_1sec" } );
-        _FkbrtiEngine_1sec_.start();
-        console.log('FkbrtiEngine 1sec 초기화 성공');
-    } catch (error) {
-        console.error('FkbrtiEngine 1sec 초기화 실패:', error);
     }
 }
 
 module.exports = {
     init_zmq_depth_subscriber,
     init_zmq_ticker_subscriber,
-    start_fkbrti_engine,
 }

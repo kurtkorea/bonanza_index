@@ -10,8 +10,8 @@ const logger = require('./utils/logger');
 
 // const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
 
-const { start_fkbrti_engine, init_zmq_depth_subscriber, init_zmq_ticker_subscriber } = require('./service/zmq-data-sub.js');
-const { connect, db } = require("./db/db.js");
+const { init_zmq_depth_subscriber, init_zmq_ticker_subscriber } = require('./service/zmq-data-sub.js');
+const { connect_quest_db, quest_db } = require("./db/quest_db.js");
 const { fkbrti_1sec_schema } = require('./ddl/fkbrti_1sec_ddl.js');
 
 const { init_zmq_pub } = require('./service/zmq-sender-pub.js');
@@ -87,12 +87,6 @@ app.get("/health", (req, res) => {
 	});
 });
 
-//discovery register
-// const discovery = require("./discovery");
-// if (process.env.NODE_ENV === "production") {
-// 	discovery.init(app);
-// }
-
 //404 handling middleware
 app.use((req, res) => {
 	respMsg(res, "missing_request");
@@ -110,6 +104,8 @@ app.use((err, req, res, next) => {
 	respMsg(res, "server_error");
 });
 
+const db_mysql = require("./models");
+
 async function initializeApp() {
 	try {
 		logger.info('애플리케이션 초기화 시작...');
@@ -125,17 +121,23 @@ async function initializeApp() {
 
 		// DB 연결
 		logger.info('DB 연결 중...');
-		await connect();
-		await fkbrti_1sec_schema(db);
-		logger.info('DB 연결 완료');
+		await db_mysql.sequelize.sync({ force: false });
+		logger.info("[MySQL] Database connection has been established successfully.");
+
+		await connect_quest_db();
+		await fkbrti_1sec_schema(quest_db);
+		logger.info('QuestDB 연결 완료');
+
+		const query = `SELECT EXCHANGE_CD FROM tb_exchange`;
+		const subscribe_exchange = await db_mysql.sequelize.query(query, { type: db_mysql.Sequelize.QueryTypes.SELECT });
+		logger.info({ subscribe_exchange }, "구독목록");
 
 		logger.info('ZMQ 초기화 중...');
 
 		await Promise.all([
 			init_zmq_pub(),
-			init_zmq_depth_subscriber(),
-			init_zmq_ticker_subscriber(),
-			start_fkbrti_engine(),
+			init_zmq_depth_subscriber(subscribe_exchange),
+			init_zmq_ticker_subscriber(subscribe_exchange),
 		]);
 
 		logger.info('ZMQ 초기화 완료');

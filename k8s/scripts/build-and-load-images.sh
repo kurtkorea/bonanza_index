@@ -151,7 +151,6 @@ BACKEND_SERVICES=(
     "ticker-collector"
     "orderbook-storage-worker"
     "ticker-storage-worker"
-    "orderbook-aggregator"
     "telegram-log"
 )
 
@@ -206,6 +205,22 @@ for SERVICE in "${BACKEND_SERVICES[@]}"; do
     if [ "$USE_DDL_CONTEXT" = true ]; then
         # ddl 폴더를 사용하는 서비스는 be 디렉토리를 빌드 컨텍스트로 사용
         echo "   📁 빌드 컨텍스트: $PROJECT_ROOT/be"
+        
+        # 빌드 전 필수 파일 확인
+        if [ ! -f "$PROJECT_ROOT/be/$SERVICE/package.json" ]; then
+            echo "   ❌ ${SERVICE}/package.json 파일을 찾을 수 없습니다"
+            BUILD_FAILED=$((BUILD_FAILED + 1))
+            continue
+        fi
+        
+        if [ ! -f "$PROJECT_ROOT/be/$SERVICE/Dockerfile" ]; then
+            echo "   ❌ ${SERVICE}/Dockerfile 파일을 찾을 수 없습니다"
+            BUILD_FAILED=$((BUILD_FAILED + 1))
+            continue
+        fi
+        
+        echo "   ✅ 필수 파일 확인 완료"
+        
         if docker_cmd build -f "$SERVICE/Dockerfile" -t "$IMAGE_NAME" "$PROJECT_ROOT/be" 2>&1; then
             echo "   ✅ ${SERVICE} 빌드 완료"
             BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
@@ -264,6 +279,34 @@ for SERVICE in "${FRONTEND_SERVICES[@]}"; do
     
     echo "🔨 ${SERVICE} 빌드 중..."
     cd "$SERVICE"
+    
+    # 베이스 이미지 미리 pull (네트워크 타임아웃 방지)
+    echo "   📥 베이스 이미지 확인 중..."
+    if [ "$SERVICE" = "index-calc-fe" ]; then
+        # 로컬에 이미지가 있는지 확인
+        if docker_cmd images -q node:18-alpine > /dev/null 2>&1; then
+            echo "   ✅ node:18-alpine 이미지가 로컬에 있습니다"
+        else
+            echo "   📥 node:18-alpine 이미지 pull 중..."
+            if ! docker_cmd pull node:18-alpine 2>&1; then
+                echo "   ⚠️  node:18-alpine pull 실패"
+                echo "   💡 네트워크 문제일 수 있습니다. 수동으로 pull 시도:"
+                echo "      docker pull node:18-alpine"
+            fi
+        fi
+        
+        if docker_cmd images -q nginx:alpine > /dev/null 2>&1; then
+            echo "   ✅ nginx:alpine 이미지가 로컬에 있습니다"
+        else
+            echo "   📥 nginx:alpine 이미지 pull 중..."
+            if ! docker_cmd pull nginx:alpine 2>&1; then
+                echo "   ⚠️  nginx:alpine pull 실패"
+                echo "   💡 네트워크 문제일 수 있습니다. 수동으로 pull 시도:"
+                echo "      docker pull nginx:alpine"
+                echo "   💡 또는 다른 네트워크에서 이미지를 미리 pull한 후 다시 시도하세요"
+            fi
+        fi
+    fi
     
     if docker_cmd build -t "$IMAGE_NAME" . 2>&1; then
         echo "   ✅ ${SERVICE} 빌드 완료"

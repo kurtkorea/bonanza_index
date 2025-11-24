@@ -7,7 +7,7 @@ const { verifyToken, verifyTokenRole } = require("../middleware/token");
 const { respMsgStr, respData, respMsg } = require("../utils/common");
 const { verifyData, verifyTypes } = require("../middleware/verify");
 const { prePaging } = require("../middleware/paging");
-const { db, Op } = require("../db/db");
+const { db, Op } = require("../db/quest_db");
 const common= require("../utils/common");
 
 router.use("/*", (req, resp, next) => {
@@ -52,10 +52,9 @@ router.get("/", prePaging("createdAt", "desc", 100), async (req, resp, next) => 
 			fkbrti_5s: item.fkbrti_5s,
 			fkbrti_10s: item.fkbrti_10s,
 			expected_status: item.expected_status,
-			expected_exchanges: item.expected_exchanges,
-			sources: item.sources,
 			vwap_buy: common.isEmpty(item.vwap_buy) ? 0 : item.vwap_buy,
 			vwap_sell: common.isEmpty(item.vwap_sell) ? 0 : item.vwap_sell,
+			no_data: item.no_data,
 			no_publish: item.no_publish,
 			provisional: item.provisional,
 			UPBIT: item.expected_status.find(item => item.exchange == "101")?.price,

@@ -20,7 +20,6 @@ APP_SERVICES=(
     "ticker-collector"
     "orderbook-storage-worker"
     "ticker-storage-worker"
-    "orderbook-aggregator"
     "telegram-log"
     "index-calc-fe"
 )

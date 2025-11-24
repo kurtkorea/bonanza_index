@@ -20,7 +20,6 @@ REQUIRED_IMAGES=(
     "bonanza-index/ticker-collector:latest"
     "bonanza-index/orderbook-storage-worker:latest"
     "bonanza-index/ticker-storage-worker:latest"
-    "bonanza-index/orderbook-aggregator:latest"
     "bonanza-index/telegram-log:latest"
     "bonanza-index/index-calc-fe:latest"
 )
@@ -264,6 +263,35 @@ if [ ${#IMAGES_TO_BUILD[@]} -gt 0 ]; then
             # 다른 서비스는 기존 방식대로
             cd "$SERVICE_DIR"
             echo "   📁 빌드 컨텍스트: $SERVICE_DIR"
+            
+            # index-calc-fe의 경우 베이스 이미지 미리 pull (네트워크 타임아웃 방지)
+            if [ "$SERVICE" = "index-calc-fe" ]; then
+                echo "   📥 베이스 이미지 확인 중..."
+                # 로컬에 이미지가 있는지 확인
+                if docker images -q node:18-alpine > /dev/null 2>&1; then
+                    echo "   ✅ node:18-alpine 이미지가 로컬에 있습니다"
+                else
+                    echo "   📥 node:18-alpine 이미지 pull 중..."
+                    if ! docker pull node:18-alpine 2>&1; then
+                        echo "   ⚠️  node:18-alpine pull 실패"
+                        echo "   💡 네트워크 문제일 수 있습니다. 수동으로 pull 시도:"
+                        echo "      docker pull node:18-alpine"
+                    fi
+                fi
+                
+                if docker images -q nginx:alpine > /dev/null 2>&1; then
+                    echo "   ✅ nginx:alpine 이미지가 로컬에 있습니다"
+                else
+                    echo "   📥 nginx:alpine 이미지 pull 중..."
+                    if ! docker pull nginx:alpine 2>&1; then
+                        echo "   ⚠️  nginx:alpine pull 실패"
+                        echo "   💡 네트워크 문제일 수 있습니다. 수동으로 pull 시도:"
+                        echo "      docker pull nginx:alpine"
+                        echo "   💡 또는 다른 네트워크에서 이미지를 미리 pull한 후 다시 시도하세요"
+                    fi
+                fi
+            fi
+            
             if docker build -t "$IMAGE_NAME" . 2>&1; then
                 echo "   ✅ ${SERVICE} 빌드 완료"
                 BUILD_SUCCESS=$((BUILD_SUCCESS + 1))

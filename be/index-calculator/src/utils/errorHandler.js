@@ -4,6 +4,8 @@
  * 에러 처리 유틸리티 함수들
  */
 
+const logger = require('./logger.js');
+
 /**
  * 에러를 안전하게 로깅하는 함수
  * @param {Error} error - 에러 객체
@@ -19,11 +21,7 @@ function logError(error, context = 'Unknown', additionalData = {}) {
         ...additionalData
     };
 
-    console.error(`[${context}] 에러 발생:`, errorInfo);
-    
-    if (global.logger) {
-        global.logger.error(`[${context}] 에러 발생`, errorInfo);
-    }
+    logger.error({ ex: context, err: String(error), ...errorInfo }, `[${context}] 에러 발생`);
 }
 
 /**

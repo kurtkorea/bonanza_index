@@ -14,7 +14,8 @@
 
 const { latestTickerByExchange, latestTradeByExchange, latestDepthByExchange } = require('../utils/common');
 
-const { db, sequelize } = require('../db/db.js');
+const { quest_db, sequelize } = require('../db/quest_db.js');
+const logger = require('../utils/logger.js');
 
 const { send_publisher } = require('./zmq-sender-pub.js');
 const common = require('../utils/common');
@@ -24,7 +25,7 @@ const TICK_MS      = num("TICK_MS", 1000);
 const DECIMALS     = num("DECIMALS", 2);
 const STALE_MS     = num("STALE_MS", 30_000);
 const PROV_MAX_MS  = num("PROV_MAX_MS", 60_000);
-const EXPECTED_EXCHANGES = (process.env.EXPECTED_EXCHANGES || "101,102,103,104").split(",").map(s => s.trim()).filter(Boolean);
+const EXPECTED_EXCHANGES = (process.env.SUB_TOPICS || "E0010001,E0020001,E0030001,E0050001").split(",").map(s => s.trim()).filter(Boolean);
 
 function num(k, d) {
   const v = process.env[k];
@@ -46,6 +47,7 @@ const roundN = (x, n = 2) => { const k = 10 ** n; return Math.round(x * k) / k; 
 
 function normalize(snapshot) {
   try {
+    // console.log("snapshot", JSON.stringify(snapshot, null, 2));
     const bids = (snapshot.bid || [])
       .filter(item => Array.isArray(item) && item.length >= 2)
       .map(([p, q]) => ({ price: toNum(p), qty: toNum(q) }))
@@ -62,8 +64,7 @@ function normalize(snapshot) {
 
     return { bids, asks };
   } catch (error) {
-    console.error('normalize 함수 에러:', error);
-    console.error('snapshot 데이터:', snapshot);
+    logger.error({ ex: "FKBRTI", err: String(error), snapshot }, 'normalize 함수 에러');
     return { bids: [], asks: [] };
   }
 }
@@ -74,10 +75,17 @@ function isCrossed(book) {
 }
 
 // VWAP = Σ(P*Q)/ΣQ
+// VWAP 공식에서 price가 0인 경우는 무시되어야 한다.
+// 즉, price > 0 인 레벨만 대상으로 함
 function vwap(levels) {
   let pq = 0, q = 0;
-  for (const { price, qty } of levels) { pq += price * qty; q += qty; }
-  return q > 0 ? pq / q : NaN;
+  for (const { price, qty } of levels) {
+    if (price > 0 && qty > 0) {
+      pq += price * qty;
+      q += qty;
+    }
+  }
+  return q > 0 ? pq / q : 0;
 }
 
 class FkbrtiEngine {
@@ -93,7 +101,6 @@ class FkbrtiEngine {
     this.staleMs   = Number(opts.staleMs   || STALE_MS);
     this.provMaxMs = Number(opts.provMaxMs || PROV_MAX_MS);
     this.expected  = (opts.expectedExchanges || EXPECTED_EXCHANGES).slice();
-
     this.table_name = opts.table_name;
 
     // booksByEx[exchange] = { bids, asks, ts }
@@ -107,7 +114,7 @@ class FkbrtiEngine {
   onSnapshotOrderBook(snap) {
     try {
       if (!this.symbol) this.symbol = String(snap.symbol || "").trim() || "(UNKNOWN)";
-      const ex = String(snap.exchange_no || "UNKNOWN");
+      const ex = String(snap.exchange_cd || "UNKNOWN");
 
       const { bids, asks } = normalize(snap);
       
@@ -138,8 +145,7 @@ class FkbrtiEngine {
 
       this.booksByEx[ex] = { bids, asks, ts };
     } catch (error) {
-      console.error('FkbrtiEngine.onSnapshot 에러:', error);
-      console.error('snap 데이터:', snap);
+      logger.error({ ex: "FKBRTI", err: String(error), snap }, 'FkbrtiEngine.onSnapshot 에러');
     }
   }
 
@@ -155,7 +161,6 @@ class FkbrtiEngine {
 
     // 병합: 스테일 & 역전 제외
     const bids = [], asks = [];
-    const sources = [];
     for (const ex of Object.keys(this.booksByEx)) {
       const rec = this.booksByEx[ex];
       if (!rec) continue;
@@ -164,7 +169,6 @@ class FkbrtiEngine {
       if (isCrossed(book)) continue;                  // 역전 제외
       if (rec.bids?.length) bids.push(...rec.bids);
       if (rec.asks?.length) asks.push(...rec.asks);
-      sources.push(ex);
     }
 
     bids.sort((a,b)=>b.price-a.price);
@@ -173,17 +177,22 @@ class FkbrtiEngine {
     const mergedBids = bids.slice(0, this.depth);
     const mergedAsks = asks.slice(0, this.depth);
 
-    const buyVWAP  = vwap(mergedAsks);
-    const sellVWAP = vwap(mergedBids);
-    const indexMid = (buyVWAP + sellVWAP) / 2;
+    let buyVWAP  = vwap(mergedAsks);
+    let sellVWAP = vwap(mergedBids);
+    let indexMid = (buyVWAP + sellVWAP) / 2;
 
     // 기대 거래소 상태 평가(스테일/역전/결측을 모두 무효 처리)
     const expected_status = this.expected.map(ex => {
       const rec = this.booksByEx[ex];
-      const ticker_key = `${ex}_${this.symbol}`;
-      const tick_price = latestTickerByExchange.get(ticker_key);
-      const close = toNum(tick_price?.close);
 
+      const trade_key = `${ex}_${this.symbol}`;
+      const trade = latestTickerByExchange.get(trade_key);
+
+      if ( trade == undefined ) {
+        return { exchange: ex, reason: "no_data", price: 0 };
+      }
+
+      const trade_price = toNum(trade?.close);
       if (!rec) return { exchange: ex, reason: "no_data", price: 0 };
       if (rec.ts < cutoff) return { exchange: ex, reason: "stale", price: 0 };
 
@@ -191,12 +200,14 @@ class FkbrtiEngine {
       if (isCrossed(book)) return { exchange: ex, reason: "crossed", price: 0 };
 
       const ok = (rec.bids?.length || 0) > 0 || (rec.asks?.length || 0) > 0;
-      return { exchange: ex, reason: ok ? "ok" : "empty_book", price: ok ? close : 0 };
+      return { exchange: ex, reason: ok ? "ok" : "empty_book", price: ok ? trade_price : 0 };
     });
-    const anyExpectedOk = expected_status.some(s => s.reason === "ok");
-    const shouldProvisional = !anyExpectedOk;
 
-    // console.log ( "expected_status", expected_status );
+    // expected_status 배열 안에 reason이 "ok"인 요소가 하나라도 있는지 확인.
+    const anyExpectedOk = expected_status.some(s => s.reason === "ok");
+    let shouldProvisional = !anyExpectedOk;
+
+    // logger.debug({ ex: "FKBRTI", expected_status }, "expected_status");
 
     let actual_avg = 0;
     let diff = 0;
@@ -207,15 +218,29 @@ class FkbrtiEngine {
     for (const expected_status_item of expected_status) {
       if (expected_status_item.reason == "ok") {
         sum += expected_status_item.price;
-        count++;
+        if ( expected_status_item.price > 0 ) {
+          count++;
+        }
       } else {
         expected_status_item.price = 0;
       }
     }
     actual_avg = common.isEmpty( sum / count ) ? 0 : sum / count;
 
-    let colI = expected_status.find(item => item.exchange == "101")?.price;
-    let colF = expected_status.find(item => item.exchange == "102")?.price;
+    let colI = expected_status.find(item => item.exchange == "E0010001")?.price;
+    let colF = expected_status.find(item => item.exchange == "E0020001")?.price;
+
+    let colI_reason = expected_status.find(item => item.exchange == "E0010001")?.reason;
+    let colF_reason = expected_status.find(item => item.exchange == "E0020001")?.reason;
+
+    let no_data = false;
+
+    if ( colI_reason == "no_data" && colF_reason == "no_data" ) {
+      no_data = true;
+    }
+
+    // console.log("expected_status", expected_status);
+    // console.log("colF", colF);
 
     if (!colI && colI !== 0) {
       diff = colF - indexMid;
@@ -223,6 +248,11 @@ class FkbrtiEngine {
       diff = colI - indexMid;
     }
     ratio = Math.abs(diff / indexMid) * 100;
+
+    if ( no_data ) {
+      diff = 0;
+      ratio = 0;
+    }
 
     if ( common.isEmpty(indexMid) ) {
       return;
@@ -241,13 +271,14 @@ class FkbrtiEngine {
         symbol: this.symbol || "(UNKNOWN)",
         depth: this.depth,
         stale_ms: this.staleMs,
-        expected_exchanges: this.expected,
         vwap_buy:  roundN(buyVWAP,  this.decimals),
         vwap_sell: roundN(sellVWAP, this.decimals),
-        index_mid: roundN(indexMid, this.decimals),       
-        sources,
+        index_mid: roundN(indexMid, this.decimals),   
+        no_data: no_data,
         expected_status,
+        // provisional: 산출값이 잠정치(이전값을 임시사용)인지 여부. false면 이번 계산값이 정상 산출된 것임.
         provisional: false,
+        // no_publish: 결과 산출은 했지만 외부 전파(저장, 브로드캐스트 등)는 하지 않을 때 true로 설정합니다.
         no_publish: false,
         diff: diff,
         ratio: ratio,
@@ -278,11 +309,10 @@ class FkbrtiEngine {
           symbol: this.symbol || "(UNKNOWN)",
           depth: this.depth,
           stale_ms: this.staleMs,
-          expected_exchanges: this.expected,
           vwap_buy:  this.last.buy,
           vwap_sell: this.last.sell,
           index_mid: this.last.mid,
-          sources,
+          no_data: no_data,
           expected_status,
           provisional: elapsed <= this.provMaxMs,
           no_publish: elapsed > this.provMaxMs,
@@ -308,11 +338,10 @@ class FkbrtiEngine {
           symbol: this.symbol || "(UNKNOWN)",
           depth: this.depth,
           stale_ms: this.staleMs,
-          expected_exchanges: this.expected,
           vwap_buy:  null,
           vwap_sell: null,
           index_mid: null,
-          sources,
+          no_data: no_data,
           expected_status,
           provisional: false,
           no_publish: true,
@@ -327,18 +356,17 @@ class FkbrtiEngine {
     }
   }
 
-    // tb_fkbrti_1sec에 데이터 삽입하는 함수
+  // tb_fkbrti_1sec에 데이터 삽입하는 함수
   insertFkbrti1sec(item) {
-    db.sequelize.query(
+    quest_db.sequelize.query(
       `
       INSERT INTO :table_name (
           symbol,
           vwap_buy,
           vwap_sell,
           index_mid,
-          expected_exchanges,
-          sources,
           expected_status,
+          no_data,
           provisional,
           no_publish,
           diff,
@@ -350,9 +378,8 @@ class FkbrtiEngine {
           :vwap_buy,
           :vwap_sell,
           :index_mid,
-          :expected_exchanges,
-          :sources,
           :expected_status,
+          :no_data,
           :provisional,
           :no_publish,
           :diff,
@@ -368,9 +395,8 @@ class FkbrtiEngine {
             vwap_buy: item.vwap_buy,
             vwap_sell: item.vwap_sell,
             index_mid: item.index_mid,
-            expected_exchanges: JSON.stringify(item.expected_exchanges),
-            sources: JSON.stringify(item.sources),
             expected_status: JSON.stringify(item.expected_status),
+            no_data: item.no_data,
             provisional: item.provisional,
             no_publish: item.no_publish,
             diff: item.diff,
@@ -384,7 +410,7 @@ class FkbrtiEngine {
         send_publisher("fkbrti", item);
       })
       .catch((err) => {
-        console.error("[DB] tb_fkbrti_1sec insert 실패:", err);
+        logger.error({ ex: "FKBRTI", err: String(err) }, "[DB] tb_fkbrti_1sec insert 실패");
       });
   }
 }

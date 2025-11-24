@@ -43,8 +43,6 @@ async function runSubscriber() {
                             fkbrti_5s: item?.fkbrti_5s,
                             fkbrti_10s: item?.fkbrti_10s,
                             expected_status: item?.expected_status,
-                            expected_exchanges: item?.expected_exchanges,
-                            sources: item?.sources,
                             vwap_buy: common.isEmpty(item?.vwap_buy) ? 0 : item?.vwap_buy,
                             vwap_sell: common.isEmpty(item?.vwap_sell) ? 0 : item?.vwap_sell,
                             no_publish: item?.no_publish,

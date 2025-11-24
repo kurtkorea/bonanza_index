@@ -267,8 +267,6 @@ const IndexCalcTable = () => {
           fkbrti_5s: item.fkbrti_5s,
           fkbrti_10s: item.fkbrti_10s,
           expected_status: item.expected_status,
-          expected_exchanges: item.expected_exchanges,
-          sources: item.sources,
           vwap_buy: item.vwap_buy,
           vwap_sell: item.vwap_sell,
           no_publish: item.no_publish,

@@ -23,7 +23,6 @@ app.set("port", process.env.PORT || 6003);
 
 logger.info({ ex: "APP", port: process.env.PORT || 6003 }, "SERVER PORT:");
 
-
 const cors = require("cors");
 const morgan = require("morgan");
 
@@ -34,7 +33,7 @@ app.use(cors({
 }));
 
 //db connection
-const { connect, db } = require("./db/db.js");
+const { connect_quest_db, quest_db } = require("./db/quest_db.js");
 // 각 프로젝트의 ddl 폴더 사용
 const { orderbook_schema } = require("./ddl/orderbook_ddl.js");
 
@@ -57,7 +56,6 @@ const { respMsg } = require("./utils/common");
 
 // Health check endpoint
 app.get("/health", (req, res) => {
-	// console.log("Health check endpoint");
 	res.status(200).json({
 		status: "ok",
 		service: "orderbook-storage-worker",
@@ -78,8 +76,8 @@ app.use((err, req, res, next) => {
 async function initializeApp() {
 	try {
 		// DB 연결
-		await connect(process.env.QDB_HOST, process.env.QDB_PORT);
-		await orderbook_schema(db);
+		await connect_quest_db();
+		await orderbook_schema(quest_db);
 		
 		// ZMQ 큐 시작
 		await startPullQueue();

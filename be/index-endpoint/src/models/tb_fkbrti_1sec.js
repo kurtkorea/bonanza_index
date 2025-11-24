@@ -16,12 +16,6 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 				index_mid: {
 					type: Sequelize.DOUBLE,
 				},
-				expected_exchanges: {
-					type: Sequelize.TEXT,
-				},
-				sources: {
-					type: Sequelize.TEXT,
-				},
 				expected_status: {
 					type: Sequelize.TEXT,
 				},
@@ -95,7 +89,8 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		const orderDirection = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 		
 		// 페이징을 위해 필요한 전체 데이터만 조회 (page * size 만큼)
-		const maxLimit = page * size;
+		// 최대 10000개로 제한하여 성능 보호
+		const maxLimit = Math.min(page * size, 10000);
 
 		let query = `
 			SELECT
@@ -115,8 +110,6 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 				actual_avg,
 				diff,
 				ratio,
-				expected_exchanges,
-				sources,
 				expected_status,
 				provisional,
 				no_publish
@@ -143,8 +136,6 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		const datalist = pagedResults.map(item => ({
 			...item,
 			createdAt: new Date(item.createdAt.getTime() + 18 * 60 * 60 * 1000).toISOString(),
-			expected_exchanges: this.parseJSON(item.expected_exchanges),
-			sources: this.parseJSON(item.sources),
 			expected_status: this.parseJSON(item.expected_status)
 		}));
 
@@ -221,8 +212,6 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 				vwap_buy,
 				vwap_sell,
 				index_mid AS fkbrti_1s,
-				expected_exchanges,
-				sources,
 				expected_status,
 				provisional,
 				no_publish
@@ -246,8 +235,6 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		// JSON 필드 파싱
 		const datalist = pagedResults.map(item => ({
 			...item,
-			expected_exchanges: this.parseJSON(item.expected_exchanges),
-			sources: this.parseJSON(item.sources),
 			expected_status: this.parseJSON(item.expected_status)
 		}));
 

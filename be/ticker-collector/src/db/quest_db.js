@@ -1,0 +1,62 @@
+const { Sequelize, DataTypes, Op } = require("sequelize");
+// const Messages = require("./messages");
+const quest_db = {};		// QuestDB 데이터베이스 객체
+
+const logger = require('../utils/logger.js');
+let sequelize = null;
+
+// 데이터베이스 연결 테스트 및 테이블 동기화
+async function connect_quest_db() {
+	// 환경변수 디버깅
+	try {
+		logger.info(
+			"[QuestDB] Environment variables\n" +
+			JSON.stringify({
+				QDB_HOST: process.env.QDB_HOST,
+				QDB_PORT: process.env.QDB_PORT,
+				QDB_DB: process.env.QDB_DB,
+				QDB_USER: process.env.QDB_USER,
+				QDB_PASS: process.env.QDB_PASS ? "***" : undefined,
+				QDB_LOG: process.env.QDB_LOG,
+			}, null, 2)
+		);
+
+		// Sequelize 인스턴스 생성 (환경변수가 로드된 후)
+		sequelize = new Sequelize(
+			process.env.QDB_DB || "qdb", 
+			process.env.QDB_USER || "admin", 
+			process.env.QDB_PASS || "quest", 
+			{
+				host: process.env.QDB_HOST,
+				port: process.env.QDB_PORT,
+				dialect: "postgres",
+				logging: process.env.QDB_LOG === "true",
+				pool:{
+					max: 12,        // ← PULL 워커 동시성(예: 8~12)보다 크거나 같게
+					min: 0,
+					idle: 10_000,
+					acquire: 60_000 // ← 30s -> 60s로 완화
+				},
+				dialectOptions:{
+					keepAlive: true,
+					statement_timeout: 0,
+					idle_in_transaction_session_timeout: 0,
+				},
+				retry:{ max: 2 }
+			}
+		);
+
+		// db 객체에 할당
+		quest_db.sequelize = sequelize;
+		quest_db.Sequelize = Sequelize;
+
+		await sequelize.authenticate();
+
+		logger.info("[QuestDB] Database connection has been established successfully.");	
+	} catch (error) {
+		logger.error({ ex: "DB", err: String(error) }, "[QuestDB] Unable to connect to the database:");
+		process.exit(1);
+	}
+}
+
+module.exports = {quest_db, connect_quest_db, sequelize, DataTypes, Op, QueryTypes: Sequelize.QueryTypes};

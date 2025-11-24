@@ -4,11 +4,35 @@ WORKDIR /app
 
 # orderbook-collector의 package.json과 package-lock.json 복사
 # 빌드 컨텍스트가 be 디렉토리이므로 orderbook-collector/ 경로 사용
-COPY orderbook-collector/package*.json ./
+# COPY가 실패하면 빌드가 중단되도록 --chown 옵션 없이 명시적으로 복사
+COPY orderbook-collector/package.json orderbook-collector/package-lock.json* ./
+
+# 복사 확인 및 디버깅 (파일이 없으면 즉시 실패)
+RUN if [ ! -f package.json ]; then \
+        echo "ERROR: package.json not found after COPY!" && \
+        echo "Current directory contents:" && \
+        ls -la . && \
+        exit 1; \
+    fi && \
+    echo "✅ package.json found" && \
+    if [ -f package-lock.json ]; then \
+        echo "✅ package-lock.json found"; \
+    else \
+        echo "⚠️  package-lock.json not found, will use npm install"; \
+    fi
 
 # 모든 의존성 설치 (빌드를 위해 devDependencies 필요)
-# package-lock.json이 있으면 npm ci, 없으면 npm install 사용
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# package-lock.json이 있으면 npm ci 시도, 실패하면 npm install로 폴백
+RUN if [ -f package-lock.json ]; then \
+        echo "Attempting npm ci..." && \
+        npm ci 2>&1 || { \
+            echo "⚠️  npm ci failed, falling back to npm install..." && \
+            npm install; \
+        }; \
+    else \
+        echo "No package-lock.json found, using npm install"; \
+        npm install; \
+    fi
 
 # orderbook-collector 소스 코드 복사 (src/ddl 폴더 포함)
 COPY orderbook-collector/src ./src

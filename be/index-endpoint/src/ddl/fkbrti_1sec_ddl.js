@@ -1,7 +1,7 @@
 // ddl.js
-const db = require("../db/db.js");
+const logger = require('../utils/logger.js');
 
-async function fkbrti_1sec_schema(db) {
+async function fkbrti_1sec_schema(quest_db) {
     try {
         const fkbrti_1sec = `
         CREATE TABLE IF NOT EXISTS tb_fkbrti_1sec (
@@ -9,19 +9,21 @@ async function fkbrti_1sec_schema(db) {
             vwap_buy      DOUBLE,
             vwap_sell     DOUBLE,
             index_mid     DOUBLE,
-            expected_exchanges TEXT,
-            sources         TEXT,
             expected_status TEXT,
+            no_data         BOOLEAN,
             provisional     BOOLEAN,
-            no_publish      BOOLEAN,    
+            no_publish      BOOLEAN,            
+            actual_avg      DOUBLE,
+            diff            DOUBLE,
+            ratio           DOUBLE,
             createdAt       TIMESTAMP
         ) TIMESTAMP(createdAt)
             PARTITION BY DAY
             WAL;`;
-        await db.sequelize.query(fkbrti_1sec);
-        console.log("[DDL] tb_fkbrti_1sec ensured (WAL, PARTITION BY DAY).");
+        await quest_db.sequelize.query(fkbrti_1sec);
+        logger.info({ ex: "DDL" }, "[DDL] tb_fkbrti_1sec ensured (WAL, PARTITION BY DAY).");
     } catch (error) {
-        console.error("[DDL] tb_fkbrti_1sec error", error);
+        logger.error({ ex: "DDL", err: String(error), stack: error.stack }, "[DDL] tb_fkbrti_1sec error");
     }
 }
 

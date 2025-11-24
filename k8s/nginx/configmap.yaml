@@ -30,7 +30,7 @@ data:
             
             proxy_pass http://$questdb_upstream:9000;
             proxy_http_version 1.1;
-            proxy_set_header Host $host;
+            proxy_set_header Host questdb-service.bonanza-index.svc.cluster.local;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
@@ -70,7 +70,7 @@ data:
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
+            proxy_set_header Host index-endpoint-service.bonanza-index.svc.cluster.local;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
@@ -110,11 +110,21 @@ data:
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
+            proxy_set_header Host index-endpoint-service.bonanza-index.svc.cluster.local;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_cache_bypass $http_upgrade;
+            
+            # 프록시 타임아웃 설정
+            proxy_connect_timeout 60s;
+            proxy_send_timeout 60s;
+            proxy_read_timeout 60s;
+            
+            # 에러 처리 개선
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+            proxy_next_upstream_tries 2;
+            proxy_next_upstream_timeout 10s;
         }
         
         # WebSocket 프록시 (/ws 경로)
@@ -128,7 +138,7 @@ data:
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
-            proxy_set_header Host $host;
+            proxy_set_header Host index-endpoint-service.bonanza-index.svc.cluster.local;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
@@ -174,7 +184,7 @@ data:
             proxy_set_header Connection $connection_upgrade;
             
             # 기본 프록시 헤더
-            proxy_set_header Host $host;
+            proxy_set_header Host index-endpoint-service.bonanza-index.svc.cluster.local;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
@@ -196,7 +206,7 @@ data:
             add_header Content-Type text/plain;
         }
         
-        # 프론트엔드 프록시 (index-calc-fe)
+        # 프론트엔드 프록시 (index-calc-fe) - 모든 요청을 프론트엔드로 전달
         location / {
             # 변수 사용 시 resolver가 작동하도록 설정 (location 블록 내에 명시)
             resolver 10.43.0.10 valid=10s ipv6=off;
@@ -205,7 +215,7 @@ data:
             
             proxy_pass http://$frontend_upstream:80;
             proxy_http_version 1.1;
-            proxy_set_header Host $host;
+            proxy_set_header Host index-calc-fe-service.bonanza-index.svc.cluster.local;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
@@ -214,6 +224,11 @@ data:
             proxy_redirect off;
             proxy_buffering off;
             proxy_set_header Accept-Encoding "";
+            
+            # 프록시 타임아웃 설정
+            proxy_connect_timeout 60s;
+            proxy_send_timeout 60s;
+            proxy_read_timeout 60s;
         }
         
         # 로그 설정

@@ -11,7 +11,8 @@ const { init_server } = require('./service/realmgr');
 
 // const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
 
-const { connect, db } = require("./db/db.js");
+const { connect_quest_db, quest_db } = require("./db/quest_db.js");
+const tb_fkbrti_1sec = require("./models/tb_fkbrti_1sec.js");
 
 // Start of Selection
 global.logging = false;
@@ -102,12 +103,6 @@ app.use("/v1/index_history", indexHistoryRouter);
 app.use("/v1/index_calc", indexCalcRouter);
 app.use("/v1/file_download", fileDownloadRouter);
 
-//discovery register
-// const discovery = require("./discovery");
-// if (process.env.NODE_ENV === "production") {
-// 	discovery.init(app);
-// }
-
 //404 handling middleware
 app.use((req, res) => {
 	logger.warn({ method: req.method, url: req.url }, "404 Not Found:");
@@ -132,8 +127,14 @@ async function initializeApp() {
 
 		// DB 연결
 		logger.info('DB 연결 중...');
-		await connect();
+		await connect_quest_db();
 		logger.info('DB 연결 완료');
+
+		// 모델 초기화 및 등록
+		logger.info('모델 초기화 중...');
+		tb_fkbrti_1sec.init(quest_db.sequelize);
+		quest_db.tb_fkbrti_1sec = tb_fkbrti_1sec;
+		logger.info('모델 초기화 완료');
 
 		await init_server(server, app.get("port"));
 

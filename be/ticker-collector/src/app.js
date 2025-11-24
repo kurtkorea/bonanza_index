@@ -4,55 +4,55 @@
 
 const path = require("path");
 const dotenv = require("dotenv");
-const http = require('http');
-const log = require('./utils/logger');
-
-const { connect, db } = require('./db/db.js');
-
-// 각 프로젝트의 ddl 폴더를 우선적으로 사용
-// 프로덕션: process.cwd()는 /app이므로 /app/src/ddl
-// 로컬: __dirname은 .../ticker-collector/src이므로 ./ddl (ticker-collector/src/ddl)
-const path = require('path');
-const fs = require('fs');
-let ddlPath = null;
-const possiblePaths = [
-  path.join(__dirname, './ddl'), // 로컬: ticker-collector/src/ddl (우선)
-  path.join(process.cwd(), 'src/ddl'), // 프로덕션: /app/src/ddl (우선)
-  path.join(process.cwd(), 'ddl'), // 프로덕션: /app/ddl (대안)
-  path.join(__dirname, '../ddl'), // 로컬: ticker-collector/ddl (대안)
-  path.join(__dirname, '../../ddl'), // 로컬: be/ddl (fallback)
-];
-
-for (const testPath of possiblePaths) {
-  const testFile = path.join(testPath, 'systemlog_ddl.js');
-  if (fs.existsSync(testFile)) {
-    ddlPath = testPath;
-    break;
-  }
-}
-
-if (!ddlPath) {
-  throw new Error(`DDL folder not found. Tried paths: ${possiblePaths.join(', ')}`);
-}
-
-console.log('[APP] DDL path:', ddlPath);
-const { systemlog_schema } = require(path.join(ddlPath, 'systemlog_ddl.js'));
+const { connect_quest_db, quest_db } = require('./db/quest_db.js');
+const { systemlog_schema } = require('./ddl/systemlog_ddl.js');
+const { report_schema } = require('./ddl/report_ddl.js');
 const  { sendTelegramMessage } = require('./utils/telegram_push.js')
+const logger = require('./utils/logger.js');
+const { initializeWebsocketClients } = require('./service/websocket_broker.js');
+const IndexProcessInfo = require('./models/index_process_info.js');
 
-
-const { UpbitClientTrade, BithumbClientTrade, KorbitClientTrade, CoinoneClientTrade } = require('./service/websocket_trade_broker.js');
+// const { UpbitClientTrade, BithumbClientTrade, KorbitClientTrade, CoinoneClientTrade } = require('./service/websocket_trade_broker.js');
 // const { UpbitClientTicker, BithumbClientTicker, KorbitClientTicker, CoinoneClientTicker } = require('./service/websocket_ticker_broker.js');
 
-// Start of Selection
-global.logging = false;
-global.sock = null;
+// 명령줄 인수에서 process_id 추출
+// 사용법: node app.js --process-id=my-process-id
+// 또는: node app.js my-process-id
+let process_id = null;
+
+const args = process.argv.slice(2);
+for (const arg of args) {
+	if (arg.startsWith('--process-id=')) {
+		process_id = arg.split('=')[1];
+		break;
+	} else if (arg === '--process-id' && args.indexOf(arg) + 1 < args.length) {
+		process_id = args[args.indexOf(arg) + 1];
+		break;
+	} else if (!arg.startsWith('--') && !process_id) {
+		// --로 시작하지 않는 첫 번째 인수를 process_id로 간주
+		process_id = arg;
+		break;
+	}
+}
 
 if (process.env.NODE_ENV === "production") {
 	dotenv.config({ path: path.join(__dirname, "../env/prod.env") });
-	global.logging = false;
 } else {
 	dotenv.config({ path: path.join(__dirname, "../env/dev.env") });
-	global.logging = true;
+}
+
+// 명령줄 인수에서 process_id를 찾지 못한 경우 환경 변수에서 읽어오기
+if (!process_id && process.env.PROCESS_ID) {
+	process_id = process.env.PROCESS_ID;
+	logger.info({ process_id }, "Process ID loaded from environment variable:");
+}
+
+// process_id 설정 및 출력
+if (process_id) {
+	global.process_id = process_id; // 전역 변수로 설정하여 다른 모듈에서 사용 가능
+	logger.info({ process_id }, "Process ID initialized:");
+} else {
+	logger.warn("No process_id provided. Use --process-id=<id>, pass as first argument, or set PROCESS_ID in env file.");
 }
 const express = require("express");
 const app = express();
@@ -60,18 +60,14 @@ const app = express();
 
 app.set("port", process.env.PORT || 6002);
 
-var message = {};
-
 const cors = require("cors");
 const morgan = require("morgan");
-
 
 //cors setting
 app.use(cors({ 
 	origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : "*", 
 	credentials: true 
 }));
-
 
 //console log middleware
 app.use(morgan("dev", { skip: (req, resp) => resp.statusCode < 400 }));
@@ -115,17 +111,50 @@ app.use((req, res) => {
 
 //error handling middleware
 app.use((err, req, res, next) => {
-	console.log(err.name, err.message);
+	logger.error({ ex: "APP", err: err.message, name: err.name, stack: err.stack }, "Error handling middleware");
 	respMsg(res, "server_error");
 });
 
+const db_mysql = require("./models");
+
 async function initializeApp() {
 	try {
-		await connect(process.env.QDB_HOST, process.env.QDB_PORT);
-		await systemlog_schema(db);
+
+		await db_mysql.sequelize.sync({ force: false });
+		logger.info("[MySQL] Database connection has been established successfully.");
+
+		await connect_quest_db();
+		await systemlog_schema(quest_db);
+		await report_schema(quest_db);
 		await sendTelegramMessage ( "SYSTEM", "Ticker-Collector Initialization.");
+
+		const process_info = await IndexProcessInfo.getProcessInfo(process.env.PROCESS_ID);
+		if (process_info) {	
+			const process_info_json = JSON.parse(process_info.process_info);
+			logger.info("Process info found:\n" + JSON.stringify(process_info_json, null, 2));
+			
+			// 병렬적으로 모든 상세 정보를 fetch하고 결과를 모아서 initializeWebsocketClients 실행
+			const process_info_detail_list = [];
+			for (let idx = 0; idx < process_info_json.length; idx++) {
+				const item = process_info_json[idx];
+				logger.info(`Process info [${idx}]: ${JSON.stringify(item)}`);
+
+				const process_info_detail = await IndexProcessInfo.getProcessInfoDetail(item.exchange_cd, item.price_id, item.product_id);
+				logger.info(`Process info detail: ${JSON.stringify(process_info_detail, null, 2)}`);
+				if ( process_info_detail.length > 0 ) {
+					process_info_detail_list.push(process_info_detail[0]);
+				}
+			}
+
+			initializeWebsocketClients(process_info_detail_list);
+			// initializeClients(process_info_detail_list);
+			logger.info('WebSocket clients initialized successfully');
+		} else {
+			logger.error({ process_id: global.process_id }, "process_info not found. Please check the process_id.");
+			process.exit(1);
+		}
 	} catch (error) {
-		console.error('Application initialization failed:', error);
+		logger.error({ ex: "APP", err: String(error), stack: error.stack }, 'Application initialization failed');
 		process.exit(1);
 	}
 }
@@ -136,13 +165,13 @@ async function handleAppShutdown(signal) {
 	try {
 		await sendTelegramMessage( "SYSTEM", `[${signal}] Ticker-Collector shutting down.`);
 	} catch (e) {
-		console.error('Failed to send shutdown telegram notification:', e);
+		logger.error({ ex: "APP", err: String(e), stack: e.stack }, 'Failed to send shutdown telegram notification');
 	}
 	process.exit(0);
 }
 
 app.listen(app.get("port"), '0.0.0.0', () => {
-	console.log(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+	logger.info({ ex: "APP", port: app.get("port") }, `🚀 REST API Server started: http://0.0.0.0:${app.get("port")}`);
 });
 
 process.on('SIGINT', () => handleAppShutdown('SIGINT'));

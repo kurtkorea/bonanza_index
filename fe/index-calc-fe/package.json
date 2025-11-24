@@ -5,6 +5,7 @@
 	"license": "zenaway",
 	"main": "./src/index.js",
 	"scripts": {
+		"start": "webpack serve --hot --open --config webpack.dev.config.js",
 		"local": "webpack serve --hot --open --config webpack.local.config.js",
 		"dev": "webpack serve --hot --open --config webpack.dev.config.js",
 		"build": "webpack --mode=production --config webpack.prod.config.js",

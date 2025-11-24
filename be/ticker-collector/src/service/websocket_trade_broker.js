@@ -162,13 +162,6 @@ class UpbitClientTrade {
       // 최근 초당 처리 건수 저장 (텔레그램 리포트용)
       this.queueStats.lastMessagesPerSecond = messagesPerSecond;
       
-      logger.debug({
-        ex: this.name,
-        processed: processedInBatch,
-        batchTime: `${batchElapsedTime}ms`,
-        messagesPerSecond: `${messagesPerSecond} msg/s`,
-        queueSize: this.queue.length
-      }, "queue batch processed");
     }
 
     this.queueProcessing = false;
@@ -403,14 +396,7 @@ class BithumbClientTrade {
       if (messagesPerSecond > 100000) {
         messagesPerSecond = 100000;
       }
-      this.queueStats.lastMessagesPerSecond = messagesPerSecond;
-      logger.debug({
-        ex: this.name,
-        processed: processedInBatch,
-        batchTime: `${batchElapsedTime}ms`,
-        messagesPerSecond: `${messagesPerSecond} msg/s`,
-        queueSize: this.queue.length
-      }, "queue batch processed");
+      this.queueStats.lastMessagesPerSecond = messagesPerSecond;s
     }
     this.queueProcessing = false;
   }
@@ -630,14 +616,7 @@ class KorbitClientTrade {
       if (messagesPerSecond > 100000) {
         messagesPerSecond = 100000;
       }
-      this.queueStats.lastMessagesPerSecond = messagesPerSecond;
-      logger.debug({
-        ex: this.name,
-        processed: processedInBatch,
-        batchTime: `${batchElapsedTime}ms`,
-        messagesPerSecond: `${messagesPerSecond} msg/s`,
-        queueSize: this.queue.length
-      }, "queue batch processed");
+      this.queueStats.lastMessagesPerSecond = messagesPerSecond;s
     }
     this.queueProcessing = false;
   }
@@ -711,7 +690,11 @@ class KorbitClientTrade {
     this.ws = new WebSocket(this.url);
     this.ws.on("open", () => {
       // 코빗은 체결 데이터 구독을 위해 "transaction" 타입 사용
-      const req = JSON.stringify([{ method: "subscribe", type: "trade", symbols: [this.symbol] }]);
+      const req = {
+        type: "trade",
+        symbols: [this.symbol.replace("-", "")], // 예: "KRW-BTC" -> "KRWBTC"
+        tickTypes: ["24H"]
+      };
       this.ws.send(req);
       logger.info({ ex: this.name, msg: "subscribed", symbol: this.symbol });
       if (this._reconnecting) {
@@ -851,13 +834,6 @@ class CoinoneClientTrade {
         messagesPerSecond = 100000;
       }
       this.queueStats.lastMessagesPerSecond = messagesPerSecond;
-      logger.debug({
-        ex: this.name,
-        processed: processedInBatch,
-        batchTime: `${batchElapsedTime}ms`,
-        messagesPerSecond: `${messagesPerSecond} msg/s`,
-        queueSize: this.queue.length
-      }, "queue batch processed");
     }
     this.queueProcessing = false;
   }

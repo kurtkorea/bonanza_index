@@ -147,19 +147,24 @@ function toNs(anyTs, fallbackMs = Date.now()) {
  */
  function toILP(topic, eventTs, data) {
      const ns = toNs(data.marketAt ?? eventTs);
-     const tags = `symbol=${escTag(data.symbol)},exchange_name=${escTag(data.exchange_name)},side=${escTag(data.side)}`
+     const tags = `exchange_cd=${escTag(data.exchange_cd)},order_tp=${escTag(data.order_tp)}`
      const fields = [];
-     if (data.exchange_no != null) fields.push(`exchange_no=${intField(data.exchange_no)}`); // INT → i
-     if (data.seq != null)         fields.push(`seq=${intField(data.seq)}`);                 // LONG → i
-     if (data.price != null)       fields.push(`price=${floatField(data.price)}`);
-     if (data.size != null)        fields.push(`size=${floatField(data.size)}`);
-     if (data.marketAt)              fields.push(`marketAt=${tsFieldMicros(data.marketAt)}`); // ★ TIMESTAMP → μs + t
-     if (data.coollectorAt)           fields.push(`coollectorAt=${tsFieldMicros(data.coollectorAt)}`); // ★ TIMESTAMP → μs + t
-     if (data.dbAt)           fields.push(`dbAt=${tsFieldMicros(data.dbAt)}`); // ★ TIMESTAMP → μs + t
+
+     if (data.tran_date != null)        fields.push(`tran_date="${escTag(data.tran_date)}"`);
+     if (data.tran_time != null)        fields.push(`tran_time="${escTag(data.tran_time)}"`);
+     if (data.price_id != null)         fields.push(`price_id=${intField(data.price_id)}`);
+     if (data.product_id != null)       fields.push(`product_id=${intField(data.product_id)}`);
+     if (data.price != null)            fields.push(`price=${floatField(data.price)}`);
+     if (data.size != null)             fields.push(`size=${floatField(data.size)}`);
+     if (data.marketAt)                 fields.push(`marketAt=${tsFieldMicros(data.marketAt)}`); // ★ TIMESTAMP → μs + t
+     if (data.coollectorAt)             fields.push(`coollectorAt=${tsFieldMicros(data.coollectorAt)}`); // ★ TIMESTAMP → μs + t
+     if (data.dbAt)                     fields.push(`dbAt=${tsFieldMicros(data.dbAt)}`); // ★ TIMESTAMP → μs + t
      if (data.diff_ms != null && data.diff_ms !== undefined) fields.push(`diff_ms=${floatField(data.diff_ms)}`);
      if (data.diff_ms_db != null && data.diff_ms_db !== undefined) fields.push(`diff_ms_db=${floatField(data.diff_ms_db)}`);
-     if (!fields.length) fields.push("dummy=1");
-     return `tb_order_book,${tags} ${fields.join(",")} ${ns}\n`;
+
+    //  if (!fields.length) fields.push("dummy=1");
+     const line = `tb_order_book,${tags} ${fields.join(",")} ${ns}\n`;
+     return line;
  }
 
 /** =========================
@@ -270,7 +275,8 @@ async function startPullQueue() {
     onFlush: async (batch) => {
       // 데이터 정규화 → ILP 라인 생성
 
-      return;
+      // console.log("batch", batch);
+
 
       const lines = [];
       for (const item of batch) {
@@ -285,23 +291,20 @@ async function startPullQueue() {
           try { d = JSON.parse(d); } catch { d = { raw: d }; }
         }
 
-        // console.log(d.marketAt);
-
+        const tran_date = new Date(d.marketAt).toISOString().split("T")[0];
+        const tran_time = new Date(d.marketAt).toISOString().split("T")[1].split(".")[0];
         const dbAt = new Date().getTime();
-        // diff_ms_db 계산 로직 수정: 밀리초 단위로 계산 (초 단위 아님)
         const diff_ms_db = (dbAt - d.marketAt) / 1000;
-        // console.log(d);
-
-        // bids/asks가 다수라면 각 레벨을 개별 레코드로 펼쳐서 전송
         let seq = 0;
         if (Array.isArray(d.bid)) {
           for (const [price, size] of d.bid) {
             const row = {
-              symbol: d.symbol,
-              exchange_no: d.exchange_no,
-              exchange_name: d.exchange_name,
-              seq,
-              side: "B",
+              tran_date: tran_date,
+              tran_time: tran_time,
+              exchange_cd: d.exchange_cd,
+              price_id: d.price_id,
+              product_id: d.product_id,
+              order_tp: "B",
               price,
               size,
               marketAt: d.marketAt,
@@ -315,16 +318,15 @@ async function startPullQueue() {
             bid_count++;
             total_count++;
           }
-        }
-        seq = 0;
-        if (Array.isArray(d.ask)) {
+          seq = 0;
           for (const [price, size] of d.ask) {
             const row = {
-              symbol: d.symbol,
-              exchange_no: d.exchange_no,
-              exchange_name: d.exchange_name,
-              seq,
-              side: "A",
+              tran_date: tran_date,
+              tran_time: tran_time,
+              exchange_cd: d.exchange_cd,
+              price_id: d.price_id,
+              product_id: d.product_id,
+              order_tp: "A",
               price,
               size,
               marketAt: d.marketAt,
@@ -340,8 +342,9 @@ async function startPullQueue() {
           }
         }
 
+        
       }
-
+      
       if (lines.length) {
         if (process.env.IS_SAVE_DB === "true") {
           ilp.write(lines); // backpressure/재연결은 내부에서 처리

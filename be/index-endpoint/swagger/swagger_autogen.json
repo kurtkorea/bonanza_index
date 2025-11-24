@@ -91,6 +91,12 @@
             "type": "string"
           },
           {
+            "name": "from_date",
+            "in": "query",
+            "type": "datetime",
+            "description": "검색시작시간 (예: 2025-09-01T00:00:00Z)"
+          },
+          {
             "name": "to_date",
             "in": "query",
             "type": "datetime",
@@ -101,12 +107,6 @@
             "in": "query",
             "type": "integer",
             "description": "페이지 번호 (기본값: 1)"
-          },
-          {
-            "name": "from_date",
-            "in": "query",
-            "type": "datetime",
-            "description": "검색시작시간 (예: 2025-09-01T00:00:00Z)"
           },
           {
             "name": "size",

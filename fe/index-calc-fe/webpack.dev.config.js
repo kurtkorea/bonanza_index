@@ -75,15 +75,15 @@ module.exports = (env, options) => {
 						return pathname.startsWith('/proxy');
 					},
 					// 개발 환경: nginx를 통해 백엔드로 프록시
-					target: 'http://121.88.4.57:30076',
+					target: 'http://localhost:30076',
 					secure: false,
 					changeOrigin: true,
 					logLevel: 'silent', // silent로 변경 (SockJS 전송 방식 시도 에러 완전 억제)
 					// /proxy 경로는 그대로 유지
 					onProxyReq: (proxyReq, req, res) => {
 						// 프록시 요청 시 헤더 설정
-						proxyReq.setHeader('Origin', 'http://121.88.4.57:30076');
-						proxyReq.setHeader('Host', '121.88.4.57:30076');
+						proxyReq.setHeader('Origin', 'http://localhost:30076');
+						proxyReq.setHeader('Host', 'localhost:30076');
 						// xhr_streaming, xhr_send는 일반 HTTP 요청이므로 WebSocket 업그레이드 헤더 제거
 						if (req.url.includes('xhr_streaming') || req.url.includes('xhr_send')) {
 							proxyReq.removeHeader('Upgrade');

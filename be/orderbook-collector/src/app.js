@@ -6,16 +6,37 @@ const logger = require('./utils/logger.js');
 const path = require("path");
 const dotenv = require("dotenv");
 const fs = require('fs');
-const { connect, db } = require('./db/db.js');
+const { connect_quest_db, quest_db } = require('./db/quest_db.js');
 const { systemlog_schema } = require('./ddl/systemlog_ddl.js');
 const { report_schema } = require('./ddl/report_ddl.js');
 const { sendTelegramMessage } = require('./utils/telegram_push.js');
-const { initializeClients } = require('./service/websocket_order_book_broker.js');
+const { initializeWebsocketClients } = require('./service/websocket_broker.js');
 const { respMsg } = require('./utils/common.js');
 const commandRouter = require('./router/command.js');
 const express = require("express");
 const app = express();
 const morgan = require("morgan");
+const IndexProcessInfo = require('./models/index_process_info.js');
+
+// 명령줄 인수에서 process_id 추출
+// 사용법: node app.js --process-id=my-process-id
+// 또는: node app.js my-process-id
+let process_id = null;
+
+const args = process.argv.slice(2);
+for (const arg of args) {
+	if (arg.startsWith('--process-id=')) {
+		process_id = arg.split('=')[1];
+		break;
+	} else if (arg === '--process-id' && args.indexOf(arg) + 1 < args.length) {
+		process_id = args[args.indexOf(arg) + 1];
+		break;
+	} else if (!arg.startsWith('--') && !process_id) {
+		// --로 시작하지 않는 첫 번째 인수를 process_id로 간주
+		process_id = arg;
+		break;
+	}
+}
 
 try {
 	if (process.env.NODE_ENV === "production") {
@@ -55,6 +76,20 @@ try {
 	logger.info('Continuing without env file...');
 }
 
+// 명령줄 인수에서 process_id를 찾지 못한 경우 환경 변수에서 읽어오기
+if (!process_id && process.env.PROCESS_ID) {
+	process_id = process.env.PROCESS_ID;
+	logger.info({ process_id }, "Process ID loaded from environment variable:");
+}
+
+// process_id 설정 및 출력
+if (process_id) {
+	global.process_id = process_id; // 전역 변수로 설정하여 다른 모듈에서 사용 가능
+	logger.info({ process_id }, "Process ID initialized:");
+} else {
+	logger.warn("No process_id provided. Use --process-id=<id>, pass as first argument, or set PROCESS_ID in env file.");
+}
+
 app.set("port", process.env.PORT || 6001);
 
 //console log middleware
@@ -69,7 +104,6 @@ app.use(express.json({ limit: "50mb" }));
 if (process.env.NODE_ENV === "production") {
 	app.set("trust proxy", 1);
 }
-
 
 // 라우터 등록
 app.use("/api/command", commandRouter);
@@ -95,18 +129,41 @@ app.use((err, req, res, next) => {
 	respMsg(res, "server_error");
 });
 
+const db_mysql = require("./models");
+
 async function initializeApp() {
 	try {
-		await connect(process.env.QDB_HOST, process.env.QDB_PORT);
-		await systemlog_schema(db);
-		await report_schema(db);
-		try {
-			initializeClients();
+		// MySQL 데이터베이스 연결 및 동기화를 먼저 완료
+		await db_mysql.sequelize.sync({ force: false });
+		logger.info("[MySQL] Database connection has been established successfully.");
+
+		await connect_quest_db(process.env.QDB_HOST, process.env.QDB_PORT);
+		await systemlog_schema(quest_db);
+		await report_schema(quest_db);
+
+		const process_info = await IndexProcessInfo.getProcessInfo(global.process_id);
+		if (process_info) {	
+			const process_info_json = JSON.parse(process_info.process_info);
+			logger.info("Process info found:\n" + JSON.stringify(process_info_json, null, 2));
+			
+			// 병렬적으로 모든 상세 정보를 fetch하고 결과를 모아서 initializeWebsocketClients 실행
+			const process_info_detail_list = [];
+			for (let idx = 0; idx < process_info_json.length; idx++) {
+				const item = process_info_json[idx];
+				logger.info(`Process info [${idx}]: ${JSON.stringify(item)}`);
+
+				const process_info_detail = await IndexProcessInfo.getProcessInfoDetail(item.exchange_cd, item.price_id, item.product_id);
+				logger.info(`Process info detail: ${JSON.stringify(process_info_detail, null, 2)}`);
+				if ( process_info_detail.length > 0 ) {
+					process_info_detail_list.push(process_info_detail[0]);
+				}
+			}
+			console.log("process_info_detail_list !!!!!!!!!!!!!!!!!!!!!", process_info_detail_list);
+			initializeWebsocketClients(process_info_detail_list);
 			logger.info('WebSocket clients initialized successfully');
-		} catch (clientError) {
-			logger.error({ ex: "APP", err: String(clientError) }, "Failed to initialize WebSocket clients:");
-			logger.error({ ex: "APP", err: String(clientError.stack) }, "Client error stack:");
-			throw clientError; // 재throw하여 상위 catch에서 처리
+		} else {
+			logger.error({ process_id: global.process_id }, "process_info not found. Please check the process_id.");
+			process.exit(1);
 		}
 		
 		await sendTelegramMessage("system", "OrderBook-Collector Initialization.");
@@ -138,7 +195,7 @@ async function handleAppShutdown(signal) {
 }	
 
 app.listen(app.get("port"), '0.0.0.0', () => {
-	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+	logger.info(`🚀 REST API Server started: http://0.0.0.0:${app.get("port")}`);
 	logger.info('[APP] Express server started successfully');
 });
 
