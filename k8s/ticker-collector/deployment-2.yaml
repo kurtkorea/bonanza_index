@@ -1,23 +1,26 @@
-# 주의: 이 파일은 단일 인스턴스 배포용입니다.
-# 다중 인스턴스 배포(process_id 2개)를 위해서는 deployment-1.yaml과 deployment-2.yaml을 사용하세요.
-# 자세한 내용은 README.md를 참조하세요.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ticker-collector
+  name: ticker-collector-2
   namespace: bonanza-index
   labels:
     app: ticker-collector
+    instance: "2"
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: ticker-collector
+      instance: "2"
   template:
     metadata:
       labels:
         app: ticker-collector
+        instance: "2"
     spec:
+      # DNS 정책: ClusterFirst (기본 Kubernetes DNS 정책 사용)
+      # CoreDNS가 외부 DNS를 forward하도록 설정되어 있으므로 내부/외부 모두 조회 가능
+      dnsPolicy: "ClusterFirst"
       containers:
       - name: ticker-collector
         image: bonanza-index/ticker-collector:latest
@@ -49,6 +52,17 @@ spec:
           value: "true"
         - name: TELEGRAM_SERVICE_URL
           value: "http://telegram-log-service:3109/v1/telegram"
+        # 로그 출력 최적화
+        - name: NODE_OPTIONS
+          value: "--no-warnings"
+        - name: NODE_NO_WARNINGS
+          value: "1"
+        # stdout/stderr 버퍼링 방지 (로그 실시간 출력)
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        # Process ID 설정 (인스턴스 2)
+        - name: PROCESS_ID
+          value: "collector-process-2"
         envFrom:
         - configMapRef:
             name: bonanza-common-config
