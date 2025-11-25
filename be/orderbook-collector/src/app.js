@@ -183,10 +183,10 @@ async function handleAppShutdown(signal) {
 	process.exit(0);
 }	
 
-// app.listen(app.get("port"), '0.0.0.0', () => {
-// 	logger.info(`🚀 REST API Server started: http://0.0.0.0:${app.get("port")}`);
-// 	logger.info('[APP] Express server started successfully');
-// });
+app.listen(app.get("port"), '0.0.0.0', () => {
+	logger.info(`🚀 REST API Server started: http://0.0.0.0:${app.get("port")}`);
+	logger.info('[APP] Express server started successfully');
+});
 
 process.on('SIGINT', () => handleAppShutdown('SIGINT'));
 process.on('SIGTERM', () => handleAppShutdown('SIGTERM'));

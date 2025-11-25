@@ -36,8 +36,10 @@ spec:
           value: "true"
         - name: IS_SAVE_DB
           value: "true"
-        - name: ZMQ_PUSH_HOST
-          value: "tcp://ticker-collector-service:5657"
+        - name: ZMQ_PULL_HOST
+          value: "tcp://0.0.0.0:5657"
+        - name: ZMQ_PUB_HOST
+          value: "tcp://0.0.0.0:6657"
         envFrom:
         - configMapRef:
             name: bonanza-common-config

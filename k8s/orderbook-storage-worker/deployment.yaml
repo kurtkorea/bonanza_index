@@ -37,7 +37,9 @@ spec:
         - name: IS_SAVE_DB
           value: "true"
         - name: ZMQ_PULL_HOST
-          value: "tcp://orderbook-collector-service:5557"
+          value: "tcp://0.0.0.0:5557"
+        - name: ZMQ_PUB_HOST
+          value: "tcp://0.0.0.0:6557"
         envFrom:
         - configMapRef:
             name: bonanza-common-config

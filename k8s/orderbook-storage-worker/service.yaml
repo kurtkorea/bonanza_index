@@ -12,6 +12,10 @@ spec:
     targetPort: 5557
     protocol: TCP
     name: zmq-pull
+  - port: 6557
+    targetPort: 6557
+    protocol: TCP
+    name: zmq-pub
   selector:
     app: orderbook-storage-worker
 

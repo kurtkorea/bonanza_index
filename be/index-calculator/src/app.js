@@ -150,7 +150,7 @@ initializeApp().catch((error) => {
 	process.exit(1);
 });
 
-// app.listen(app.get("port"), '0.0.0.0', () => {
-// 	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
-// });
+app.listen(app.get("port"), '0.0.0.0', () => {
+	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+});
 

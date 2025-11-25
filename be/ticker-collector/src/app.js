@@ -9,7 +9,7 @@ const { systemlog_schema } = require('./ddl/systemlog_ddl.js');
 const { report_schema } = require('./ddl/report_ddl.js');
 const  { sendTelegramMessage } = require('./utils/telegram_push.js')
 const logger = require('./utils/logger.js');
-const { initializeWebsocketClients } = require('./service/websocket_broker.js');
+const { refresh_websocket_clients } = require('./service/websocket_broker.js');
 const IndexProcessInfo = require('./models/index_process_info.js');
 const { initializeRedis } = require('./redis.js');
 const { init_zmq_command_subscriber } = require('./utils/zmq-data-sub.js');
@@ -135,34 +135,8 @@ async function initializeApp() {
 		await report_schema(quest_db);
 		await sendTelegramMessage ( "SYSTEM", "Ticker-Collector Initialization.");
 
-		const process_info = await IndexProcessInfo.getProcessInfo(process.env.PROCESS_ID);
-		if (process_info) {	
-			const process_info_json = JSON.parse(process_info.process_info);
-			logger.info("Process info found:\n" + JSON.stringify(process_info_json, null, 2));
-			
-			// 병렬적으로 모든 상세 정보를 fetch하고 결과를 모아서 initializeWebsocketClients 실행
-			const process_info_detail_list = [];
-			for (let idx = 0; idx < process_info_json.length; idx++) {
-				const item = process_info_json[idx];
-				logger.info(`Process info [${idx}]: ${JSON.stringify(item)}`);
+		await refresh_websocket_clients();
 
-				const process_info_detail = await IndexProcessInfo.getProcessInfoDetail(item.exchange_cd, item.price_id, item.product_id);
-				logger.info(`Process info detail: ${JSON.stringify(process_info_detail, null, 2)}`);
-				if ( process_info_detail.length > 0 ) {
-					process_info_detail_list.push(process_info_detail[0]);
-				}
-			}
-
-			initializeWebsocketClients(process_info_detail_list);
-			// initializeClients(process_info_detail_list);
-			logger.info('WebSocket clients initialized successfully');
-
-			await init_zmq_command_subscriber(global.process_id);
-			logger.info("[ZMQ] Command subscriber initialized successfully.");
-		} else {
-			logger.error({ process_id: global.process_id }, "process_info not found. Please check the process_id.");
-			process.exit(1);
-		}
 	} catch (error) {
 		logger.error({ ex: "APP", err: String(error), stack: error.stack }, 'Application initialization failed');
 		process.exit(1);
@@ -180,9 +154,9 @@ async function handleAppShutdown(signal) {
 	process.exit(0);
 }
 
-// app.listen(app.get("port"), '0.0.0.0', () => {
-// 	logger.info({ ex: "APP", port: app.get("port") }, `🚀 REST API Server started: http://0.0.0.0:${app.get("port")}`);
-// });
+app.listen(app.get("port"), '0.0.0.0', () => {
+	logger.info({ ex: "APP", port: app.get("port") }, `🚀 REST API Server started: http://0.0.0.0:${app.get("port")}`);
+});
 
 process.on('SIGINT', () => handleAppShutdown('SIGINT'));
 process.on('SIGTERM', () => handleAppShutdown('SIGTERM'));

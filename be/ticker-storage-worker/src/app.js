@@ -71,12 +71,12 @@ app.use((err, req, res, next) => {
 async function initializeApp() {
 	try {
 		// DB 연결
-		await init_zmq_pub();
 		await connect_quest_db();
 		// await ticker_schema(db);
 		await trade_schema(quest_db);		
 		// ZMQ 큐 시작
 		await startPullQueue();
+		await init_zmq_pub();
 	} catch (error) {
 		logger.error({ ex: "APP", err: String(error), stack: error.stack }, "Application initialization failed:");
 		process.exit(1);
@@ -88,9 +88,9 @@ initializeApp().catch((error) => {
 	process.exit(1);
 });
 
-// app.listen(app.get("port"), '0.0.0.0', () => {
-// 	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
-// });
+app.listen(app.get("port"), '0.0.0.0', () => {
+	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+});
 
 process.on('unhandledRejection', (reason, p) => {
 	logger.error({ ex: "APP", err: String(reason) }, "[unhandledRejection]");

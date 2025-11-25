@@ -77,11 +77,11 @@ app.use((err, req, res, next) => {
 async function initializeApp() {
 	try {
 		// DB 연결
-		await init_zmq_pub();
+		
 		await connect_quest_db();
 		await orderbook_schema(quest_db);
 		await startPullQueue();
-
+		await init_zmq_pub();
 		// servier 초기화
 		// (await Message.findAll({ where: { message_use: true }, attributes: { exclude: ["message_desc", "createdAt", "updatedAt"] }, logging, raw: true })).forEach(
 		// 	(row) => (message[row.message_key] = { msg: row.message_msg, code: row.message_code }),
@@ -97,9 +97,9 @@ initializeApp().catch((error) => {
 	process.exit(1);
 });
 
-// app.listen(app.get("port"), '0.0.0.0', () => {
-// 	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
-// });
+app.listen(app.get("port"), '0.0.0.0', () => {
+	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+});
 
 process.on('unhandledRejection', (reason, p) => {
 	logger.error({ ex: "APP", err: String(reason) }, "[unhandledRejection]");

@@ -27,9 +27,9 @@ spec:
         - name: PORT
           value: "6001"
         - name: ZMQ_SUB_DEPTH_HOST
-          value: "tcp://orderbook-collector-service:6557"
+          value: "tcp://orderbook-storage-worker-service:6557"
         - name: ZMQ_SUB_TICKER_HOST
-          value: "tcp://ticker-collector-service:6657"
+          value: "tcp://ticker-storage-worker-service:6657"
         - name: ZMQ_PUB_PORT
           value: "6757"
         - name: DEPTH

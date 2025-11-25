@@ -12,6 +12,10 @@ spec:
     targetPort: 5657
     protocol: TCP
     name: zmq-push
+  - port: 6657
+    targetPort: 6657
+    protocol: TCP
+    name: zmq-pub
   selector:
     app: ticker-storage-worker
 

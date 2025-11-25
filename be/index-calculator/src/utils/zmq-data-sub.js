@@ -44,9 +44,6 @@ async function init_zmq_depth_subscriber(subscribe_exchange) {
                         // 데이터 유효성 검사
                         validateObject(orderbook_item, 'orderbook_item');
 
-                        // console.log("orderbook_item=", orderbook_item);
-                        
-
                         if (orderbook_item.hasOwnProperty('raw')) {
                             delete orderbook_item.raw;
                         }
