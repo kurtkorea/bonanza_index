@@ -17,7 +17,7 @@ const { latestTickerByExchange, latestTradeByExchange, latestDepthByExchange } =
 const { quest_db, sequelize } = require('../db/quest_db.js');
 const logger = require('../utils/logger.js');
 
-const { send_publisher } = require('./zmq-sender-pub.js');
+const { send_publisher } = require('../utils/zmq-sender-pub.js');
 const common = require('../utils/common');
 
 const DEPTH        = num("DEPTH", 15);
@@ -102,12 +102,12 @@ class FkbrtiEngine {
     this.provMaxMs = Number(opts.provMaxMs || PROV_MAX_MS);
     this.expected  = (opts.expectedExchanges || EXPECTED_EXCHANGES).slice();
     this.table_name = opts.table_name;
-
-    // booksByEx[exchange] = { bids, asks, ts }
     this.booksByEx = Object.create(null);
     this.last = null;
-
     this._timer = null;
+    this.tran_date = null;
+    this.tran_time = null;
+    this.lastProcessedSecond = null; // 마지막으로 처리한 marketAt의 초 단위
   }
 
   // 실시간 스냅샷 주입
@@ -119,31 +119,34 @@ class FkbrtiEngine {
       const { bids, asks } = normalize(snap);
       
       // 타임스탬프 처리 개선
-      let ts = Date.now(); // 기본값
-      if (snap.createdAt) {
-        if (typeof snap.createdAt === 'string') {
-          ts = new Date(snap.createdAt).getTime();
-        } else if (snap.createdAt instanceof Date) {
-          ts = snap.createdAt.getTime();
-        } else if (typeof snap.createdAt === 'number') {
-          ts = snap.createdAt;
+      let marketAt = Date.now(); // 기본값
+      if (snap.marketAt) {
+        if (typeof snap.marketAt === 'string') {
+          marketAt = new Date(snap.marketAt).getTime();
+        } else if (snap.marketAt instanceof Date) {
+          marketAt = snap.marketAt.getTime();
+        } else if (typeof snap.marketAt === 'number') {
+          marketAt = snap.marketAt;
         }
-      } else if (snap.fromAt) {
-        if (typeof snap.fromAt === 'string') {
-          ts = new Date(snap.fromAt).getTime();
-        } else if (snap.fromAt instanceof Date) {
-          ts = snap.fromAt.getTime();
-        } else if (typeof snap.fromAt === 'number') {
-          ts = snap.fromAt;
-        }
-      }
-      
-      // 유효하지 않은 타임스탬프 처리
-      if (!Number.isFinite(ts) || ts <= 0) {
-        ts = Date.now();
       }
 
-      this.booksByEx[ex] = { bids, asks, ts };
+      this.tran_date = snap.tran_date;
+      this.tran_time = snap.tran_time;
+
+      this.booksByEx[ex] = { bids, asks, marketAt };
+      
+      // marketAt의 초 단위 확인
+      const currentSecond = Math.floor(marketAt / 1000);
+      
+      // 새로운 초가 시작되면 이전 초의 데이터를 집계
+      if (this.lastProcessedSecond !== null && currentSecond > this.lastProcessedSecond) {
+        // 이전 초의 데이터를 집계하여 저장
+        this._tick(this.lastProcessedSecond * 1000);
+        this.lastProcessedSecond = currentSecond;
+      } else if (this.lastProcessedSecond === null) {
+        // 첫 번째 데이터
+        this.lastProcessedSecond = currentSecond;
+      }
     } catch (error) {
       logger.error({ ex: "FKBRTI", err: String(error), snap }, 'FkbrtiEngine.onSnapshot 에러');
     }
@@ -151,24 +154,42 @@ class FkbrtiEngine {
 
   start() {
     if (this._timer) return;
-    this._timer = setInterval(() => this._tick(), this.tickMs);
+    // timer는 최대 지연 시간 체크용으로만 사용 (2초마다 체크)
+    // 실제 집계는 marketAt 기준으로 수행
+    this._timer = setInterval(() => {
+      const now = Date.now();
+      const currentSecond = Math.floor(now / 1000);
+      
+      // 마지막 처리한 초가 2초 이상 지났으면 강제로 처리
+      if (this.lastProcessedSecond !== null && currentSecond > this.lastProcessedSecond + 1) {
+        // 지연된 초들을 처리
+        for (let sec = this.lastProcessedSecond + 1; sec < currentSecond; sec++) {
+          this._tick(sec * 1000);
+        }
+        this.lastProcessedSecond = currentSecond - 1;
+      }
+    }, 2000); // 2초마다 체크
   }
   stop() { if (this._timer) clearInterval(this._timer); this._timer = null; }
 
-  _tick() {
-    const now = Date.now();
+  _tick(targetTime = null) {
+    const now = targetTime || Date.now();
     const cutoff = now - this.staleMs;
 
-    // 병합: 스테일 & 역전 제외
+    // 병합: 스테일 & 역전 제외 => 예외상황 제외
     const bids = [], asks = [];
     for (const ex of Object.keys(this.booksByEx)) {
       const rec = this.booksByEx[ex];
       if (!rec) continue;
-      if (rec.ts < cutoff) continue;                  // 30s 이상 지연 제외
+
+      if (rec.marketAt < cutoff) continue;                  // 30s 이상 지연 제외
+
       const book = { bids: rec.bids, asks: rec.asks };
+
       if (isCrossed(book)) continue;                  // 역전 제외
       if (rec.bids?.length) bids.push(...rec.bids);
       if (rec.asks?.length) asks.push(...rec.asks);
+
     }
 
     bids.sort((a,b)=>b.price-a.price);
@@ -194,7 +215,7 @@ class FkbrtiEngine {
 
       const trade_price = toNum(trade?.close);
       if (!rec) return { exchange: ex, reason: "no_data", price: 0 };
-      if (rec.ts < cutoff) return { exchange: ex, reason: "stale", price: 0 };
+      if (rec.marketAt < cutoff) return { exchange: ex, reason: "stale", price: 0 };
 
       const book = { bids: rec.bids, asks: rec.asks };
       if (isCrossed(book)) return { exchange: ex, reason: "crossed", price: 0 };
@@ -239,9 +260,6 @@ class FkbrtiEngine {
       no_data = true;
     }
 
-    // console.log("expected_status", expected_status);
-    // console.log("colF", colF);
-
     if (!colI && colI !== 0) {
       diff = colF - indexMid;
     } else {
@@ -285,6 +303,14 @@ class FkbrtiEngine {
         actual_avg: actual_avg
       };
 
+      if (
+        (out.vwap_buy == null || out.vwap_buy == 0) &&
+        (out.vwap_sell == null || out.vwap_sell == 0) &&
+        (out.index_mid == null || out.index_mid == 0)
+      ) {
+        return;
+      }
+
       this.insertFkbrti1sec(out);
 
       this.last = {
@@ -321,6 +347,14 @@ class FkbrtiEngine {
           ratio: ratio,
           actual_avg: actual_avg,
         };
+
+        if (
+          (out.vwap_buy == null || out.vwap_buy == 0) &&
+          (out.vwap_sell == null || out.vwap_sell == 0) &&
+          (out.index_mid == null || out.index_mid == 0)
+        ) {
+          return;
+        }
         
         this.insertFkbrti1sec(out);
 
@@ -351,6 +385,14 @@ class FkbrtiEngine {
           actual_avg: actual_avg,
         };
 
+        if (
+          (out.vwap_buy == null || out.vwap_buy == 0) &&
+          (out.vwap_sell == null || out.vwap_sell == 0) &&
+          (out.index_mid == null || out.index_mid == 0)
+        ) {
+          return;
+        }
+
         this.insertFkbrti1sec(out);
       }
     }
@@ -361,6 +403,8 @@ class FkbrtiEngine {
     quest_db.sequelize.query(
       `
       INSERT INTO :table_name (
+          tran_date,
+          tran_time,
           symbol,
           vwap_buy,
           vwap_sell,
@@ -374,6 +418,8 @@ class FkbrtiEngine {
           actual_avg,
           createdAt
         ) VALUES (
+          :tran_date,
+          :tran_time,
           :symbol,
           :vwap_buy,
           :vwap_sell,
@@ -391,6 +437,8 @@ class FkbrtiEngine {
         {
           replacements: {
             table_name: this.table_name,
+            tran_date: this.tran_date,
+            tran_time: this.tran_time,
             symbol: item.symbol,
             vwap_buy: item.vwap_buy,
             vwap_sell: item.vwap_sell,

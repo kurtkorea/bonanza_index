@@ -49,7 +49,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 	 * @param {string} options.order - 정렬 순서 (asc/desc, 기본값: desc)
 	 * @returns {Promise<Object>} 계산된 지수 데이터 및 페이징 정보
 	 */
-	static async getIndexWithMovingAverage(options = {}) {
+	static async getIndexWithMovingAverage(options = {}, symbol) {
 		const { 
 			fromDate, 
 			toDate, 
@@ -59,14 +59,16 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		} = options;
 		
 		let whereClause = '';
-		const replacements = {};
+		const replacements = { symbol: symbol };
 
 		if (fromDate && toDate) {
 			whereClause = `WHERE to_timezone(createdAt, 'Asia/Seoul') >= to_timezone(:fromDate, 'Asia/Seoul')
 							AND to_timezone(createdAt, 'Asia/Seoul') < to_timezone(:toDate, 'Asia/Seoul')
-							AND index_mid IS NOT NULL`;
+							AND index_mid IS NOT NULL AND symbol = :symbol`;
 			replacements.fromDate = fromDate;
 			replacements.toDate = toDate;
+		} else {
+			whereClause = `WHERE index_mid IS NOT NULL AND symbol = :symbol`;
 		}
 
 		// 전체 개수 조회
@@ -77,7 +79,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		`;
 
 		const countResult = await this.sequelize.query(countQuery, {
-			replacements,
+			replacements: replacements,
 			type: Sequelize.QueryTypes.SELECT,
 			raw: true
 		});
@@ -120,7 +122,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		`;
 
 		const results = await this.sequelize.query(query, {
-			replacements,
+			replacements: replacements,
 			type: Sequelize.QueryTypes.SELECT,
 			raw: true,
 		});
@@ -256,7 +258,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 	 * @returns {Promise<Array>} 기간별 통계 데이터 (1D, 1W, 1M, 1Y)
 	 * @description QuestDB가 PostgreSQL JSON 함수를 지원하는 경우 사용 가능
 	 */
-	static async getStatsSQL() {
+	static async getStatsSQL( symbol ) {
 		try {
 			const query = `
 							-- 1초 단위 요약
@@ -270,7 +272,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 								round(max(ratio), 4) AS ratio_max,
 								round(avg(ratio), 4) AS ratio_avg
 							FROM tb_fkbrti_1sec
-							WHERE createdAt > dateadd('d', -1, now())
+							WHERE createdAt > dateadd('d', -1, now()) AND symbol = :symbol
 
 							UNION ALL
 
@@ -289,7 +291,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 									avg(diff)  AS diff_avg,
 									avg(ratio) AS ratio_avg
 								FROM tb_fkbrti_1sec
-								WHERE createdAt > dateadd('d', -1, now())
+								WHERE createdAt > dateadd('d', -1, now()) AND symbol = :symbol
 								SAMPLE BY 5s ALIGN TO CALENDAR
 							)
 
@@ -309,7 +311,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 									avg(diff)  AS diff_avg,
 									avg(ratio) AS ratio_avg
 								FROM tb_fkbrti_1sec
-								WHERE createdAt > dateadd('d', -1, now())
+								WHERE createdAt > dateadd('d', -1, now()) AND symbol = :symbol
 								SAMPLE BY 10s ALIGN TO CALENDAR
 							)
 
@@ -325,7 +327,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 								round(max(ratio), 4) AS ratio_max,
 								round(avg(ratio), 4) AS ratio_avg
 							FROM tb_fkbrti_1sec
-							WHERE createdAt > dateadd('d', -7, now())
+							WHERE createdAt > dateadd('d', -7, now()) AND symbol = :symbol
 
 							UNION ALL
 
@@ -344,7 +346,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 									avg(diff)  AS diff_avg,
 									avg(ratio) AS ratio_avg
 								FROM tb_fkbrti_1sec
-								WHERE createdAt > dateadd('d', -7, now())
+								WHERE createdAt > dateadd('d', -7, now()) AND symbol = :symbol
 								SAMPLE BY 5s ALIGN TO CALENDAR
 							)
 
@@ -364,7 +366,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 									avg(diff)  AS diff_avg,
 									avg(ratio) AS ratio_avg
 								FROM tb_fkbrti_1sec
-								WHERE createdAt > dateadd('d', -7, now())
+								WHERE createdAt > dateadd('d', -7, now()) AND symbol = :symbol
 								SAMPLE BY 10s ALIGN TO CALENDAR
 							)
 
@@ -384,7 +386,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 									avg(diff)  AS diff_avg,
 									avg(ratio) AS ratio_avg
 								FROM tb_fkbrti_1sec
-								WHERE createdAt > dateadd('M', -1, now())
+								WHERE createdAt > dateadd('M', -1, now()) AND symbol = :symbol
 								SAMPLE BY 1s ALIGN TO CALENDAR
 							)
 
@@ -404,7 +406,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 									avg(diff)  AS diff_avg,
 									avg(ratio) AS ratio_avg
 								FROM tb_fkbrti_1sec
-								WHERE createdAt > dateadd('M', -1, now())
+								WHERE createdAt > dateadd('M', -1, now()) AND symbol = :symbol
 								SAMPLE BY 5s ALIGN TO CALENDAR
 							)
 
@@ -424,7 +426,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 									avg(diff)  AS diff_avg,
 									avg(ratio) AS ratio_avg
 								FROM tb_fkbrti_1sec
-								WHERE createdAt > dateadd('M', -1, now())
+								WHERE createdAt > dateadd('M', -1, now()) AND symbol = :symbol
 								SAMPLE BY 10s ALIGN TO CALENDAR
 							)
 
@@ -444,7 +446,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 									avg(diff)  AS diff_avg,
 									avg(ratio) AS ratio_avg
 								FROM tb_fkbrti_1sec
-								WHERE createdAt > dateadd('y', -1, now())
+								WHERE createdAt > dateadd('y', -1, now()) AND symbol = :symbol
 								SAMPLE BY 1s ALIGN TO CALENDAR
 							)
 
@@ -464,7 +466,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 									avg(diff)  AS diff_avg,
 									avg(ratio) AS ratio_avg
 								FROM tb_fkbrti_1sec
-								WHERE createdAt > dateadd('y', -1, now())
+								WHERE createdAt > dateadd('y', -1, now()) AND symbol = :symbol	
 								SAMPLE BY 5s ALIGN TO CALENDAR
 							)
 
@@ -484,7 +486,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 									avg(diff)  AS diff_avg,
 									avg(ratio) AS ratio_avg
 								FROM tb_fkbrti_1sec
-								WHERE createdAt > dateadd('y', -1, now())
+								WHERE createdAt > dateadd('y', -1, now()) AND symbol = :symbol
 								SAMPLE BY 10s ALIGN TO CALENDAR
 							)
 							;
@@ -492,33 +494,14 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 			`;
 
 			const results = await this.sequelize.query(query, {
+				replacements: {
+					symbol: symbol,
+				},
 				type: Sequelize.QueryTypes.SELECT,
 				raw: true,
 			});
 
 			return results;
-
-			// return results.map(row => ({
-			// 	period: row.period,
-			// 	'DIFF-1s_MIN': row['DIFF-1s_MIN'],
-			// 	'DIFF-1s_MAX': row['DIFF-1s_MAX'],
-			// 	'DIFF-1s_AVG': row['DIFF-1s_AVG'],
-			// 	'RATIO-1s_MIN': row['RATIO-1s_MIN'],
-			// 	'RATIO-1s_MAX': row['RATIO-1s_MAX'],
-			// 	'RATIO-1s_AVG': row['RATIO-1s_AVG'],
-			// 	'DIFF-5s_MIN': row['DIFF-5s_MIN'],
-			// 	'DIFF-5s_MAX': row['DIFF-5s_MAX'],
-			// 	'DIFF-5s_AVG': row['DIFF-5s_AVG'],
-			// 	'RATIO-5s_MIN': row['RATIO-5s_MIN'],
-			// 	'RATIO-5s_MAX': row['RATIO-5s_MAX'],
-			// 	'RATIO-5s_AVG': row['RATIO-5s_AVG'],
-			// 	'DIFF-10s_MIN': row['DIFF-10s_MIN'],
-			// 	'DIFF-10s_MAX': row['DIFF-10s_MAX'],
-			// 	'DIFF-10s_AVG': row['DIFF-10s_AVG'],
-			// 	'RATIO-10s_MIN': row['RATIO-10s_MIN'],
-			// 	'RATIO-10s_MAX': row['RATIO-10s_MAX'],
-			// 	'RATIO-10s_AVG': row['RATIO-10s_AVG'],
-			// }));
 		} catch (error) {
 			console.error('SQL 쿼리 실행 실패 (QuestDB가 JSON 함수를 지원하지 않을 수 있습니다):', error.message);
 			// SQL 쿼리가 실패하면 JavaScript 버전으로 폴백

@@ -3,11 +3,11 @@
 */
 
 const zmq = require('zeromq');
-const { logError, safeAsync, validateObject } = require('../utils/errorHandler');
-const { FkbrtiEngine } = require("./fkbrti_engine");
-const logger = require('../utils/logger.js');
+const { logError, safeAsync, validateObject } = require('./errorHandler.js');
+const { FkbrtiEngine } = require("../service/fkbrti_engine.js");
+const logger = require('./logger.js');
 
-const { latestTickerByExchange, latestTradeByExchange, latestDepthByExchange } = require('../utils/common');
+const { latestTickerByExchange, latestTradeByExchange, latestDepthByExchange } = require('./common.js');
 
 // 거래소별 ticker의 최종 데이터를 담기 위한 Map 추가
 
@@ -43,6 +43,9 @@ async function init_zmq_depth_subscriber(subscribe_exchange) {
                         const orderbook_item = JSON.parse(payload.toString());
                         // 데이터 유효성 검사
                         validateObject(orderbook_item, 'orderbook_item');
+
+                        // console.log("orderbook_item=", orderbook_item);
+                        
 
                         if (orderbook_item.hasOwnProperty('raw')) {
                             delete orderbook_item.raw;

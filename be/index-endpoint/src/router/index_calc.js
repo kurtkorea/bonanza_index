@@ -38,10 +38,12 @@ router.get("/", prePaging("createdAt", "desc", 100), async (req, resp, next) => 
 			options.toDate = toDateObj.toISOString();			
 		}
 
+		const symbol = req.query.symbol || "KRW-BTC";
+
 		// console.log("options", options);
 
 		// 모델의 static 메서드 호출
-		const result = await db.tb_fkbrti_1sec.getIndexWithMovingAverage(options);
+		const result = await db.tb_fkbrti_1sec.getIndexWithMovingAverage(options, symbol);
 
 		let new_datalist = [];
 
@@ -57,10 +59,10 @@ router.get("/", prePaging("createdAt", "desc", 100), async (req, resp, next) => 
 			no_data: item.no_data,
 			no_publish: item.no_publish,
 			provisional: item.provisional,
-			UPBIT: item.expected_status.find(item => item.exchange == "101")?.price,
-			BITTHUMB: item.expected_status.find(item => item.exchange == "102")?.price,
-			COINONE: item.expected_status.find(item => item.exchange == "104")?.price,
-			KORBIT: item.expected_status.find(item => item.exchange == "103")?.price,
+			UPBIT: item.expected_status.find(item => item.exchange == "E0010001")?.price,
+			BITTHUMB: item.expected_status.find(item => item.exchange == "E0020001")?.price,
+			COINONE: item.expected_status.find(item => item.exchange == "E0030001")?.price,
+			KORBIT: item.expected_status.find(item => item.exchange == "E0050001")?.price,
 			diff_1: item.diff,
 			diff_5: 0,
 			diff_10: 0,
@@ -126,7 +128,10 @@ router.get("/stats", async (req, resp, next) => {
 	// #swagger.description = 'FKBRTI 통계 조회 (기간별 DIFF 및 RATIO 통계) - 1D, 1W, 1M, 1Y'
 	// #swagger.responses[200] = { description: '성공 시 통계 데이터 반환' }
 	try {
-		const stats = await db.tb_fkbrti_1sec.getStatsSQL();
+
+		const symbol = req.query.symbol || "KRW-BTC";
+
+		const stats = await db.tb_fkbrti_1sec.getStatsSQL( symbol );
 
 		resp.json({
 			result: true,

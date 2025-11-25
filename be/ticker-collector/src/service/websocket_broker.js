@@ -9,11 +9,10 @@
 const WebSocket = require("ws");
 const { MARKET_NO_ENUM, MARKET_NAME_ENUM, RECONNECT_INTERVAL, PING_INTERVAL, isJsonValue } = require("../utils/common.js");
 const { send_push } = require("../utils/zmq-sender-push.js");
-const { send_publisher } = require("../utils/zmq-sender-pub.js");
-
 const { sendTelegramMessage, sendTelegramMessageQueue } = require("../utils/telegram_push.js");
 const { generateQueueReport } = require("../utils/report.js");
 const logger = require("../utils/logger.js");
+const { redisManager } = require("../redis.js");
 
 // ===== 설정 =====
 // 큐 설정 (2 vCPU 환경 최적화)
@@ -274,14 +273,39 @@ class WebSocketBroker {
     this.queueStats.lastReportTime = Date.now();
   }
 
+  async saveToRedis( type, exchange_cd, item ) {
+    try {
+
+      if ( type === "trade" ) {
+        await redisManager.set(`trade:${exchange_cd}:${item.symbol}`, JSON.stringify(item));
+      } else if ( type === "ticker" ) {
+        await redisManager.set(`ticker:${exchange_cd}:${item.symbol}`, JSON.stringify(item));
+      }
+
+      // await redisManager.set(key, value);
+    } catch (error) {
+      logger.error('[Redis] save to redis error:', error);
+    }
+  }
+
   // 메시지 처리 로직
   async handleMessage(raw) {
     const payload = raw.toString();
+
     if (!isJsonValue(payload)) {
       // logger.warn({ exchange_nm: this.exchange_nm, payload }, "Skipping non-JSON message");
       return;
     }    
     const msg = JSON.parse(payload);
+
+    if ( msg?.response_type == "SUBSCRIBED" )
+      {
+        console.log("isOrderbookMsg", this.exchange_nm, msg);
+        return null;
+      }
+
+    // console.log("msg", msg);
+
     if (msg.n === "SubscribeToTradingPair" || msg.n === "OrderBookEvent") {
       // console.log(msg);
       return;
@@ -295,6 +319,7 @@ class WebSocketBroker {
         typeRawTrade === "TRADE" ||
         typeRawTrade === "PublicTradeEvent";
 
+    // if ( isTradeMsg )
     // console.log("isTradeMsg", msg);
 
     const isTickerMsg =
@@ -312,16 +337,19 @@ class WebSocketBroker {
     let ticker_items = [];
 
     if (this.exchange_cd === "E0010001") {
-      // console.log(msg);
       const symbol = msg.cd || msg.code;
       const symbol_item = this.symbols.get(symbol);
       if ( symbol_item != null ) {
         const marketAt = msg.tms;
+        const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
+        const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
         const collectorAt = new Date(Date.now()).getTime();
         if ( isTradeMsg ) {
           const trade_item = {
-            sequential_id: msg.sid,
+            sequential_id: msg.sid.toString(),
             symbol: symbol_item.symbol,
+            tran_date: tran_date,
+            tran_time: tran_time,
             exchange_cd: this.exchange_cd,
             exchange_nm: this.exchange_nm,
             price_id: symbol_item.price_id,
@@ -336,10 +364,14 @@ class WebSocketBroker {
             diff_ms: (collectorAt - marketAt) / 1000,
           };
           trade_items.push(trade_item);
+          await this.saveToRedis("trade", this.exchange_cd, trade_item);
+          // console.log("trade_items", trade_items);
         }
         if ( isTickerMsg ) {
           const ticker_item = {
             symbol: symbol_item.symbol,
+            tran_date: tran_date,
+            tran_time: tran_time,
             exchange_cd: this.exchange_cd,
             exchange_nm: this.exchange_nm,
             price_id: symbol_item.price_id,
@@ -356,6 +388,7 @@ class WebSocketBroker {
             volume: Number(msg.atv24h),
           };
           ticker_items.push(ticker_item);
+          await this.saveToRedis("ticker", this.exchange_cd, ticker_item);
           // console.log("ticker_items", ticker_items);
         }
       }
@@ -364,11 +397,15 @@ class WebSocketBroker {
       const symbol_item = this.symbols.get(symbol);
       if ( symbol_item != null ) {
         const marketAt = msg.tms;
+        const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
+        const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
         const collectorAt = new Date(Date.now()).getTime();
         if ( isTradeMsg ) {
           const trade_item = {
-              sequential_id: msg.sid,
+              sequential_id: msg.sid.toString(),
               symbol: symbol_item.symbol,
+              tran_date: tran_date,
+              tran_time: tran_time,
               exchange_cd: this.exchange_cd,
               exchange_nm: this.exchange_nm,
               price_id: symbol_item.price_id,
@@ -383,11 +420,14 @@ class WebSocketBroker {
               diff_ms: (collectorAt - marketAt) / 1000,
           };
           trade_items.push(trade_item);
+          await this.saveToRedis("trade", this.exchange_cd, trade_item);
+          // console.log("trade_items", trade_items);
         }
         if ( isTickerMsg ) {
-          // console.log("msg", msg);
           const ticker_item = {
             symbol: symbol_item.symbol,
+            tran_date: tran_date,
+            tran_time: tran_time,
             exchange_cd: this.exchange_cd,
             exchange_nm: this.exchange_nm,
             price_id: symbol_item.price_id,
@@ -404,6 +444,7 @@ class WebSocketBroker {
             volume: Number(msg.atv24h),
           };
           ticker_items.push(ticker_item);
+          await this.saveToRedis("ticker", this.exchange_cd, ticker_item);
           // console.log("ticker_items", ticker_items);
         }
       }
@@ -412,11 +453,15 @@ class WebSocketBroker {
       const symbol_item = this.symbols.get(symbol);
       if ( symbol_item != null ) {
         const marketAt = msg?.d?.t;
+        const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
+        const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
         const collectorAt = new Date(Date.now()).getTime();
         if ( isTradeMsg ) {
           const trade_item = {
-            sequential_id: msg?.d?.i,
+            sequential_id: msg?.d?.i.toString(),
             symbol: symbol_item.symbol,
+            tran_date: tran_date,
+            tran_time: tran_time,
             exchange_cd: this.exchange_cd,
             exchange_nm: this.exchange_nm,
             price_id: symbol_item.price_id,
@@ -431,11 +476,14 @@ class WebSocketBroker {
             diff_ms: (collectorAt - marketAt) / 1000,
           };
           trade_items.push(trade_item);
+          await this.saveToRedis("trade", this.exchange_cd, trade_item);
+          // console.log("trade_items", trade_items);
         }
         if ( isTickerMsg ) {
-          // console.log("msg", msg);
           const ticker_item = {
             symbol: symbol_item.symbol,
+            tran_date: tran_date,
+            tran_time: tran_time,
             exchange_cd: this.exchange_cd,
             exchange_nm: this.exchange_nm,
             price_id: symbol_item.price_id,
@@ -452,6 +500,7 @@ class WebSocketBroker {
             volume: Number(msg?.d?.tv),
           };
           ticker_items.push(ticker_item);
+          await this.saveToRedis("ticker", this.exchange_cd, ticker_item);
           // console.log("ticker_items", ticker_items);
         }
       }
@@ -459,13 +508,22 @@ class WebSocketBroker {
       const symbol = msg.symbol;
       const symbol_item = this.symbols.get(symbol);
       if ( symbol_item != null ) {
+
         if ( isTradeMsg ) {
           for ( const trade of msg.data ) {
             const marketAt = trade?.timestamp;
+            if (!marketAt) {
+              logger.warn({ ex: this.exchange_nm, trade }, "Missing marketAt in trade, skipping");
+              continue;
+            }
+            const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
+            const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");            
             const collectorAt = new Date(Date.now()).getTime();
             const trade_item = {
-              sequential_id: trade?.tradeId,
+              sequential_id: trade?.tradeId.toString(),
               symbol: symbol_item.symbol,
+              tran_date: tran_date,
+              tran_time: tran_time,
               exchange_cd: this.exchange_cd,
               exchange_nm: this.exchange_nm,
               price_id: symbol_item.price_id,
@@ -480,14 +538,23 @@ class WebSocketBroker {
               diff_ms: (collectorAt - marketAt) / 1000,
             };
             trade_items.push(trade_item);
+            await this.saveToRedis("trade", this.exchange_cd, trade_item);
+            // console.log("trade_items", trade_items);
           }
         }
         if ( isTickerMsg ) {
-          // console.log("msg", msg);
           const marketAt = msg?.timestamp;
+          if (!marketAt) {
+            logger.warn({ ex: this.exchange_nm, msg }, "Missing marketAt in ticker, skipping");
+            return null;
+          }
+          const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
+          const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
           const collectorAt = new Date(Date.now()).getTime();
           const ticker_item = {
             symbol: symbol_item.symbol,
+            tran_date: tran_date,
+            tran_time: tran_time,
             exchange_cd: this.exchange_cd,
             exchange_nm: this.exchange_nm,
             price_id: symbol_item.price_id,
@@ -504,6 +571,7 @@ class WebSocketBroker {
             volume: Number(msg?.data?.volume),
           };
           ticker_items.push(ticker_item);
+          await this.saveToRedis("ticker", this.exchange_cd, ticker_item);
           // console.log("ticker_items", ticker_items);
         }
       }
@@ -566,8 +634,9 @@ class WebSocketBroker {
   }
 
   start(client) {
+    console.log("this.wss_url", this.wss_url);
     this.websocket = new WebSocket(this.wss_url);
-    this.websocket.on("open", () => {
+    this.websocket.on("open", async () => {
       let sub = [
         { ticket: "execavg-tw" },
         { type: "orderbook", codes: [this.subscribe_symbol] },
@@ -583,62 +652,46 @@ class WebSocketBroker {
         let sub_trade = [
             { ticket: "bonanza-trade" },
             { type: "trade", codes: sub_symbols },
+            { type: "ticker", codes: sub_symbols },            
             { format: "SIMPLE" },
         ];
         this.websocket.send(Buffer.from(JSON.stringify(sub_trade), "utf8"));
 
-        // let sub_ticker = [
-        //   { ticket: "bonanza-ticker" },
-        //   { type: "ticker", codes: sub_symbols },
-        //   { format: "SIMPLE" },
-        // ];
-        // this.websocket.send(Buffer.from(JSON.stringify(sub_ticker), "utf8"));
-
-        // logger.info({
-        //   ex: this.exchange_nm,
-        //   msg: "subscribed",
-        //   sub_trade: sub_trade,
-        //   sub_ticker: sub_ticker,
-        // });
+        logger.info({
+          ex: this.exchange_nm,
+          msg: "subscribed",
+          sub_trade: sub_trade,
+        });
 
       } else if (this.exchange_cd === "E0020001") {
-        // 빗썸 OK
+        // 빗썸 TEST OK
         let sub_symbols = [];
         for (const symbol_item of this.symbols.values()) {
           sub_symbols.push(symbol_item.subscribe_symbol);
         }
-        const sub_trade = [
-          { "ticket": "realtime-only" },
+        const sub_trade =[
+          {
+              "ticket": "bonanza-trade"
+          },
+          {
+            "type": "ticker",
+            "codes": sub_symbols,
+            "isOnlySnapshot": false,
+            "isOnlyRealtime": true
+          },
           {
             "type": "trade",
             "codes": sub_symbols,
             "isOnlySnapshot": false,
-            "isOnlyRealtime": true,
-          },
-          { "format": "SIMPLE" }
+            "isOnlyRealtime": true
+        },          
+          {
+              "format": "SIMPLE"
+          }
         ];
         this.websocket.send(Buffer.from(JSON.stringify(sub_trade), "utf8"));
-
-        // const sub_ticker = [
-        //   { "ticket": "realtime-only" },
-        //   {
-        //     "type": "ticker",
-        //     "codes": sub_symbols,
-        //     "isOnlySnapshot": false,
-        //     "isOnlyRealtime": true
-        //   },
-        //   { "format": "SIMPLE" }
-        // ];
-        // this.websocket.send(Buffer.from(JSON.stringify(sub_ticker), "utf8"));
-        // logger.info({
-        //   ex: this.exchange_nm,
-        //   msg: "subscribed",
-        //   sub_trade: sub_trade,
-        //   sub_ticker: sub_ticker,
-        // });
-
       } else if (this.exchange_cd === "E0030001") {
-        // 코인원
+        // 코인원 => TEST OK
         for (const symbol_item of this.symbols.values()) {
           const sub_trade = {
             request_type: "SUBSCRIBE",
@@ -648,23 +701,23 @@ class WebSocketBroker {
           };
           this.websocket.send(JSON.stringify(sub_trade));
           
-          // const sub_ticker = {
-          //   request_type: "SUBSCRIBE",
-          //   channel: "TICKER",
-          //   topic: { quote_currency: symbol_item.price_id_cd, target_currency: symbol_item.product_id_cd },
-          //   format: "SHORT",
-          // };
-          // this.websocket.send(JSON.stringify(sub_ticker));
+          const sub_ticker = {
+            request_type: "SUBSCRIBE",
+            channel: "TICKER",
+            topic: { quote_currency: symbol_item.price_id_cd, target_currency: symbol_item.product_id_cd },
+            format: "SHORT",
+          };
+          this.websocket.send(JSON.stringify(sub_ticker));
 
-          // logger.info({
-          //   ex: this.exchange_nm,
-          //   msg: "subscribed",
-          //   sub_trade: sub_trade,
-          //   sub_ticker: sub_ticker,
-          // });
+          logger.info({
+            ex: this.exchange_nm,
+            msg: "subscribed",
+            sub_trade: sub_trade,
+            sub_ticker: sub_ticker,
+          });
         }
       } else if (this.exchange_cd === "E0050001") {
-        // 코빗
+        // 코빗  => TEST OK
         let sub_symbols = [];
         for (const symbol_item of this.symbols.values()) {
           let lower_symbol = `${symbol_item.product_id_cd}_${symbol_item.price_id_cd}`;
@@ -675,24 +728,20 @@ class WebSocketBroker {
             method: "subscribe",
             type: "trade",
             symbols: sub_symbols,
-          },
+          },   
+          {
+            method: "subscribe",
+            type: "ticker",
+            symbols: sub_symbols,
+          },              
         ];
         this.websocket.send(JSON.stringify(sub_trade));
+        logger.info({
+          ex: this.exchange_nm,
+          msg: "subscribed",
+          sub_trade: sub_trade,
+        });
 
-        // const sub_ticker = [
-        //   {
-        //     method: "subscribe",
-        //     type: "ticker",
-        //     symbols: sub_symbols,
-        //   },
-        // ];
-        // this.websocket.send(JSON.stringify(sub_ticker));
-        // logger.info({
-        //   ex: this.exchange_nm,
-        //   msg: "subscribed",
-        //   sub_trade: sub_trade,
-        //   sub_ticker: sub_ticker,
-        // });
       } else if (this.exchange_cd === "E0080001") {
         // 고팍스
         // GOPAX 거래소 오더북 구독 (ws 요청)
@@ -769,11 +818,6 @@ class WebSocketBroker {
 // Trade 데이터 전송 함수 
 async function SendToTrade_ZMQ(trade_item, msg) {
   const topic = `${trade_item.exchange_cd}`;
-  const raw_trade_item = {
-    ...trade_item,
-    "type": "trade",
-    raw: msg,
-  };
   const payload = {
     ...trade_item,
     "type": "trade",
@@ -781,17 +825,11 @@ async function SendToTrade_ZMQ(trade_item, msg) {
   const ts = Date.now();
   await Promise.all([
     send_push(topic, ts, payload),
-    send_publisher(topic, raw_trade_item)
   ]);
 }
 
 async function SendToTicker_ZMQ(trade_item, msg) {
   const topic = `${trade_item.exchange_cd}`;
-  const raw_trade_item = {
-    ...trade_item,
-    "type": "ticker",
-    raw: msg,
-  };
   const payload = {
     ...trade_item,
     "type": "ticker",
@@ -799,12 +837,46 @@ async function SendToTicker_ZMQ(trade_item, msg) {
   const ts = Date.now();
   await Promise.all([
     send_push(topic, ts, payload),
-    send_publisher(topic, raw_trade_item)
   ]);
 }
 
 /** ------------------- 실행부 ------------------- */
 let clients = new Map();
+
+const IndexProcessInfo = require('../models/index_process_info.js');
+// 순환 참조 방지를 위해 동적 import 사용
+
+async function refresh_websocket_clients() {
+  const process_info = await IndexProcessInfo.getProcessInfo(global.process_id);
+  if (process_info) {	
+    const process_info_json = JSON.parse(process_info.process_info);
+    logger.info("Process info found:\n" + JSON.stringify(process_info_json, null, 2));
+    
+    // 병렬적으로 모든 상세 정보를 fetch하고 결과를 모아서 initializeWebsocketClients 실행
+    const process_info_detail_list = [];
+    for (let idx = 0; idx < process_info_json.length; idx++) {
+      const item = process_info_json[idx];
+      logger.info(`Process info [${idx}]: ${JSON.stringify(item)}`);
+
+      const process_info_detail = await IndexProcessInfo.getProcessInfoDetail(item.exchange_cd, item.price_id, item.product_id);
+      logger.info(`Process info detail: ${JSON.stringify(process_info_detail, null, 2)}`);
+      if ( process_info_detail.length > 0 ) {
+        process_info_detail_list.push(process_info_detail[0]);
+      }
+    }
+
+    initializeWebsocketClients(process_info_detail_list);
+    logger.info('WebSocket clients initialized successfully');
+
+    // 순환 참조 방지를 위해 동적 import
+    const { init_zmq_command_subscriber } = require('../utils/zmq-data-sub.js');
+    await init_zmq_command_subscriber(global.process_id);
+    logger.info("[ZMQ] Command subscriber initialized successfully.");
+  } else {
+    logger.error({ process_id: global.process_id }, "process_info not found. Please check the process_id.");
+    process.exit(1);
+  }
+}
 
 function initializeWebsocketClients(process_info_detail_list) {
   if (clients.length > 0) {
@@ -894,4 +966,5 @@ setInterval(() => {
 // Export the client classes
 module.exports = {
   initializeWebsocketClients,
+  refresh_websocket_clients,
 };

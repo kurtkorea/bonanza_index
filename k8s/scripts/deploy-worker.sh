@@ -123,6 +123,14 @@ for SERVICE in "${SELECTED_SERVICES[@]}"; do
     DEPLOYMENT_NAME=$(echo "$SERVICE" | cut -d: -f1)
     if [ "$DEPLOYMENT_NAME" = "index-calc-fe" ]; then
         kubectl delete deployment $DEPLOYMENT_NAME -n bonanza-index --ignore-not-found=true
+    elif [ "$DEPLOYMENT_NAME" = "orderbook-collector" ]; then
+        # orderbook-collector 다중 인스턴스 삭제
+        kubectl delete deployment orderbook-collector-1 -n bonanza-index --ignore-not-found=true
+        kubectl delete deployment orderbook-collector-2 -n bonanza-index --ignore-not-found=true
+        kubectl delete deployment orderbook-collector -n bonanza-index --ignore-not-found=true
+        kubectl delete service orderbook-collector-service-1 -n bonanza-index --ignore-not-found=true
+        kubectl delete service orderbook-collector-service-2 -n bonanza-index --ignore-not-found=true
+        kubectl delete service orderbook-collector-service -n bonanza-index --ignore-not-found=true
     else
         kubectl delete deployment $DEPLOYMENT_NAME -n bonanza-index --ignore-not-found=true
     fi
@@ -166,6 +174,13 @@ for SERVICE in "${SELECTED_SERVICES[@]}"; do
     if [ "$SERVICE_NAME" = "index-calc-fe" ]; then
         echo "  🎨 프론트엔드 배포 중: $SERVICE_NAME..."
         kubectl apply -f $DEPLOYMENT_DIR/
+    elif [ "$SERVICE_NAME" = "orderbook-collector" ]; then
+        echo "  🔧 orderbook-collector 다중 인스턴스 배포 중 (process_id 2개)..."
+        # deployment-1.yaml과 deployment-2.yaml 배포
+        kubectl apply -f $DEPLOYMENT_DIR/deployment-1.yaml
+        kubectl apply -f $DEPLOYMENT_DIR/deployment-2.yaml
+        kubectl apply -f $DEPLOYMENT_DIR/service-1.yaml
+        kubectl apply -f $DEPLOYMENT_DIR/service-2.yaml
     else
         echo "  🔧 백엔드 서비스 배포 중: $SERVICE_NAME..."
         kubectl apply -f $DEPLOYMENT_DIR/
@@ -220,12 +235,28 @@ ALL_SERVICES=(
 )
 
 for SERVICE in "${ALL_SERVICES[@]}"; do
-    SERVICE_PHASE=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
-    SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
-    SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
-    echo "$SERVICE:"
-    echo "  Phase: $SERVICE_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
-    echo ""
+    if [ "$SERVICE" = "orderbook-collector" ]; then
+        # orderbook-collector는 다중 인스턴스이므로 각각 확인
+        echo "$SERVICE (인스턴스 1):"
+        SERVICE_PHASE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=1 -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=1 -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+        SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=1 -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+        echo "  Phase: $SERVICE_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+        echo ""
+        echo "$SERVICE (인스턴스 2):"
+        SERVICE_PHASE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=2 -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=2 -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+        SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=2 -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+        echo "  Phase: $SERVICE_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+        echo ""
+    else
+        SERVICE_PHASE=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+        SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+        echo "$SERVICE:"
+        echo "  Phase: $SERVICE_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+        echo ""
+    fi
 done
 
 # 문제가 있는 Pod 확인

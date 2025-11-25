@@ -27,23 +27,22 @@ const RECONNECT_DELAY = 5000; // 5초
 async function init_zmq_push() {
   if (!push) {
     try {
-      logger.info(`Initializing ZMQ Push socket on port ${process.env.ZMQ_PUSH_PORT}...`);
+      logger.info(`Initializing ZMQ Push socket on host ${process.env.ZMQ_PUSH_HOST}...`);
       
       // ZMQ 소켓 생성
       push = new zmq.Push();
       
       // 소켓이 올바르게 생성되었는지 확인
       if (!push || typeof push.bind !== 'function') {
-        throw new Error('Failed to create ZMQ Push socket');
+        throw new Error('Failed to create ZMQ Push socsket');s
       }
       
-      // 바인딩 시도
-      await push.bind(`tcp://0.0.0.0:${process.env.ZMQ_PUSH_PORT}`);
+      push.connect(process.env.ZMQ_PUSH_HOST);
 
       // 큐 생성
       q = new ZmqSendQueuePush(push);
       
-      logger.info(`✅ ZMQ Push socket initialized successfully on port ${process.env.ZMQ_PUSH_PORT}`);
+      logger.info(`✅ ZMQ Push socket initialized successfully on host ${process.env.ZMQ_PUSH_HOST}`);
     } catch (error) {
       logger.error({ ex: "ZMQ", err: String(error) }, "❌ Failed to initialize ZMQ Push socket");
       

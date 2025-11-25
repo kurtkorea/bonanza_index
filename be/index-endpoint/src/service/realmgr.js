@@ -32,7 +32,7 @@ async function runSubscriber() {
             const topic_id = "/topic/" + topic.toString();
             if ( stompServer != null) {
                 const items = JSON.parse(msg.toString());
-                // console.log("item", JSON.stringify(item, null, 2));
+                // console.log("item", JSON.stringify(items, null, 2));
                  try {
                     let new_items = [];
                     for (const item of items) {
@@ -47,10 +47,10 @@ async function runSubscriber() {
                             vwap_sell: common.isEmpty(item?.vwap_sell) ? 0 : item?.vwap_sell,
                             no_publish: item?.no_publish,
                             provisional: item?.provisional,
-                            UPBIT: item?.expected_status?.find(item => item?.exchange == "101")?.price,
-                            BITTHUMB: item?.expected_status?.find(item => item?.exchange == "102")?.price,
-                            COINONE: item?.expected_status?.find(item => item?.exchange == "104")?.price,
-                            KORBIT: item?.expected_status?.find(item => item?.exchange == "103")?.price,
+                            UPBIT: item?.expected_status?.find(item => item?.exchange == "E0010001")?.price,
+                            BITTHUMB: item?.expected_status?.find(item => item?.exchange == "E0020001")?.price,
+                            COINONE: item?.expected_status?.find(item => item?.exchange == "E0030001")?.price,
+                            KORBIT: item?.expected_status?.find(item => item?.exchange == "E0050001")?.price,
                             actual_avg: item?.actual_avg,
                             diff_1: item?.diff_1,
                             diff_5: 0,
@@ -112,14 +112,8 @@ async function runSubscriber() {
                           new_item.ratio_10 = Math.abs(new_item.diff_10 / colI);
                         }
                         new_item.ratio_10 = new_item.ratio_10 * 100;
-
-                        // console.log ( "new_item", JSON.stringify(new_item, null, 2));
-
                         new_items.push( new_item );
                     }
-
-                    // console.log("new_items", JSON.stringify(new_items, null, 2));
-
                     stompServer.send(topic_id, { 'content-type': 'application/json' }, JSON.stringify(new_items));
                  } catch (error) {
                     console.error('Error parsing JSON:', error);

@@ -13,7 +13,7 @@ function* userInit() {
 		type: "websocket-subscribe",
 		payload: {
 			name: "fkbrti",
-			url: "/topic/fkbrti",
+			url: "/topic/fkbrti/KRW-BTC",
 			// user_id: "test001",
 			// manage: "TEST",
 		},

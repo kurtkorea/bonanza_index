@@ -14,16 +14,15 @@ Storage Worker가 **QuestDB(ILP)** 에 시계열로 적재합니다.
 
 ## 구성 요소
 
-| 모듈 | 설명 |
-|---|---|
-| **orderbook-collector-\*** | 거래소별 호가 수집 (Upbit/Bithumb/Binance…) |
-| **ticker-collector-\*** | 거래소별 현재가·체결 수집 |
-| **orderbook-storage-worker** | ZMQ 호가 구독 → QuestDB ILP 저장 |
-| **ticker-storage-worker** | ZMQ 티커 구독 → QuestDB ILP 저장 |
-| **orderbook-aggregator** | 거래소별 호가 합산(확장성 위해 Collector와 분리) |
-| **index-calculator** | 합산 호가 기반 지수 계산/저장 |
-| **index-endpoint** | 지수 조회 API (REST) |
-| **QuestDB** | 시계열 DB (ILP 9009 / REST 9000 / PGWire 8812) |
+| 모듈 | 설명 | 배포 방식 |
+|---|---|---|
+| **orderbook-collector** | 거래소별 호가 수집 (Upbit/Bithumb/Binance…) | ☸️ Kubernetes |
+| **ticker-collector** | 거래소별 현재가·체결 수집 | ☸️ Kubernetes |
+| **orderbook-storage-worker** | ZMQ 호가 구독 → QuestDB ILP 저장 | ☸️ Kubernetes |
+| **ticker-storage-worker** | ZMQ 티커 구독 → QuestDB ILP 저장 | ☸️ Kubernetes |
+| **index-calculator** | 합산 호가 기반 지수 계산/저장 | ☸️ Kubernetes |
+| **index-endpoint** | 지수 조회 API (REST) | ☸️ Kubernetes |
+| **QuestDB** | 시계열 DB (ILP 9009 / REST 9000 / PGWire 8812) | ☸️ Kubernetes |
 
 ---
 

@@ -37,7 +37,6 @@ RUN if [ -f package-lock.json ]; then \
 # orderbook-storage-worker 소스 코드 복사 (src/ddl 폴더 포함)
 COPY orderbook-storage-worker/src ./src
 COPY orderbook-storage-worker/env ./env
-COPY orderbook-storage-worker/models ./models
 
 # Babel 빌드
 RUN npm run build || (echo "Build failed!" && exit 1)

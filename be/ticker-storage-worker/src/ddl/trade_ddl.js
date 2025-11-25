@@ -5,11 +5,11 @@ async function trade_schema(db) {
         const trade = `
         CREATE TABLE IF NOT EXISTS tb_exchange_trade (
             tran_dt        STRING,     -- VARCHAR(8)
+            tran_tm        STRING,                  -- VARCHAR(6)
             exchange_cd    SYMBOL CAPACITY 1024,    -- VARCHAR(8) -> SYMBOL 추천
             sequential_id  STRING,                  -- VARCHAR(30)
             price_id       LONG,                    -- BIGINT
-            product_id     LONG,                    -- BIGINT
-            tran_tm        STRING,                  -- VARCHAR(6)
+            product_id     LONG,                    -- BIGINT            
             buy_sell_gb    SYMBOL CAPACITY 4,       -- '1'/'2' or 'ASK'/'BID'
             trade_price    DOUBLE,
             trade_volumn   DOUBLE,

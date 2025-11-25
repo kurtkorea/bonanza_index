@@ -1,6 +1,7 @@
 // receiver-pull-queue.js
 const path = require("path");
 const dotenv = require("dotenv");
+const { send_publisher } = require("./zmq-sender-pub.js");
 
 // 환경 변수 로드
 if (process.env.NODE_ENV === "production") {
@@ -179,29 +180,9 @@ function toNs(anyTs, fallbackMs = Date.now()) {
  }
 
  function toILP_Trade(data) {
-  /*
-            tran_dt        STRING,     -- VARCHAR(8)
-            exchange_cd    SYMBOL CAPACITY 1024,    -- VARCHAR(8) -> SYMBOL 추천
-            sequential_id  STRING,                  -- VARCHAR(30)
-            price_id       LONG,                    -- BIGINT
-            product_id     LONG,                    -- BIGINT
-            tran_tm        STRING,                  -- VARCHAR(6)
-            buy_sell_gb    SYMBOL CAPACITY 4,       -- '1'/'2' or 'ASK'/'BID'
-            trade_price    DOUBLE,
-            trade_volumn   DOUBLE,
-            timestamp      LONG,                    -- BIGINT (ms/us timestamp)
-            cont_dtm       STRING,                  -- VARCHAR(20)
-            marketAt        TIMESTAMP,              -- 거래소에서 찍혀온 시간
-            coollectorAt    TIMESTAMP,              -- 수집 시간
-            dbAt            TIMESTAMP,              -- DB에 저장된 시간
-            diff_ms         DOUBLE,                 -- 거래소에서 찍혀온 시간과 수집 시간의 차이
-            diff_ms_db      DOUBLE                  -- 거래소에서 찍혀온 시간과 DB에 저장된 시간의 차이
-  */
-  const timestamp = new Date(data.marketAt).toISOString().split("T")[0] + " " + new Date(data.marketAt).toISOString().split("T")[1].split(".")[0];
 
-  const tran_dt = new Date(data.marketAt).toISOString().split("T")[0].replace(/-/g, "");
-  const tran_tm = new Date(data.marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
-  const tags = `exchange_cd=${escTag(data.exchange_cd)},tran_dt=${escTag(tran_dt)},tran_tm=${escTag(tran_tm)},sequential_id=${escTag(data.sequential_id)}`;
+  const timestamp = new Date(data.marketAt).toISOString().split("T")[0] + " " + new Date(data.marketAt).toISOString().split("T")[1].split(".")[0];
+  const tags = `exchange_cd=${escTag(data.exchange_cd)},tran_dt=${escTag(data.tran_date)},tran_tm=${escTag(data.tran_time)},sequential_id=${escTag(data.sequential_id)}`;
   const fields = [];
 
   if (data.price_id != null)         fields.push(`price_id=${intField(data.price_id)}`);
@@ -339,8 +320,10 @@ async function startPullQueue() {
 
   // 1) ZMQ PULL
   const pull = new zmq.Pull();
-  pull.connect( process.env.ZMQ_PUSH_HOST );
-  logger.info(`[PULL] connected ${process.env.ZMQ_PUSH_HOST}`);
+  await pull.bind(process.env.ZMQ_PULL_HOST);
+  // bind 완료 후 소켓이 완전히 준비될 때까지 짧은 지연 (100ms)
+  await new Promise(resolve => setTimeout(resolve, 100));
+  logger.info({ ex: "PULL", host: process.env.ZMQ_PULL_HOST }, "[PULL] BIND");
 
   // 2) 작업 큐 (개별 처리 경로 쓸 때)
   const workQueue = new AsyncWorkQueue({
@@ -378,6 +361,8 @@ async function startPullQueue() {
             }
             const ticker_row = {
               symbol: d.symbol,
+              tran_date: d.tran_date,
+              tran_time: d.tran_time,
               exchange_cd: d.exchange_cd,
               exchange_nm: d.exchange_nm,
               open: d.open,
@@ -428,6 +413,19 @@ async function startPullQueue() {
     for await (const msg of pull) {
       if (msg.length === 3) {
         const [topicBuf, tsBuf, payloadBuf] = msg;
+
+        // ZMQ PUB로 전송 (비동기, await 없이 실행)
+        const topic_str = topicBuf.toString();
+        let payload_parsed;
+        try { 
+          payload_parsed = JSON.parse(payloadBuf); 
+        } catch { 
+          payload_parsed = String(payloadBuf); 
+        }
+        send_publisher(topic_str, payload_parsed).catch(err => {
+          logger.error({ ex: "PUB", err: String(err) }, "[PUB] send error:");
+        });
+
         let parsed;
         try { parsed = JSON.parse(payloadBuf); }
         catch { parsed = String(payloadBuf); }
@@ -437,6 +435,7 @@ async function startPullQueue() {
           ts: Number(tsBuf.toString()),
           data: parsed
         };
+        
         if (process.env.IS_BATCH === "true") {
           batcher.push(item);
         } else {

@@ -5,6 +5,8 @@ async function fkbrti_1sec_schema(quest_db) {
     try {
         const fkbrti_1sec = `
         CREATE TABLE IF NOT EXISTS tb_fkbrti_1sec (
+            tran_date       SYMBOL,
+            tran_time       SYMBOL,        
             symbol          SYMBOL CAPACITY 128,
             vwap_buy      DOUBLE,
             vwap_sell     DOUBLE,
@@ -25,6 +27,7 @@ async function fkbrti_1sec_schema(quest_db) {
     } catch (error) {
         logger.error({ ex: "DDL", err: String(error), stack: error.stack }, "[DDL] tb_fkbrti_1sec error");
     }
+    
 }
 
 module.exports = { fkbrti_1sec_schema };

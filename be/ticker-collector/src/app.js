@@ -11,6 +11,8 @@ const  { sendTelegramMessage } = require('./utils/telegram_push.js')
 const logger = require('./utils/logger.js');
 const { initializeWebsocketClients } = require('./service/websocket_broker.js');
 const IndexProcessInfo = require('./models/index_process_info.js');
+const { initializeRedis } = require('./redis.js');
+const { init_zmq_command_subscriber } = require('./utils/zmq-data-sub.js');
 
 // const { UpbitClientTrade, BithumbClientTrade, KorbitClientTrade, CoinoneClientTrade } = require('./service/websocket_trade_broker.js');
 // const { UpbitClientTicker, BithumbClientTicker, KorbitClientTicker, CoinoneClientTicker } = require('./service/websocket_ticker_broker.js');
@@ -120,10 +122,15 @@ const db_mysql = require("./models");
 async function initializeApp() {
 	try {
 
+		await initializeRedis();
+		logger.info("[Redis] Database connection has been established successfully.");
+
 		await db_mysql.sequelize.sync({ force: false });
 		logger.info("[MySQL] Database connection has been established successfully.");
 
 		await connect_quest_db();
+		logger.info("[QuestDB] Database connection has been established successfully.");
+
 		await systemlog_schema(quest_db);
 		await report_schema(quest_db);
 		await sendTelegramMessage ( "SYSTEM", "Ticker-Collector Initialization.");
@@ -149,6 +156,9 @@ async function initializeApp() {
 			initializeWebsocketClients(process_info_detail_list);
 			// initializeClients(process_info_detail_list);
 			logger.info('WebSocket clients initialized successfully');
+
+			await init_zmq_command_subscriber(global.process_id);
+			logger.info("[ZMQ] Command subscriber initialized successfully.");
 		} else {
 			logger.error({ process_id: global.process_id }, "process_info not found. Please check the process_id.");
 			process.exit(1);
@@ -170,9 +180,9 @@ async function handleAppShutdown(signal) {
 	process.exit(0);
 }
 
-app.listen(app.get("port"), '0.0.0.0', () => {
-	logger.info({ ex: "APP", port: app.get("port") }, `🚀 REST API Server started: http://0.0.0.0:${app.get("port")}`);
-});
+// app.listen(app.get("port"), '0.0.0.0', () => {
+// 	logger.info({ ex: "APP", port: app.get("port") }, `🚀 REST API Server started: http://0.0.0.0:${app.get("port")}`);
+// });
 
 process.on('SIGINT', () => handleAppShutdown('SIGINT'));
 process.on('SIGTERM', () => handleAppShutdown('SIGTERM'));

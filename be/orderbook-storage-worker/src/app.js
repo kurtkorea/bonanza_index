@@ -10,6 +10,7 @@ const logger = require('./utils/logger');
 // const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/mockup_time_weight_execution');
 
 const { startPullQueue } = require("./utils/receiver-pull-queue.js");
+const { init_zmq_pub } = require("./utils/zmq-sender-pub.js");
 
 if (process.env.NODE_ENV === "production") {
 	dotenv.config({ path: path.join(__dirname, "../env/prod.env") });
@@ -76,10 +77,9 @@ app.use((err, req, res, next) => {
 async function initializeApp() {
 	try {
 		// DB 연결
+		await init_zmq_pub();
 		await connect_quest_db();
 		await orderbook_schema(quest_db);
-		
-		// ZMQ 큐 시작
 		await startPullQueue();
 
 		// servier 초기화
@@ -97,9 +97,9 @@ initializeApp().catch((error) => {
 	process.exit(1);
 });
 
-app.listen(app.get("port"), '0.0.0.0', () => {
-	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
-});
+// app.listen(app.get("port"), '0.0.0.0', () => {
+// 	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+// });
 
 process.on('unhandledRejection', (reason, p) => {
 	logger.error({ ex: "APP", err: String(reason) }, "[unhandledRejection]");

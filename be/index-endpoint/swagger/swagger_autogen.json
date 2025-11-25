@@ -1,5 +1,6 @@
 {
   "swagger": "2.0",
+  "openapi": false,
   "info": {
     "title": "index-calculator",
     "version": "1.0.0",
@@ -86,6 +87,11 @@
         "description": "FKBRTI 지수 계산 (5초, 10초 이동평균 포함)",
         "parameters": [
           {
+            "name": "symbol",
+            "in": "query",
+            "type": "string"
+          },
+          {
             "name": "sort",
             "in": "query",
             "type": "string"
@@ -140,6 +146,13 @@
           "Index Calculation"
         ],
         "description": "FKBRTI 통계 조회 (기간별 DIFF 및 RATIO 통계) - 1D, 1W, 1M, 1Y",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "type": "string"
+          }
+        ],
         "responses": {
           "200": {
             "description": "성공 시 통계 데이터 반환"

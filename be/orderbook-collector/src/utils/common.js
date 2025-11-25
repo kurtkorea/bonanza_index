@@ -46,18 +46,18 @@ var open_orders = new Map();
 var positions = new Map();
 
 const MARKET_NO = Object.freeze({
-	UPBIT: 101,
-	BITHUMB: 102,
-	KORBIT: 103,
-	COINONE: 104
+	UPBIT: "E0010001",
+	BITHUMB: "E0020001",
+	KORBIT: "E0050001",
+	COINONE: "E0030001"
 });
 
 // enum 형태로 변경 (ES6의 객체 freeze를 활용한 유사 enum)
 const MARKET_NO_ENUM = Object.freeze({
-	UPBIT: 101,
-	BITHUMB: 102,
-	KORBIT: 103,
-	COINONE: 104
+	UPBIT: "E0010001"	,
+	BITHUMB: "E0020001",
+	KORBIT: "E0050001",
+	COINONE: "E0030001"
 });
 
 const MARKET_NAME_ENUM = Object.freeze({

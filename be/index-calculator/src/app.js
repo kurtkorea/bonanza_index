@@ -6,15 +6,12 @@ const path = require("path");
 const dotenv = require("dotenv");
 const http = require('http');
 const logger = require('./utils/logger');
-// const { send_push, getZMQStatus, healthCheckZMQ } = require("./utils/zmq-sender-push.js");
 
-// const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
-
-const { init_zmq_depth_subscriber, init_zmq_ticker_subscriber } = require('./service/zmq-data-sub.js');
+const { init_zmq_depth_subscriber, init_zmq_ticker_subscriber } = require('./utils/zmq-data-sub.js');
 const { connect_quest_db, quest_db } = require("./db/quest_db.js");
 const { fkbrti_1sec_schema } = require('./ddl/fkbrti_1sec_ddl.js');
 
-const { init_zmq_pub } = require('./service/zmq-sender-pub.js');
+const { init_zmq_pub } = require('./utils/zmq-sender-pub.js');
 
 // Start of Selection
 global.logging = false;
@@ -153,7 +150,7 @@ initializeApp().catch((error) => {
 	process.exit(1);
 });
 
-app.listen(app.get("port"), '0.0.0.0', () => {
-	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
-});
+// app.listen(app.get("port"), '0.0.0.0', () => {
+// 	logger.info(`🚀 REST API 서버 실행: http://0.0.0.0:${app.get("port")}`);
+// });
 

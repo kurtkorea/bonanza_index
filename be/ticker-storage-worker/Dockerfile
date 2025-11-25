@@ -28,7 +28,6 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 # ticker-storage-worker 소스 코드 복사
 COPY ticker-storage-worker/src ./src
 COPY ticker-storage-worker/env ./env
-COPY ticker-storage-worker/models ./models
 
 # src/ddl 폴더 확인
 RUN ls -la ./src/ddl

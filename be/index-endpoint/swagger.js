@@ -18,5 +18,6 @@ swaggerAutogen(outputFile, endpointsFiles, {
 		title: process.env.SERVICE,
 	},
 	schemes: ["http", "https"],
+	openapi: false, // 개발 환경에서 브라우저 자동 열기 비활성화
 	...options
 });

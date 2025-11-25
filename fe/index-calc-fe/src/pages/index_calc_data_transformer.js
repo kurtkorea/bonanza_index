@@ -71,10 +71,10 @@ export const transformIndexCalcData = (apiDataList) => {
     const expectedStatus = item.expected_status || [];
     
     // 거래소별 가격 추출
-    const upbit = getExchangePrice(expectedStatus, "101");
-    const bitthumb = getExchangePrice(expectedStatus, "102");
-    const korbit = getExchangePrice(expectedStatus, "103");
-    const coinone = getExchangePrice(expectedStatus, "104");
+    const upbit = getExchangePrice(expectedStatus, "E0010001");
+    const bitthumb = getExchangePrice(expectedStatus, "E0020001");
+    const korbit = getExchangePrice(expectedStatus, "E0050001");
+    const coinone = getExchangePrice(expectedStatus, "E0030001");
     
     // 평균가 계산
     const actualAvg = calculateActualAvg(expectedStatus);

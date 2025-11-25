@@ -93,6 +93,13 @@ class IndexProcessInfo extends Sequelize.Model {
             type: Sequelize.QueryTypes.SELECT,
             replacements: [exchange_cd, price_id, product_id]
         });
+
+        for ( const item of result ) {
+            if ( item.exchange_cd === "E0020001" ) {
+                item.wss_url = "wss://ws-api.bithumb.com/websocket/v1";
+            }
+        }
+
         return result;
     }
 }

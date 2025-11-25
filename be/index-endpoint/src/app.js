@@ -12,7 +12,8 @@ const { init_server } = require('./service/realmgr');
 // const { UpbitClient, BithumbClient, KorbitClient, CoinoneClient } = require('./service/websocket_broker.js');
 
 const { connect_quest_db, quest_db } = require("./db/quest_db.js");
-const tb_fkbrti_1sec = require("./models/tb_fkbrti_1sec.js");
+const tb_fkbrti_1sec = require("./model_quest/tb_fkbrti_1sec.js");
+const { init_zmq_pub } = require('./utils/zmq-sender-pub.js');
 
 // Start of Selection
 global.logging = false;
@@ -97,12 +98,12 @@ const { respMsg } = require("./utils/common");
 const indexHistoryRouter = require("./router/index_history.js");
 const indexCalcRouter = require("./router/index_calc.js");
 const fileDownloadRouter = require("./router/file_download.js");
-
+const commandRouter = require("./router/command.js");
 // 라우터 등록
 app.use("/v1/index_history", indexHistoryRouter);
 app.use("/v1/index_calc", indexCalcRouter);
 app.use("/v1/file_download", fileDownloadRouter);
-
+app.use("/v1/command", commandRouter);
 //404 handling middleware
 app.use((req, res) => {
 	logger.warn({ method: req.method, url: req.url }, "404 Not Found:");
@@ -121,9 +122,15 @@ app.use((err, req, res, next) => {
 	respMsg(res, "server_error");
 });
 
+const { db_mysql } = require("./model_mysql");
+const IndexProcessInfo = require("./model_mysql/index_process_info.js");
+
 async function initializeApp() {
 	try {
 		logger.info('애플리케이션 초기화 시작...');
+
+		await init_zmq_pub();
+		logger.info('ZMQ Pub socket initialized successfully');
 
 		// DB 연결
 		logger.info('DB 연결 중...');
@@ -135,6 +142,15 @@ async function initializeApp() {
 		tb_fkbrti_1sec.init(quest_db.sequelize);
 		quest_db.tb_fkbrti_1sec = tb_fkbrti_1sec;
 		logger.info('모델 초기화 완료');
+
+		const process_info = process.env.PROCESS_ID.split(",");
+		for (const item of process_info) {
+			const process_info_detail = await IndexProcessInfo.getProcessInfo(item);
+			if (process_info_detail) {
+				const process_info_detail_json = JSON.parse(process_info_detail.process_info);
+				console.log(process_info_detail_json);
+			}
+		}
 
 		await init_server(server, app.get("port"));
 

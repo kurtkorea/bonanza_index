@@ -1,5 +1,39 @@
 #!/bin/bash
 
+# 스크립트 디렉토리에서 kubeconfig 설정 스크립트 로드
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/kubeconfig-setup.sh" ]; then
+    source "$SCRIPT_DIR/kubeconfig-setup.sh"
+    if ! setup_kubeconfig; then
+        exit 1
+    fi
+else
+    # kubeconfig-setup.sh가 없는 경우 직접 설정
+    K3S_CONFIG="/etc/rancher/k3s/k3s.yaml"
+    USER_CONFIG="$HOME/.kube/config"
+    
+    if [ -f "$K3S_CONFIG" ]; then
+        mkdir -p "$HOME/.kube"
+        if [ ! -f "$USER_CONFIG" ]; then
+            sudo cp "$K3S_CONFIG" "$USER_CONFIG"
+            sudo chown "$(whoami):$(whoami)" "$USER_CONFIG"
+        fi
+        export KUBECONFIG="$USER_CONFIG"
+    elif [ -f "$USER_CONFIG" ]; then
+        export KUBECONFIG="$USER_CONFIG"
+    else
+        echo "⚠️  kubeconfig를 찾을 수 없습니다"
+        echo "   sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config"
+        echo "   sudo chown \$USER:\$USER ~/.kube/config"
+        exit 1
+    fi
+    
+    if ! kubectl cluster-info &>/dev/null 2>&1; then
+        echo "❌ Kubernetes 클러스터에 연결할 수 없습니다"
+        exit 1
+    fi
+fi
+
 echo "🚀 Bonanza Index 배포 상태"
 echo "================================"
 echo ""
