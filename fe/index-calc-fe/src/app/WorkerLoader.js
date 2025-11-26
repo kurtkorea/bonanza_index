@@ -40,6 +40,7 @@ const WorkerLoader = ({ children }) => {
 			alert("Not supported browser.");
 		}
 		dispatch({ type: "init" });
+		dispatch({ type: "master/init" });
 	}, []);
 
 	useEffect(() => {

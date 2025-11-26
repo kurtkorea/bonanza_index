@@ -1,10 +1,9 @@
-import { Divider, message, Modal, Popconfirm, Switch, Button } from "antd";
+import { Divider, message, Modal, Popconfirm, Switch, Button, Select } from "antd";
 import axios from "axios";
 import classNames from "classnames";
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import common from "../common";
-import { isUndefined } from "lodash";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from 'react-query';
 import { DatePicker } from 'antd';
@@ -230,15 +229,19 @@ const IndexCalcTable = () => {
   const index_list = useSelector(state => state.IndexReducer.index_data);
   const minMaxInfo = useSelector((state) => state.IndexReducer.MIN_MAX_INFO);
   const summaryStats = useSelector((state) => state.IndexReducer.summaryStats);
+  
+  const symbols = useSelector((state) => state.MasterReducer.symbols) || [];
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5000);
   const [totalCount, setTotalCount] = useState(0);
   const [pagination, setPagination] = useState({hasNext: false, hasPrev: false, page: 1, size: 5000, totalCount: 0, totalPages: 0});
 
+  const [selectedSymbol, setSelectedSymbol] = useState(symbols[0] || null);
+  const [previousSymbol, setPreviousSymbol] = useState(null);
 
   // Fetch data with paging
-  const fetchData = async (page = currentPage, size = pageSize) => 
+  const fetchData = async (page = currentPage, size = pageSize, symbol = selectedSymbol, updateWebSocket = false) => 
   {
     setLoading(true);
     try {
@@ -250,13 +253,12 @@ const IndexCalcTable = () => {
           from_date: fromDate,
           to_date: toDate,
           page: page,
-          size: size
+          size: size,
+          symbol: symbol
         }
       });
       setPagination ( res.data.pagination );
       setTotalCount(res.data.pagination.totalCount);
-
-      console.log("total_count", res.data.pagination.totalCount);
       setCurrentPage(page);
 
       let new_datalist = [];
@@ -301,6 +303,26 @@ const IndexCalcTable = () => {
       } else {
         dispatch({ type: "fkbrti/append", payload : { current_page: page, datalist: new_datalist, total_count: res.data.pagination.totalCount } }); // maintain for Excel export
       }
+
+      // fetchData 완료 후 WebSocket subscribe 업데이트
+      if (updateWebSocket && symbol && window.websocketWorker) {
+        // 기존 fkbrti subscribe 해제
+        window.websocketWorker.postMessage({
+          type: "websocket-unsubscribe",
+          payload: {
+            name: "fkbrti",
+          },
+        });
+
+        // 새로운 종목으로 subscribe
+        window.websocketWorker.postMessage({
+          type: "websocket-subscribe",
+          payload: {
+            name: "fkbrti",
+            url: "/topic/fkbrti/" + symbol,
+          },
+        });
+      }
     } catch (err) {
       console.error("조회 실패:", err);
     } finally {
@@ -322,7 +344,11 @@ const IndexCalcTable = () => {
       // API로 부터 통계 데이터 요청
       let statsRes;
       try {
-        statsRes = await axios.get(process.env.SERVICE + "/v1/index_calc/stats");
+        statsRes = await axios.get(process.env.SERVICE + "/v1/index_calc/stats", {
+          params: {
+            symbol: selectedSymbol || symbols[0]
+          }
+        });
       } catch (err) {
         console.error("통계 데이터 요청 실패:", err);
         setStatsLoading(false);
@@ -395,10 +421,33 @@ const IndexCalcTable = () => {
     } finally {
       setStatsLoading(false);
     }
-  }, [dispatch]);
+  }, [dispatch, selectedSymbol, symbols]);
+
+  // symbols가 로드되면 첫 번째 심볼 선택
+  useEffect(() => {
+    if (symbols.length > 0 && !selectedSymbol) {
+      setSelectedSymbol(symbols[0]);
+    }
+  }, [symbols, selectedSymbol]);
+
+  // 종목 변경 시 fetchData 호출 후 WebSocket subscribe 업데이트
+  useEffect(() => {
+    // 이전 종목과 다르고, selectedSymbol이 유효한 경우에만 처리
+    if (selectedSymbol && selectedSymbol !== previousSymbol && previousSymbol !== null) {
+      // fetchData 호출 (완료 후 WebSocket subscribe 업데이트)
+      fetchData(1, pageSize, selectedSymbol, true);
+      // fetchStats 호출
+      fetchStats();
+      setPreviousSymbol(selectedSymbol);
+    } else if (selectedSymbol && previousSymbol === null) {
+      // 초기 로드 시 previousSymbol 설정만
+      setPreviousSymbol(selectedSymbol);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSymbol, fetchStats]);
 
   useEffect(() => {
-    fetchData(1, pageSize);
+    fetchData(1, pageSize, selectedSymbol, false);
     fetchStats();
     setCurrentPage(1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -425,7 +474,7 @@ const IndexCalcTable = () => {
   // 조회 버튼 클릭시 (항상 1페이지부터)
   const onClickSearch = async ( page = 1, size = pageSize ) => {
     setCurrentPage(page);
-    fetchData(page, size);
+    fetchData(page, size, selectedSymbol, false);
     fetchStats();
   };
 
@@ -443,8 +492,6 @@ const IndexCalcTable = () => {
 			from_date: range[0].format('YYYY-MM-DD'),
 			to_date: range[1].format('YYYY-MM-DD'),
 		});
-
-    console.log('params', params.toString());
 
 		const url = `${process.env.SERVICE}/v1/file_download?${params.toString()}`;
 		const filename = `fkbrti_export_${range[0].format('YYYY-MM-DD')}_${range[1].format('YYYY-MM-DD')}.csv`;
@@ -484,6 +531,14 @@ const IndexCalcTable = () => {
             boxSizing: "border-box",
             justifyContent: "flex-end"
           }}>
+            <span style={{ marginRight: 8, fontWeight: 500, fontSize: 14 }}>SYMBOL</span>
+            <Select
+              style={{ width: 200, marginRight: 10 }}
+              placeholder="심볼 선택"
+              options={symbols.map(symbol => ({ label: symbol, value: symbol }))}
+              value={selectedSymbol}
+              onChange={setSelectedSymbol}
+            />
             <Button
               type="primary"
               onClick={async () => {

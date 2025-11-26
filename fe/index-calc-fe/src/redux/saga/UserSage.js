@@ -9,16 +9,6 @@ function* userInit() {
 
 	console.log("userInit");
 
-	window.websocketWorker.postMessage({
-		type: "websocket-subscribe",
-		payload: {
-			name: "fkbrti",
-			url: "/topic/fkbrti/KRW-BTC",
-			// user_id: "test001",
-			// manage: "TEST",
-		},
-	});
-
 	const { login, username, password, account, broker_id, name,   } = yield select(
 		({ UserReducer: { login, username, password, account, broker_id, name, } }) => ({
 			login,

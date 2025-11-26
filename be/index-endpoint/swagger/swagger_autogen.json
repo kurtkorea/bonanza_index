@@ -192,6 +192,39 @@
           }
         }
       }
+    },
+    "/v1/command/": {
+      "get": {
+        "tags": [
+          "Index History"
+        ],
+        "description": "명령어 요청",
+        "parameters": [
+          {
+            "name": "process_id",
+            "in": "query",
+            "type": "string",
+            "description": "프로세스 ID"
+          },
+          {
+            "name": "command",
+            "in": "query",
+            "type": "string",
+            "description": "명령어"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "400": {
+            "description": "잘못된 요청"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          }
+        }
+      }
     }
   }
 }

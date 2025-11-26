@@ -116,6 +116,8 @@ class FkbrtiEngine {
       if (!this.symbol) this.symbol = String(snap.symbol || "").trim() || "(UNKNOWN)";
       const ex = String(snap.exchange_cd || "UNKNOWN");
 
+      // console.log("snap=", snap);
+
       const { bids, asks } = normalize(snap);
       
       // 타임스탬프 처리 개선
@@ -189,7 +191,6 @@ class FkbrtiEngine {
       if (isCrossed(book)) continue;                  // 역전 제외
       if (rec.bids?.length) bids.push(...rec.bids);
       if (rec.asks?.length) asks.push(...rec.asks);
-
     }
 
     bids.sort((a,b)=>b.price-a.price);
@@ -303,13 +304,13 @@ class FkbrtiEngine {
         actual_avg: actual_avg
       };
 
-      if (
-        (out.vwap_buy == null || out.vwap_buy == 0) &&
-        (out.vwap_sell == null || out.vwap_sell == 0) &&
-        (out.index_mid == null || out.index_mid == 0)
-      ) {
-        return;
-      }
+      // if (
+      //   (out.vwap_buy == null || out.vwap_buy == 0) &&
+      //   (out.vwap_sell == null || out.vwap_sell == 0) &&
+      //   (out.index_mid == null || out.index_mid == 0)
+      // ) {
+      //   return;
+      // }
 
       this.insertFkbrti1sec(out);
 
@@ -348,13 +349,13 @@ class FkbrtiEngine {
           actual_avg: actual_avg,
         };
 
-        if (
-          (out.vwap_buy == null || out.vwap_buy == 0) &&
-          (out.vwap_sell == null || out.vwap_sell == 0) &&
-          (out.index_mid == null || out.index_mid == 0)
-        ) {
-          return;
-        }
+        // if (
+        //   (out.vwap_buy == null || out.vwap_buy == 0) &&
+        //   (out.vwap_sell == null || out.vwap_sell == 0) &&
+        //   (out.index_mid == null || out.index_mid == 0)
+        // ) {
+        //   return;
+        // }
         
         this.insertFkbrti1sec(out);
 
@@ -385,13 +386,13 @@ class FkbrtiEngine {
           actual_avg: actual_avg,
         };
 
-        if (
-          (out.vwap_buy == null || out.vwap_buy == 0) &&
-          (out.vwap_sell == null || out.vwap_sell == 0) &&
-          (out.index_mid == null || out.index_mid == 0)
-        ) {
-          return;
-        }
+        // if (
+        //   (out.vwap_buy == null || out.vwap_buy == 0) &&
+        //   (out.vwap_sell == null || out.vwap_sell == 0) &&
+        //   (out.index_mid == null || out.index_mid == 0)
+        // ) {
+        //   return;
+        // }
 
         this.insertFkbrti1sec(out);
       }

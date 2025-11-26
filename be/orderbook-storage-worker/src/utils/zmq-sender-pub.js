@@ -28,6 +28,9 @@ async function init_zmq_pub() {
       // 바인딩 시도
       await pub.bind(process.env.ZMQ_PUB_HOST);
       
+      // 바인딩 후 소켓이 완전히 준비될 때까지 짧은 지연 (200ms)
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       // 큐 생성
       q = new ZmqSendQueuePub(pub);
       

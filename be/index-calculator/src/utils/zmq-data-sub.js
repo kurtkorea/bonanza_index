@@ -26,12 +26,19 @@ async function init_zmq_depth_subscriber(subscribe_exchange) {
             
             // ZMQ 연결
             sub_depth.connect(process.env.ZMQ_SUB_DEPTH_HOST);
+            
+            // 연결 후 소켓이 완전히 준비될 때까지 짧은 지연 (200ms)
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
             logger.info({ ex: "ZMQ", host: process.env.ZMQ_SUB_DEPTH_HOST }, 'ZMQ Depth Subscriber connected to');
             
             for (const topic of subscribe_exchange) {
               sub_depth.subscribe(topic.EXCHANGE_CD);
-              logger.info({ ex: "ZMQ", topic }, 'Subscribed Depth Topic');
+              logger.info({ ex: "ZMQ", topic: topic.EXCHANGE_CD }, 'Subscribed Depth Topic');
             }
+            
+            // 구독 후 추가 지연 (PUB/SUB 연결 안정화)
+            await new Promise(resolve => setTimeout(resolve, 100));
             
             // 연결 성공시 재연결 카운터 리셋
             reconnectAttempts = 0;
@@ -101,12 +108,19 @@ async function init_zmq_ticker_subscriber(subscribe_exchange) {
             
             // ZMQ 연결
             sub_ticker.connect(process.env.ZMQ_SUB_TICKER_HOST);
+            
+            // 연결 후 소켓이 완전히 준비될 때까지 짧은 지연 (200ms)
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
             logger.info({ ex: "ZMQ", host: process.env.ZMQ_SUB_TICKER_HOST }, 'ZMQ Ticker Subscriber connected to');
             
             for (const topic of subscribe_exchange) {
               sub_ticker.subscribe(topic.EXCHANGE_CD);
-              logger.info({ ex: "ZMQ", topic }, 'Subscribed Trade Topic');
+              logger.info({ ex: "ZMQ", topic: topic.EXCHANGE_CD }, 'Subscribed Trade Topic');
             }
+            
+            // 구독 후 추가 지연 (PUB/SUB 연결 안정화)
+            await new Promise(resolve => setTimeout(resolve, 100));
             
             // 연결 성공시 재연결 카운터 리셋
             reconnectAttempts = 0;
@@ -125,6 +139,8 @@ async function init_zmq_ticker_subscriber(subscribe_exchange) {
                             if (feed_item.hasOwnProperty('raw')) {
                                 delete feed_item.raw;
                             }
+
+                            // console.log("Trade=", feed_item);
 
                             const last_key = feed_item.exchange_cd + "_" + feed_item.symbol;
                             if ( feed_item.type == 'trade') {

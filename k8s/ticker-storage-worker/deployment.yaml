@@ -23,6 +23,12 @@ spec:
         - containerPort: 6001
           name: http
           protocol: TCP
+        - containerPort: 5657
+          name: zmq-pull
+          protocol: TCP
+        - containerPort: 6657
+          name: zmq-pub
+          protocol: TCP
         env:
         - name: PORT
           value: "6001"

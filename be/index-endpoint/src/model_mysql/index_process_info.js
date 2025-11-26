@@ -101,6 +101,31 @@ class IndexProcessInfo extends Sequelize.Model {
         
         return result;
     }
+
+    static async getMasterInfo() {
+        const process_info = `
+            SELECT process_info FROM tb_index_process_info WHERE process_id LIKE 'collector-process%'
+        `;
+        const result = await this.sequelize.query(process_info, {
+            type: Sequelize.QueryTypes.SELECT
+        });
+
+        let master_info = [];
+
+        if ( result.length > 0 ) {
+            const items = JSON.parse(result[0].process_info);
+            for ( const item of items ) {
+                const process_info_detail = await this.getProcessInfoDetail(item.exchange_cd, item.price_id, item.product_id);
+                master_info.push(process_info_detail[0]);
+            }
+        }
+
+        let symbols = new Set();
+        for ( const item of master_info ) {
+            symbols.add(item.symbol);
+        }  
+        return {master_info, symbols: Array.from(symbols)};
+    }    
 }
 
 module.exports = IndexProcessInfo;

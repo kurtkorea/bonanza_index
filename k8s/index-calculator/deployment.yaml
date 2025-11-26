@@ -41,7 +41,7 @@ spec:
         - name: SUB_QUEUE_SIZE
           value: "50000"
         - name: SUB_TOPICS
-          value: "KRW-BTC"
+          value: "E0010001,E0020001,E0030001,E0050001"
         - name: STALE_MS
           value: "30000"
         - name: PROV_MAX_MS

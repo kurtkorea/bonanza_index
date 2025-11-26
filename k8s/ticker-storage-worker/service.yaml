@@ -11,7 +11,7 @@ spec:
   - port: 5657
     targetPort: 5657
     protocol: TCP
-    name: zmq-push
+    name: zmq-pull
   - port: 6657
     targetPort: 6657
     protocol: TCP

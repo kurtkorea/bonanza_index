@@ -99,11 +99,14 @@ const indexHistoryRouter = require("./router/index_history.js");
 const indexCalcRouter = require("./router/index_calc.js");
 const fileDownloadRouter = require("./router/file_download.js");
 const commandRouter = require("./router/command.js");
+const masterRouter = require("./router/master.js");
 // 라우터 등록
 app.use("/v1/index_history", indexHistoryRouter);
 app.use("/v1/index_calc", indexCalcRouter);
 app.use("/v1/file_download", fileDownloadRouter);
 app.use("/v1/command", commandRouter);
+app.use("/v1/master", masterRouter);
+
 //404 handling middleware
 app.use((req, res) => {
 	logger.warn({ method: req.method, url: req.url }, "404 Not Found:");
