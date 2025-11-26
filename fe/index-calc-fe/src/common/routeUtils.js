@@ -50,11 +50,11 @@ export const DynamicRoute = (props) => {
 	const location = useLocation();
 	const getPage = useCallback(
 		(path) =>
-			import("../pages" + path)
+			import(/* @vite-ignore */ "../pages" + path)
 				.then((module) => module.default)
 				.catch((e) => {
 					if (/not find module/.test(e.message)) {
-						return import("../pages" + "/missing").then((module) => module.default);
+						return import("../pages/missing").then((module) => module.default);
 					}
 					throw e;
 				}),

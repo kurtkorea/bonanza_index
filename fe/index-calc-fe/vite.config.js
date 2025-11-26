@@ -1,0 +1,235 @@
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig(({ mode }) => {
+  // 환경 변수 로드
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  return {
+    plugins: [react()],
+    
+    // esbuild 설정: .js 파일도 JSX로 처리
+    esbuild: {
+      loader: 'jsx',
+      include: /src\/.*\.jsx?$/,
+      exclude: [],
+    },
+    
+    // optimizeDeps 설정
+    optimizeDeps: {
+      esbuildOptions: {
+        loader: {
+          '.js': 'jsx',
+        },
+      },
+    },
+    
+    // Less 설정
+    css: {
+      preprocessorOptions: {
+        less: {
+          javascriptEnabled: true,
+          modifyVars: {
+            '@primary-color': '#6b5dd3',
+          },
+        },
+      },
+    },
+
+    // 서버 설정
+    server: {
+      port: 8282,
+      open: true,
+      // WebSocket 에러 억제
+      hmr: {
+        overlay: false,
+      },
+      proxy: {
+        // /proxy 경로 프록시
+        '/proxy': {
+          target: 'http://218.145.67.182:30076',
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          configure: (proxy, _options) => {
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              proxyReq.setHeader('Origin', 'http://218.145.67.182:30076');
+              proxyReq.setHeader('Host', '218.145.67.182:30076');
+              if (req.url.includes('xhr_streaming') || req.url.includes('xhr_send')) {
+                proxyReq.removeHeader('Upgrade');
+                proxyReq.removeHeader('Connection');
+              }
+            });
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+              proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
+              proxyRes.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma';
+              proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+              proxyRes.headers['Access-Control-Expose-Headers'] = '*';
+            });
+            proxy.on('error', (err, req, res) => {
+              // WebSocket 및 네트워크 연결 에러는 조용히 무시
+              const ignoredErrors = ['ECONNABORTED', 'ECONNRESET', 'EPIPE', 'ECONNREFUSED', 'ETIMEDOUT'];
+              if (ignoredErrors.includes(err.code)) {
+                return;
+              }
+              if (req.url && (req.url.includes('/ws/') || req.url.includes('/sockjs-node/'))) {
+                return;
+              }
+              // 다른 에러만 로깅
+              console.error('[Proxy Error]', err.code, err.message);
+            });
+            // WebSocket 프록시 에러 핸들링
+            proxy.on('proxyReqWs', (proxyReq, req, socket) => {
+              // WebSocket 요청 시 헤더 설정
+              proxyReq.setHeader('Origin', 'http://218.145.67.182:30076');
+              proxyReq.setHeader('Host', '218.145.67.182:30076');
+            });
+            proxy.on('proxyErrorWs', (err, req, socket) => {
+              // WebSocket 에러는 조용히 무시
+              const ignoredErrors = ['ECONNABORTED', 'ECONNRESET', 'EPIPE', 'ECONNREFUSED', 'ETIMEDOUT'];
+              if (ignoredErrors.includes(err.code)) {
+                if (socket && !socket.destroyed) {
+                  socket.destroy();
+                }
+                return;
+              }
+            });
+          },
+        },
+        // /v1, /service, /order, /virtual 경로 프록시
+        '/v1': {
+          target: 'http://218.145.67.182:30076',
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          configure: (proxy, _options) => {
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+              proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
+              proxyRes.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma';
+              proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+              proxyRes.headers['Access-Control-Expose-Headers'] = '*';
+            });
+            proxy.on('error', (err, req, res) => {
+              const ignoredErrors = ['ECONNABORTED', 'ECONNRESET', 'EPIPE', 'ECONNREFUSED', 'ETIMEDOUT'];
+              if (ignoredErrors.includes(err.code)) {
+                return;
+              }
+              console.error('[Proxy Error]', err.code, err.message);
+            });
+            proxy.on('proxyErrorWs', (err, req, socket) => {
+              const ignoredErrors = ['ECONNABORTED', 'ECONNRESET', 'EPIPE', 'ECONNREFUSED', 'ETIMEDOUT'];
+              if (ignoredErrors.includes(err.code)) {
+                if (socket && !socket.destroyed) {
+                  socket.destroy();
+                }
+                return;
+              }
+            });
+          },
+        },
+        '/service': {
+          target: 'http://218.145.67.182:30076',
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          configure: (proxy, _options) => {
+            proxy.on('error', (err, req, res) => {
+              const ignoredErrors = ['ECONNABORTED', 'ECONNRESET', 'EPIPE', 'ECONNREFUSED', 'ETIMEDOUT'];
+              if (ignoredErrors.includes(err.code)) {
+                return;
+              }
+              console.error('[Proxy Error]', err.code, err.message);
+            });
+            proxy.on('proxyErrorWs', (err, req, socket) => {
+              const ignoredErrors = ['ECONNABORTED', 'ECONNRESET', 'EPIPE', 'ECONNREFUSED', 'ETIMEDOUT'];
+              if (ignoredErrors.includes(err.code)) {
+                if (socket && !socket.destroyed) {
+                  socket.destroy();
+                }
+                return;
+              }
+            });
+          },
+        },
+        '/order': {
+          target: 'http://218.145.67.182:30076',
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          configure: (proxy, _options) => {
+            proxy.on('error', (err, req, res) => {
+              const ignoredErrors = ['ECONNABORTED', 'ECONNRESET', 'EPIPE', 'ECONNREFUSED', 'ETIMEDOUT'];
+              if (ignoredErrors.includes(err.code)) {
+                return;
+              }
+              console.error('[Proxy Error]', err.code, err.message);
+            });
+            proxy.on('proxyErrorWs', (err, req, socket) => {
+              const ignoredErrors = ['ECONNABORTED', 'ECONNRESET', 'EPIPE', 'ECONNREFUSED', 'ETIMEDOUT'];
+              if (ignoredErrors.includes(err.code)) {
+                if (socket && !socket.destroyed) {
+                  socket.destroy();
+                }
+                return;
+              }
+            });
+          },
+        },
+        '/virtual': {
+          target: 'http://218.145.67.182:30076',
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          configure: (proxy, _options) => {
+            proxy.on('error', (err, req, res) => {
+              const ignoredErrors = ['ECONNABORTED', 'ECONNRESET', 'EPIPE', 'ECONNREFUSED', 'ETIMEDOUT'];
+              if (ignoredErrors.includes(err.code)) {
+                return;
+              }
+              console.error('[Proxy Error]', err.code, err.message);
+            });
+            proxy.on('proxyErrorWs', (err, req, socket) => {
+              const ignoredErrors = ['ECONNABORTED', 'ECONNRESET', 'EPIPE', 'ECONNREFUSED', 'ETIMEDOUT'];
+              if (ignoredErrors.includes(err.code)) {
+                if (socket && !socket.destroyed) {
+                  socket.destroy();
+                }
+                return;
+              }
+            });
+          },
+        },
+      },
+    },
+
+    // 빌드 설정
+    build: {
+      outDir: 'public',
+      assetsDir: 'assets',
+      sourcemap: false,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'antd-vendor': ['antd', '@ant-design/icons'],
+            'redux-vendor': ['redux', 'react-redux', 'redux-saga'],
+          },
+        },
+      },
+    },
+
+    // 경로 별칭
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
+
+    // 환경 변수 접두사
+    envPrefix: 'VITE_',
+  };
+});
+

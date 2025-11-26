@@ -1,5 +1,5 @@
 import { ConfigProvider } from 'antd';
-import en from 'antd/lib/locale/en_US';
+import en from 'antd/locale/en_US';
 import React from 'react';
 import Interceptor from './Interceptor';
 import Redux from './Redux';

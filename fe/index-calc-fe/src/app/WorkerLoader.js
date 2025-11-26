@@ -18,11 +18,12 @@ const WorkerLoader = ({ children }) => {
 
 	useEffect(() => {
 		if (window.Worker) {
+			// Vite에서는 public 폴더의 파일을 그대로 사용
 			window.websocketWorker = new Worker("/worker/websocketWorker.js");
 			window.websocketWorker.postMessage({
 				type: "websocket-connect",
 				payload: {
-					url: process.env.SERVICE + "/ws",
+					url: (window.process?.env?.SERVICE || import.meta.env.VITE_SERVICE || '/proxy/rest') + "/ws",
 				},
 			});
 			window.websocketWorker.onmessage = ({ data: { type, data } }) => {

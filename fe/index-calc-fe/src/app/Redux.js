@@ -11,7 +11,8 @@ const sagaMiddleware = createSagaMiddleware();
 const enhancers = [];
 const middleware = [sagaMiddleware];
 
-if (process.env.NODE_ENV !== 'production') {
+const isDevelopment = import.meta.env.MODE !== 'production' || (window.process?.env?.NODE_ENV !== 'production');
+if (isDevelopment) {
   const devToolsExtension = window.__REDUX_DEVTOOLS_EXTENSION__;
 
   if (typeof devToolsExtension === 'function') {

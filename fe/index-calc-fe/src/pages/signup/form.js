@@ -1,8 +1,8 @@
-import { message, Modal } from "antd";
+import { message, Modal, Statistic } from "antd";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import Countdown from "antd/lib/statistic/Countdown";
+const { Countdown } = Statistic;
 import moment from "moment";
 import queryString from "query-string";
 
@@ -92,7 +92,8 @@ const SignupForm = () => {
         message.warn("It is not type of mobile phone number");
       }
     } catch (error) {
-      console.log("onConfirmAccountAuth error", error);
+      console.error("SMS 인증 요청 실패:", error);
+      message.error(error?.response?.data?.message || "SMS 인증 요청 중 오류가 발생했습니다.");
     }
   };
 
@@ -112,7 +113,8 @@ const SignupForm = () => {
         setSMSAuthComplete(false);
       }
     } catch (error) {
-      console.log("onConfirmAccountAuth error", error);
+      console.error("SMS 인증 확인 실패:", error);
+      message.error(error?.response?.data?.message || "SMS 인증 확인 중 오류가 발생했습니다.");
     }
   };
 

@@ -325,6 +325,7 @@ const IndexCalcTable = () => {
       }
     } catch (err) {
       console.error("조회 실패:", err);
+      message.error("데이터를 불러오는데 실패했습니다.");
     } finally {
       setLoading(false);
     }
@@ -351,6 +352,7 @@ const IndexCalcTable = () => {
         });
       } catch (err) {
         console.error("통계 데이터 요청 실패:", err);
+        message.error("통계 데이터를 불러오는데 실패했습니다.");
         setStatsLoading(false);
         return;
       }
@@ -418,6 +420,7 @@ const IndexCalcTable = () => {
 
     } catch (error) {
       console.error("통계 조회 실패:", error);
+      message.error("통계 조회 중 오류가 발생했습니다.");
     } finally {
       setStatsLoading(false);
     }
@@ -877,7 +880,8 @@ const IndexCalcTable = () => {
             rowKey={(record) => `${record.createdAt}`}
             pagination={false}
             loading={loading}
-            scroll={{ y: 500, x: 'max-content' }}
+            virtual={true}
+            scroll={{ y: 740, x: 'max-content' }}
             style={{ height: "100%" }}
           /> 
         </div>

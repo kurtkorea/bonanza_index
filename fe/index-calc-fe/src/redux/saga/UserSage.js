@@ -91,6 +91,8 @@ function* userLogin({ payload }) {
 			});
 		}
 	} catch (error) {
+		console.error("로그인 실패:", error);
+		message.error(error?.response?.data?.message || "로그인 중 오류가 발생했습니다.");
 		yield put({
 			type: "user/login/failure",
 		});
@@ -214,7 +216,8 @@ function* userLoginSuccess({ payload }) {
 			});				
 		}
 	} catch (error) {
-		console.log(error);
+		console.error("로그인 성공 후 WebSocket 구독 실패:", error);
+		message.error("연결 설정 중 오류가 발생했습니다.");
 	}
 }
 

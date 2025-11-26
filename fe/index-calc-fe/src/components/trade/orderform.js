@@ -1,9 +1,8 @@
 import classNames from "classnames";
 import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Slider, Modal, message, Select } from "antd";
+import { Slider, Modal, message, Select, Space } from "antd";
 import axios from "axios";
-import CompoundedSpace from "antd/lib/space";
 import common from "../../common";
 import Lang from "../lang";
 import index from "../../common/index";
