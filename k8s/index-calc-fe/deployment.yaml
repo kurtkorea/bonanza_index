@@ -23,13 +23,16 @@ spec:
         - containerPort: 80
           name: http
           protocol: TCP
-        env:
-        - name: SERVICE
-          value: "http://index-endpoint-service:3009"
-        - name: SERVICENAME
-          value: "TWDMA"
-        - name: IS_DEBUG
-          value: "false"
+        # 주의: Vite는 빌드 타임에 환경 변수를 번들에 포함시킵니다
+        # 런타임 환경 변수는 사용되지 않으므로 주석 처리합니다
+        # 환경 변수는 Dockerfile의 .env.production 파일 또는 빌드 시 ARG로 전달해야 합니다
+        # env:
+        # - name: SERVICE
+        #   value: "http://index-endpoint-service:3009"
+        # - name: SERVICENAME
+        #   value: "TWDMA"
+        # - name: IS_DEBUG
+        #   value: "false"
         resources:
           requests:
             memory: "128Mi"

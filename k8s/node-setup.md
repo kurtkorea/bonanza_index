@@ -6,7 +6,7 @@
   - QuestDB, Redis, MariaDB Pod 실행
   - 자동으로 `node-role.kubernetes.io/control-plane=true` 라벨 설정됨
 
-- **워커 노드** (121.88.4.57): Windows WSL 서버
+- **워커 노드** (218.145.67.182): Windows WSL 서버
   - 모든 애플리케이션 Pod 실행
   - `app-server=true` 라벨 필요
 
@@ -25,8 +25,8 @@
 # 노드 확인
 kubectl get nodes -o wide
 
-# 워커 노드 찾기 (121.88.4.57)
-kubectl get nodes -o wide | grep 121.88.4.57
+# 워커 노드 찾기 (218.145.67.182)
+kubectl get nodes -o wide | grep 218.145.67.182
 
 # 워커 노드에 라벨 추가 (노드 이름은 실제 값으로 변경)
 kubectl label nodes <node-name> app-server=true --overwrite

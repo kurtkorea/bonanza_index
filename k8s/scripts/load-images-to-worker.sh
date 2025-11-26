@@ -239,13 +239,13 @@ if [ ${#IMAGES_TO_BUILD[@]} -gt 0 ]; then
             # ddl 폴더를 사용하는 서비스는 be 디렉토리를 빌드 컨텍스트로 사용
             echo "   📁 빌드 컨텍스트: $BE_DIR"
             
-            # ddl 폴더 존재 확인
-            if [ ! -d "$BE_DIR/ddl" ]; then
-                echo "   ❌ ${BE_DIR}/ddl 폴더를 찾을 수 없습니다"
-                BUILD_FAILED=$((BUILD_FAILED + 1))
-                continue
+            # 각 서비스의 src/ddl 폴더 존재 확인 (ddl은 각 서비스의 src 폴더 안에 있음)
+            if [ ! -d "$SERVICE_DIR/src/ddl" ]; then
+                echo "   ⚠️  ${SERVICE_DIR}/src/ddl 폴더를 찾을 수 없습니다 (선택사항)"
+                echo "   ℹ️  ddl 폴더가 없어도 빌드는 계속됩니다"
+            else
+                echo "   ✅ ddl 폴더 확인: $SERVICE_DIR/src/ddl"
             fi
-            echo "   ✅ ddl 폴더 확인: $BE_DIR/ddl"
             
             if docker build -f "$SERVICE_DIR/Dockerfile" -t "$IMAGE_NAME" "$BE_DIR" 2>&1; then
                 echo "   ✅ ${SERVICE} 빌드 완료"
@@ -279,14 +279,15 @@ if [ ${#IMAGES_TO_BUILD[@]} -gt 0 ]; then
                     fi
                 fi
                 
-                if docker images -q nginx:alpine > /dev/null 2>&1; then
-                    echo "   ✅ nginx:alpine 이미지가 로컬에 있습니다"
+                # Vite 마이그레이션: nginx:1.25-alpine 사용 (Dockerfile과 일치)
+                if docker images -q nginx:1.25-alpine > /dev/null 2>&1; then
+                    echo "   ✅ nginx:1.25-alpine 이미지가 로컬에 있습니다"
                 else
-                    echo "   📥 nginx:alpine 이미지 pull 중..."
-                    if ! docker pull nginx:alpine 2>&1; then
-                        echo "   ⚠️  nginx:alpine pull 실패"
+                    echo "   📥 nginx:1.25-alpine 이미지 pull 중..."
+                    if ! docker pull nginx:1.25-alpine 2>&1; then
+                        echo "   ⚠️  nginx:1.25-alpine pull 실패"
                         echo "   💡 네트워크 문제일 수 있습니다. 수동으로 pull 시도:"
-                        echo "      docker pull nginx:alpine"
+                        echo "      docker pull nginx:1.25-alpine"
                         echo "   💡 또는 다른 네트워크에서 이미지를 미리 pull한 후 다시 시도하세요"
                     fi
                 fi

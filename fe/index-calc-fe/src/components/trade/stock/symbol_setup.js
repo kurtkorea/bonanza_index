@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useQuery } from "react-query";
 import { useSelector } from "react-redux";
 import { useQueryState } from "../../../common/queryState";
-import common from '../../../common';
+import common, { getServiceUrl } from '../../../common';
 import { createPortal } from 'react-dom';
 
 
@@ -126,7 +126,7 @@ const SymbolSetupModal = ({ open, onClose }) => {
   const [search_except_text, set_search_except_text] = useState([]);
 
   const get_master_data = async () => {
-    const { data } = await axios.post( process.env.SERVICE + "/service/get_open_api", {
+    const { data } = await axios.post(getServiceUrl() + "/service/get_open_api", {
         "path" : "/stock/market-data",
         "tr_cd" : "t9945",
         "input_data" : {
@@ -155,7 +155,7 @@ const SymbolSetupModal = ({ open, onClose }) => {
   }	  
 
   const get_except_data = async () => {
-    const { data } = await axios.get(process.env.SERVICE + "/service/get_except");
+    const { data } = await axios.get(getServiceUrl() + "/service/get_except");
     if ( data?.result == true )
     {
       set_except_data_list(data?.datalist);
@@ -401,7 +401,7 @@ const SymbolSetupModal = ({ open, onClose }) => {
             ref={closeButtonRef}
             onClick={async () => {
               try {
-                const { data } = await axios.post(process.env.SERVICE + "/service/set_except", {
+                const { data } = await axios.post(getServiceUrl() + "/service/set_except", {
                   except_data_list
                 });
                 if (data?.result === true) {

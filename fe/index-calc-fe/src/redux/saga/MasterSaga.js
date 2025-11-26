@@ -1,13 +1,16 @@
 import { message } from "antd";
 import axios from "axios";
 import { put, select, takeEvery } from "redux-saga/effects";
-import common from "../../common";
+import common, { getServiceUrl } from "../../common";
 
 
 function* masterInit() {
 
 	try {
-		const master_info = yield axios.get(process.env.SERVICE + "/v1/master", {
+		// 환경 변수 가져오기 (공통 유틸리티 함수 사용)
+		const serviceUrl = getServiceUrl();
+		console.log('[MasterSaga] Using SERVICE URL:', serviceUrl);
+		const master_info = yield axios.get(serviceUrl + "/v1/master", {
 		}).then(resp => resp.data);
 		yield put({
 			type: 'master/set',

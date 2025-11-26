@@ -295,14 +295,15 @@ for SERVICE in "${FRONTEND_SERVICES[@]}"; do
             fi
         fi
         
-        if docker_cmd images -q nginx:alpine > /dev/null 2>&1; then
-            echo "   ✅ nginx:alpine 이미지가 로컬에 있습니다"
+        # Vite 마이그레이션: nginx:1.25-alpine 사용 (Dockerfile과 일치)
+        if docker_cmd images -q nginx:1.25-alpine > /dev/null 2>&1; then
+            echo "   ✅ nginx:1.25-alpine 이미지가 로컬에 있습니다"
         else
-            echo "   📥 nginx:alpine 이미지 pull 중..."
-            if ! docker_cmd pull nginx:alpine 2>&1; then
-                echo "   ⚠️  nginx:alpine pull 실패"
+            echo "   📥 nginx:1.25-alpine 이미지 pull 중..."
+            if ! docker_cmd pull nginx:1.25-alpine 2>&1; then
+                echo "   ⚠️  nginx:1.25-alpine pull 실패"
                 echo "   💡 네트워크 문제일 수 있습니다. 수동으로 pull 시도:"
-                echo "      docker pull nginx:alpine"
+                echo "      docker pull nginx:1.25-alpine"
                 echo "   💡 또는 다른 네트워크에서 이미지를 미리 pull한 후 다시 시도하세요"
             fi
         fi

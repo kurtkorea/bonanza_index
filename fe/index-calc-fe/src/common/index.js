@@ -6,6 +6,24 @@ import exportFromJSON from "export-from-json";
 
 export const NIL_SYMBOL = "AAAAAAAA";
 
+// 환경 변수 가져오기 (Vite 호환)
+export const getEnv = (key, defaultValue = '') => {
+  if (typeof window !== 'undefined' && window.process?.env?.[key]) {
+    return window.process.env[key];
+  }
+  // Vite 환경 변수 확인
+  const viteKey = `VITE_${key}`;
+  if (import.meta.env[viteKey]) {
+    return import.meta.env[viteKey];
+  }
+  return defaultValue;
+};
+
+// SERVICE 환경 변수 가져오기 (가장 많이 사용됨)
+export const getServiceUrl = () => {
+  return getEnv('SERVICE', '/proxy/rest');
+};
+
 String.prototype.fillZero = function (width) {
 	return this.length >= width ? this : new Array(width - this.length + 1).join("0") + this;
 };
@@ -419,4 +437,6 @@ export default {
   	randColor,
   	get_color_by_ranking,
 	  convertDateKST,
+	getEnv,
+	getServiceUrl,
 };

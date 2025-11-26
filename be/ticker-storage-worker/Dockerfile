@@ -29,9 +29,6 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 COPY ticker-storage-worker/src ./src
 COPY ticker-storage-worker/env ./env
 
-# src/ddl 폴더 확인
-RUN ls -la ./src/ddl
-
 # Babel 빌드
 RUN npm run build || (echo "Build failed!" && exit 1)
 

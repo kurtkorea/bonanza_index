@@ -3,7 +3,7 @@ import axios from "axios";
 import classNames from "classnames";
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import common from "../common";
+import common, { getServiceUrl } from "../common";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from 'react-query';
 import { DatePicker } from 'antd';
@@ -218,6 +218,9 @@ const IndexCalcTable = () => {
   const queryClient = useQueryClient();
   const defaultRange = [moment().subtract(3, 'months'), moment()];
   
+  // 컬럼들의 총 너비 계산 (virtual table의 scroll.x는 숫자여야 함)
+  const scrollX = columns.reduce((sum, col) => sum + (col.width || 0), 0);
+  
   const [range, setRange] = useState(defaultRange);
   const dispatch = useDispatch();
 
@@ -248,7 +251,7 @@ const IndexCalcTable = () => {
       const fromDate = range[0] ? range[0].format("YYYY-MM-DD") : moment().subtract(7, 'day').format("YYYY-MM-DD");
       const toDate = range[1] ? range[1].format("YYYY-MM-DD") : moment().format("YYYY-MM-DD");
       
-      const res = await axios.get(process.env.SERVICE + "/v1/index_calc", {
+      const res = await axios.get(getServiceUrl() + "/v1/index_calc", {
         params: {
           from_date: fromDate,
           to_date: toDate,
@@ -345,7 +348,7 @@ const IndexCalcTable = () => {
       // API로 부터 통계 데이터 요청
       let statsRes;
       try {
-        statsRes = await axios.get(process.env.SERVICE + "/v1/index_calc/stats", {
+        statsRes = await axios.get(getServiceUrl() + "/v1/index_calc/stats", {
           params: {
             symbol: selectedSymbol || symbols[0]
           }
@@ -496,7 +499,7 @@ const IndexCalcTable = () => {
 			to_date: range[1].format('YYYY-MM-DD'),
 		});
 
-		const url = `${process.env.SERVICE}/v1/file_download?${params.toString()}`;
+		const url = `${getServiceUrl()}/v1/file_download?${params.toString()}`;
 		const filename = `fkbrti_export_${range[0].format('YYYY-MM-DD')}_${range[1].format('YYYY-MM-DD')}.csv`;
 
 		setDownloadLoading(true);
@@ -596,7 +599,7 @@ const IndexCalcTable = () => {
                   fixed: 'left',
                 },
                 {
-                  title: <Tag color="green" style={{ width: '100%' }}>DIFF-1s</Tag>,
+                  title: <Tag color="green" style={{ width: '100%' , textAlign: 'center' }}>DIFF-1s</Tag>,
                   align: 'center',
                   children: [
                     {
@@ -623,7 +626,7 @@ const IndexCalcTable = () => {
                   ],
                 },
                 {
-                  title: <Tag color="green" style={{ width: '100%' }}>RATIO-1s</Tag>,
+                  title: <Tag color="green" style={{ width: '100%', textAlign: 'center' }}>RATIO-1s</Tag>,
                   align: 'center',
                   children: [
                     {
@@ -650,7 +653,7 @@ const IndexCalcTable = () => {
                   ],
                 },
                 {
-                  title: <Tag color="green" style={{ width: '100%' }}>DIFF-5s</Tag>,
+                  title: <Tag color="green" style={{ width: '100%' , textAlign: 'center'}}>DIFF-5s</Tag>,
                   align: 'center',
                   children: [
                     {
@@ -677,7 +680,7 @@ const IndexCalcTable = () => {
                   ],
                 },
                 {
-                  title: <Tag color="green" style={{ width: '100%' }}>RATIO-5s</Tag>,
+                  title: <Tag color="green" style={{ width: '100%' , textAlign: 'center'}}>RATIO-5s</Tag>,
                   align: 'center',
                   children: [
                     {
@@ -704,7 +707,7 @@ const IndexCalcTable = () => {
                   ],
                 },
                 {
-                  title: <Tag color="green" style={{ width: '100%' }}>DIFF-10s</Tag>,
+                  title: <Tag color="green" style={{ width: '100%' , textAlign: 'center'}}>DIFF-10s</Tag>,
                   align: 'center',
                   children: [
                     {
@@ -731,7 +734,7 @@ const IndexCalcTable = () => {
                   ],
                 },
                 {
-                  title: <Tag color="green" style={{ width: '100%' }}>RATIO-10s</Tag>,
+                  title: <Tag color="green" style={{ width: '100%' , textAlign: 'center'}}>RATIO-10s</Tag>,
                   align: 'center',
                   children: [
                     {
@@ -881,7 +884,7 @@ const IndexCalcTable = () => {
             pagination={false}
             loading={loading}
             virtual={true}
-            scroll={{ y: 740, x: 'max-content' }}
+            scroll={{ y: 740, x: scrollX }}
             style={{ height: "100%" }}
           /> 
         </div>

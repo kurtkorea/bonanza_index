@@ -6,8 +6,29 @@ export default defineConfig(({ mode }) => {
   // 환경 변수 로드
   const env = loadEnv(mode, process.cwd(), '');
   
+  // WebSocket 에러 억제 플러그인
+  const suppressWsErrors = () => {
+    return {
+      name: 'suppress-ws-errors',
+      configureServer(server) {
+        const originalError = console.error;
+        console.error = (...args) => {
+          const errorMessage = args.join(' ');
+          if (errorMessage.includes('ws proxy socket error') ||
+              errorMessage.includes('ECONNABORTED') ||
+              errorMessage.includes('ECONNRESET') ||
+              errorMessage.includes('EPIPE') ||
+              errorMessage.includes('ECONNREFUSED')) {
+            return;
+          }
+          originalError.apply(console, args);
+        };
+      },
+    };
+  };
+  
   return {
-    plugins: [react()],
+    plugins: [react(), suppressWsErrors()],
     
     // esbuild 설정: .js 파일도 JSX로 처리
     esbuild: {
@@ -18,6 +39,7 @@ export default defineConfig(({ mode }) => {
     
     // optimizeDeps 설정
     optimizeDeps: {
+      include: ['react-window', 'react-window/dist/index.esm.js'],
       esbuildOptions: {
         loader: {
           '.js': 'jsx',
@@ -205,11 +227,16 @@ export default defineConfig(({ mode }) => {
       },
     },
 
+    // public 폴더 설정 (기본값은 'public'이지만 명시적으로 설정)
+    publicDir: 'public',
+    
     // 빌드 설정
     build: {
-      outDir: 'public',
+      outDir: 'dist',
       assetsDir: 'assets',
       sourcemap: false,
+      // public 폴더의 파일들이 빌드 출력에 포함되도록 보장
+      copyPublicDir: true,
       rollupOptions: {
         output: {
           manualChunks: {

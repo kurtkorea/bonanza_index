@@ -328,10 +328,10 @@ kubectl get nodes
 kubectl label nodes bonanza-app-wsl app-server=true --overwrite
 
 # 또는 IP 주소로 노드 찾기
-kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}' | grep 121.88.4.57
+kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}' | grep 218.145.67.182
 
 # 워커 노드 IP로 라벨 추가 (자동)
-WORKER_NODE=$(kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}' | grep 121.88.4.57 | cut -f1)
+WORKER_NODE=$(kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}' | grep 218.145.67.182 | cut -f1)
 kubectl label nodes $WORKER_NODE app-server=true --overwrite
 
 # 라벨 확인

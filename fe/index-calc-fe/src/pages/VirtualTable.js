@@ -84,22 +84,69 @@ const VirtualTable = ({
 
   const renderVirtualList = useCallback((
     rawData = [],
-    { scrollbarSize = 0, ref = { current: {} }, onScroll = () => {} } = {}
+    { scrollbarSize = 0, ref = { current: null }, onScroll = () => {} } = {}
   ) => {
     // 실제 dataSource를 사용 (rawData가 빈 배열일 경우 대비)
     const actualData = Array.isArray(dataSource) && dataSource.length > 0 ? dataSource : rawData;
     const safeData = Array.isArray(actualData) ? actualData : [];
 
-    ref.current = {
-      scrollLeft: {
-        get: () => null,
-        set: (scrollLeft) => {
-          if (listRef.current) {
-            listRef.current.scrollTo(scrollLeft);
-          }
-        },
-      },
-    };
+    // Ant Design Table의 scrollLeft 참조를 안전하게 처리
+    // ref가 없거나 current가 null인 경우를 대비
+    if (!ref) {
+      ref = { current: null };
+    }
+    
+    // ref.current가 null이면 빈 객체로 초기화 (Ant Design Table이 사용할 수 있도록)
+    if (!ref.current) {
+      ref.current = {};
+    }
+    
+    // scrollLeft getter/setter를 안전하게 설정
+    // Ant Design Table이 ref.current.scrollLeft를 읽을 때 에러가 발생하지 않도록
+    if (ref.current && typeof ref.current === 'object') {
+      try {
+        // 이미 정의되어 있으면 재정의하지 않음
+        if (!('scrollLeft' in ref.current)) {
+          Object.defineProperty(ref.current, 'scrollLeft', {
+            get: () => {
+              // react-window의 List는 scrollLeft를 직접 제공하지 않으므로 0 반환
+              // Ant Design Table이 scrollLeft를 읽을 때 null이 아닌 값을 반환해야 함
+              if (listRef.current?._outerRef) {
+                return listRef.current._outerRef.scrollLeft || 0;
+              }
+              return 0;
+            },
+            set: (scrollLeft) => {
+              if (listRef.current && typeof scrollLeft === 'number' && scrollLeft >= 0) {
+                try {
+                  // react-window List의 외부 컨테이너를 스크롤
+                  const container = listRef.current?._outerRef;
+                  if (container) {
+                    container.scrollLeft = scrollLeft;
+                  }
+                } catch (e) {
+                  console.warn('VirtualTable scrollTo error:', e);
+                }
+              }
+            },
+            enumerable: true,
+            configurable: true,
+          });
+        }
+      } catch (e) {
+        // Object.defineProperty가 실패하면 일반 속성으로 설정
+        if (ref.current) {
+          ref.current.scrollLeft = 0;
+        }
+      }
+    }
+
+    // tableWidth가 0이면 기본값 사용 (초기 렌더링 시)
+    const listWidth = tableWidth > 0 ? tableWidth : (scroll?.x || 1200);
+    
+    if (!safeData || safeData.length === 0) {
+      return null;
+    }
 
     return (
       <List
@@ -107,16 +154,31 @@ const VirtualTable = ({
         defaultHeight={scroll?.y || 600}
         rowCount={safeData.length}
         rowHeight={60}
-        rowComponent={Row}
-        rowProps={{
-          columns: mergedColumns,
-          dataSource: safeData,
-        }}
+        width={listWidth}
         overscanCount={5}
-        style={{ overflowX: 'auto' }}
+        rowComponent={(props) => {
+          const { index, style, ariaAttributes, ...restProps } = props || {};
+          
+          // props가 유효하지 않으면 null 반환
+          if (typeof index !== 'number' || index < 0 || index >= safeData.length) {
+            return null;
+          }
+          
+          return (
+            <Row
+              index={index}
+              style={style || {}}
+              columns={mergedColumns}
+              dataSource={safeData}
+              ariaAttributes={ariaAttributes}
+              {...restProps}
+            />
+          );
+        }}
+        rowProps={{}}
       />
     );
-  }, [mergedColumns, scroll, dataSource]);
+  }, [mergedColumns, scroll, dataSource, tableWidth]);
 
   return (
     <ResizeObserver onResize={({ width }) => setTableWidth(width)}>
