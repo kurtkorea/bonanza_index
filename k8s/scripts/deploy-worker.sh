@@ -117,6 +117,61 @@ for SERVICE in "${SELECTED_SERVICES[@]}"; do
 done
 echo ""
 
+# Collector 서비스의 현재 상태 확인 및 삭제 전략 결정
+declare -A COLLECTOR_DEPLOY_MODE
+for SERVICE in "${SELECTED_SERVICES[@]}"; do
+    SERVICE_NAME=$(echo "$SERVICE" | cut -d: -f1)
+    
+    if [ "$SERVICE_NAME" = "orderbook-collector" ] || [ "$SERVICE_NAME" = "ticker-collector" ]; then
+        # Active-Active 모드 상태 확인
+        PRIMARY_EXISTS=$(kubectl get deployment ${SERVICE_NAME}-primary -n bonanza-index -o name 2>/dev/null || echo "")
+        SECONDARY_EXISTS=$(kubectl get deployment ${SERVICE_NAME}-secondary -n bonanza-index -o name 2>/dev/null || echo "")
+        
+        if [ -n "$PRIMARY_EXISTS" ] && [ -z "$SECONDARY_EXISTS" ]; then
+            # Primary만 존재
+            echo "📊 ${SERVICE_NAME} - Primary만 존재합니다"
+            echo ""
+            echo "배포 옵션:"
+            echo "  1) Secondary만 배포 (Primary 유지)"
+            echo "  2) 전체 재배포 (Primary와 Secondary 모두 재배포)"
+            echo ""
+            read -p "선택하세요 (1-2, 기본값: 1): " DEPLOY_CHOICE
+            DEPLOY_CHOICE=${DEPLOY_CHOICE:-1}
+            
+            if [ "$DEPLOY_CHOICE" = "1" ]; then
+                COLLECTOR_DEPLOY_MODE["$SERVICE_NAME"]="secondary-only"
+                echo "  ✅ Secondary만 배포하도록 설정됨"
+            else
+                COLLECTOR_DEPLOY_MODE["$SERVICE_NAME"]="all"
+                echo "  ✅ 전체 재배포하도록 설정됨"
+            fi
+            echo ""
+        elif [ -z "$PRIMARY_EXISTS" ] && [ -n "$SECONDARY_EXISTS" ]; then
+            # Secondary만 존재
+            echo "📊 ${SERVICE_NAME} - Secondary만 존재합니다"
+            echo ""
+            echo "배포 옵션:"
+            echo "  1) Primary만 배포 (Secondary 유지)"
+            echo "  2) 전체 재배포 (Primary와 Secondary 모두 재배포)"
+            echo ""
+            read -p "선택하세요 (1-2, 기본값: 1): " DEPLOY_CHOICE
+            DEPLOY_CHOICE=${DEPLOY_CHOICE:-1}
+            
+            if [ "$DEPLOY_CHOICE" = "1" ]; then
+                COLLECTOR_DEPLOY_MODE["$SERVICE_NAME"]="primary-only"
+                echo "  ✅ Primary만 배포하도록 설정됨"
+            else
+                COLLECTOR_DEPLOY_MODE["$SERVICE_NAME"]="all"
+                echo "  ✅ 전체 재배포하도록 설정됨"
+            fi
+            echo ""
+        else
+            # 둘 다 없거나 둘 다 있음 (전체 재배포)
+            COLLECTOR_DEPLOY_MODE["$SERVICE_NAME"]="all"
+        fi
+    fi
+done
+
 # 기존 선택된 서비스 리소스 삭제
 echo "🗑️  선택된 서비스 리소스 삭제 중..."
 for SERVICE in "${SELECTED_SERVICES[@]}"; do
@@ -124,39 +179,103 @@ for SERVICE in "${SELECTED_SERVICES[@]}"; do
     if [ "$DEPLOYMENT_NAME" = "index-calc-fe" ]; then
         kubectl delete deployment $DEPLOYMENT_NAME -n bonanza-index --ignore-not-found=true
     elif [ "$DEPLOYMENT_NAME" = "orderbook-collector" ]; then
-        # orderbook-collector 모든 배포 모드 삭제
-        echo "  🗑️  orderbook-collector 모든 배포 모드 삭제 중..."
-        # Active-Active 모드
-        kubectl delete deployment orderbook-collector-primary -n bonanza-index --ignore-not-found=true
-        kubectl delete deployment orderbook-collector-secondary -n bonanza-index --ignore-not-found=true
-        kubectl delete service orderbook-collector-primary -n bonanza-index --ignore-not-found=true
-        kubectl delete service orderbook-collector-secondary -n bonanza-index --ignore-not-found=true
-        kubectl delete pdb orderbook-collector-pdb -n bonanza-index --ignore-not-found=true
-        # 다중 인스턴스 모드
-        kubectl delete deployment orderbook-collector-1 -n bonanza-index --ignore-not-found=true
-        kubectl delete deployment orderbook-collector-2 -n bonanza-index --ignore-not-found=true
-        kubectl delete service orderbook-collector-service-1 -n bonanza-index --ignore-not-found=true
-        kubectl delete service orderbook-collector-service-2 -n bonanza-index --ignore-not-found=true
-        # 단일 인스턴스 모드
-        kubectl delete deployment orderbook-collector -n bonanza-index --ignore-not-found=true
-        kubectl delete service orderbook-collector-service -n bonanza-index --ignore-not-found=true
+        DEPLOY_MODE="${COLLECTOR_DEPLOY_MODE[$DEPLOYMENT_NAME]:-all}"
+        
+        if [ "$DEPLOY_MODE" = "primary-only" ]; then
+            # Primary만 배포할 경우 Secondary는 삭제하지 않음
+            echo "  🗑️  orderbook-collector - Primary 배포를 위해 다른 모드 삭제 중..."
+            # 다중 인스턴스 모드 삭제
+            kubectl delete deployment orderbook-collector-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete deployment orderbook-collector-2 -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-service-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-service-2 -n bonanza-index --ignore-not-found=true
+            # 단일 인스턴스 모드 삭제
+            kubectl delete deployment orderbook-collector -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-service -n bonanza-index --ignore-not-found=true
+            # Primary는 삭제 (재배포)
+            kubectl delete deployment orderbook-collector-primary -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-primary -n bonanza-index --ignore-not-found=true
+        elif [ "$DEPLOY_MODE" = "secondary-only" ]; then
+            # Secondary만 배포할 경우 Primary는 삭제하지 않음
+            echo "  🗑️  orderbook-collector - Secondary 배포를 위해 다른 모드 삭제 중..."
+            # 다중 인스턴스 모드 삭제
+            kubectl delete deployment orderbook-collector-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete deployment orderbook-collector-2 -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-service-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-service-2 -n bonanza-index --ignore-not-found=true
+            # 단일 인스턴스 모드 삭제
+            kubectl delete deployment orderbook-collector -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-service -n bonanza-index --ignore-not-found=true
+            # Secondary는 삭제 (재배포)
+            kubectl delete deployment orderbook-collector-secondary -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-secondary -n bonanza-index --ignore-not-found=true
+        else
+            # 모든 배포 모드 삭제
+            echo "  🗑️  orderbook-collector 모든 배포 모드 삭제 중..."
+            # Active-Active 모드
+            kubectl delete deployment orderbook-collector-primary -n bonanza-index --ignore-not-found=true
+            kubectl delete deployment orderbook-collector-secondary -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-primary -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-secondary -n bonanza-index --ignore-not-found=true
+            kubectl delete pdb orderbook-collector-pdb -n bonanza-index --ignore-not-found=true
+            # 다중 인스턴스 모드
+            kubectl delete deployment orderbook-collector-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete deployment orderbook-collector-2 -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-service-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-service-2 -n bonanza-index --ignore-not-found=true
+            # 단일 인스턴스 모드
+            kubectl delete deployment orderbook-collector -n bonanza-index --ignore-not-found=true
+            kubectl delete service orderbook-collector-service -n bonanza-index --ignore-not-found=true
+        fi
     elif [ "$DEPLOYMENT_NAME" = "ticker-collector" ]; then
-        # ticker-collector 모든 배포 모드 삭제
-        echo "  🗑️  ticker-collector 모든 배포 모드 삭제 중..."
-        # Active-Active 모드
-        kubectl delete deployment ticker-collector-primary -n bonanza-index --ignore-not-found=true
-        kubectl delete deployment ticker-collector-secondary -n bonanza-index --ignore-not-found=true
-        kubectl delete service ticker-collector-primary -n bonanza-index --ignore-not-found=true
-        kubectl delete service ticker-collector-secondary -n bonanza-index --ignore-not-found=true
-        kubectl delete pdb ticker-collector-pdb -n bonanza-index --ignore-not-found=true
-        # 다중 인스턴스 모드
-        kubectl delete deployment ticker-collector-1 -n bonanza-index --ignore-not-found=true
-        kubectl delete deployment ticker-collector-2 -n bonanza-index --ignore-not-found=true
-        kubectl delete service ticker-collector-service-1 -n bonanza-index --ignore-not-found=true
-        kubectl delete service ticker-collector-service-2 -n bonanza-index --ignore-not-found=true
-        # 단일 인스턴스 모드
-        kubectl delete deployment ticker-collector -n bonanza-index --ignore-not-found=true
-        kubectl delete service ticker-collector-service -n bonanza-index --ignore-not-found=true
+        DEPLOY_MODE="${COLLECTOR_DEPLOY_MODE[$DEPLOYMENT_NAME]:-all}"
+        
+        if [ "$DEPLOY_MODE" = "primary-only" ]; then
+            # Primary만 배포할 경우 Secondary는 삭제하지 않음
+            echo "  🗑️  ticker-collector - Primary 배포를 위해 다른 모드 삭제 중..."
+            # 다중 인스턴스 모드 삭제
+            kubectl delete deployment ticker-collector-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete deployment ticker-collector-2 -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-service-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-service-2 -n bonanza-index --ignore-not-found=true
+            # 단일 인스턴스 모드 삭제
+            kubectl delete deployment ticker-collector -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-service -n bonanza-index --ignore-not-found=true
+            # Primary는 삭제 (재배포)
+            kubectl delete deployment ticker-collector-primary -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-primary -n bonanza-index --ignore-not-found=true
+        elif [ "$DEPLOY_MODE" = "secondary-only" ]; then
+            # Secondary만 배포할 경우 Primary는 삭제하지 않음
+            echo "  🗑️  ticker-collector - Secondary 배포를 위해 다른 모드 삭제 중..."
+            # 다중 인스턴스 모드 삭제
+            kubectl delete deployment ticker-collector-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete deployment ticker-collector-2 -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-service-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-service-2 -n bonanza-index --ignore-not-found=true
+            # 단일 인스턴스 모드 삭제
+            kubectl delete deployment ticker-collector -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-service -n bonanza-index --ignore-not-found=true
+            # Secondary는 삭제 (재배포)
+            kubectl delete deployment ticker-collector-secondary -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-secondary -n bonanza-index --ignore-not-found=true
+        else
+            # 모든 배포 모드 삭제
+            echo "  🗑️  ticker-collector 모든 배포 모드 삭제 중..."
+            # Active-Active 모드
+            kubectl delete deployment ticker-collector-primary -n bonanza-index --ignore-not-found=true
+            kubectl delete deployment ticker-collector-secondary -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-primary -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-secondary -n bonanza-index --ignore-not-found=true
+            kubectl delete pdb ticker-collector-pdb -n bonanza-index --ignore-not-found=true
+            # 다중 인스턴스 모드
+            kubectl delete deployment ticker-collector-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete deployment ticker-collector-2 -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-service-1 -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-service-2 -n bonanza-index --ignore-not-found=true
+            # 단일 인스턴스 모드
+            kubectl delete deployment ticker-collector -n bonanza-index --ignore-not-found=true
+            kubectl delete service ticker-collector-service -n bonanza-index --ignore-not-found=true
+        fi
     else
         kubectl delete deployment $DEPLOYMENT_NAME -n bonanza-index --ignore-not-found=true
     fi
@@ -201,69 +320,106 @@ for SERVICE in "${SELECTED_SERVICES[@]}"; do
         echo "  🎨 프론트엔드 배포 중: $SERVICE_NAME..."
         kubectl apply -f $DEPLOYMENT_DIR/
     elif [ "$SERVICE_NAME" = "orderbook-collector" ]; then
-        echo "  🔧 orderbook-collector 배포 모드 선택..."
-        echo ""
-        echo "    1) Active-Active 이중화 모드 (권장)"
-        echo "    2) 다중 인스턴스 모드 (deployment-1, deployment-2)"
-        echo "    3) 단일 인스턴스 모드"
-        echo ""
-        read -p "    선택하세요 (1-3, 기본값: 1): " COLLECTOR_MODE
-        COLLECTOR_MODE=${COLLECTOR_MODE:-1}
+        DEPLOY_MODE="${COLLECTOR_DEPLOY_MODE[$SERVICE_NAME]:-all}"
         
-        case "$COLLECTOR_MODE" in
-            1)
-                echo "  🔧 orderbook-collector Active-Active 이중화 모드 배포 중..."
-                kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
-                ;;
-            2)
-                echo "  🔧 orderbook-collector 다중 인스턴스 배포 중 (process_id 2개)..."
-                kubectl apply -f $DEPLOYMENT_DIR/deployment-1.yaml
-                kubectl apply -f $DEPLOYMENT_DIR/deployment-2.yaml
-                kubectl apply -f $DEPLOYMENT_DIR/service-1.yaml
-                kubectl apply -f $DEPLOYMENT_DIR/service-2.yaml
-                ;;
-            3)
-                echo "  🔧 orderbook-collector 단일 인스턴스 배포 중..."
-                kubectl apply -f $DEPLOYMENT_DIR/deployment.yaml
-                kubectl apply -f $DEPLOYMENT_DIR/service.yaml
-                ;;
-            *)
-                echo "  ⚠️  잘못된 선택입니다. Active-Active 모드로 배포합니다."
-                kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
-                ;;
-        esac
+        if [ "$DEPLOY_MODE" = "primary-only" ]; then
+            # Primary만 배포
+            echo "  🔧 orderbook-collector Primary만 배포 중..."
+            # deployment-active-active.yaml에서 Primary 부분만 추출하여 배포
+            # YAML 파일을 임시로 수정하거나, kubectl apply 시 특정 리소스만 선택
+            # 간단한 방법: 전체 YAML을 적용하되, Secondary는 이미 존재하므로 무시됨
+            kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+            # Primary Deployment와 Service만 명시적으로 확인
+            kubectl wait --for=condition=available --timeout=300s deployment/orderbook-collector-primary -n bonanza-index 2>/dev/null || true
+        elif [ "$DEPLOY_MODE" = "secondary-only" ]; then
+            # Secondary만 배포
+            echo "  🔧 orderbook-collector Secondary만 배포 중..."
+            kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+            # Secondary Deployment와 Service만 명시적으로 확인
+            kubectl wait --for=condition=available --timeout=300s deployment/orderbook-collector-secondary -n bonanza-index 2>/dev/null || true
+        else
+            # 전체 배포 모드 선택
+            echo "  🔧 orderbook-collector 배포 모드 선택..."
+            echo ""
+            echo "    1) Active-Active 이중화 모드 (권장)"
+            echo "    2) 다중 인스턴스 모드 (deployment-1, deployment-2)"
+            echo "    3) 단일 인스턴스 모드"
+            echo ""
+            read -p "    선택하세요 (1-3, 기본값: 1): " COLLECTOR_MODE
+            COLLECTOR_MODE=${COLLECTOR_MODE:-1}
+            
+            case "$COLLECTOR_MODE" in
+                1)
+                    echo "  🔧 orderbook-collector Active-Active 이중화 모드 배포 중..."
+                    kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+                    ;;
+                2)
+                    echo "  🔧 orderbook-collector 다중 인스턴스 배포 중 (process_id 2개)..."
+                    kubectl apply -f $DEPLOYMENT_DIR/deployment-1.yaml
+                    kubectl apply -f $DEPLOYMENT_DIR/deployment-2.yaml
+                    kubectl apply -f $DEPLOYMENT_DIR/service-1.yaml
+                    kubectl apply -f $DEPLOYMENT_DIR/service-2.yaml
+                    ;;
+                3)
+                    echo "  🔧 orderbook-collector 단일 인스턴스 배포 중..."
+                    kubectl apply -f $DEPLOYMENT_DIR/deployment.yaml
+                    kubectl apply -f $DEPLOYMENT_DIR/service.yaml
+                    ;;
+                *)
+                    echo "  ⚠️  잘못된 선택입니다. Active-Active 모드로 배포합니다."
+                    kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+                    ;;
+            esac
+        fi
     elif [ "$SERVICE_NAME" = "ticker-collector" ]; then
-        echo "  🔧 ticker-collector 배포 모드 선택..."
-        echo ""
-        echo "    1) Active-Active 이중화 모드 (권장)"
-        echo "    2) 다중 인스턴스 모드 (deployment-1, deployment-2)"
-        echo "    3) 단일 인스턴스 모드"
-        echo ""
-        read -p "    선택하세요 (1-3, 기본값: 1): " COLLECTOR_MODE
-        COLLECTOR_MODE=${COLLECTOR_MODE:-1}
+        DEPLOY_MODE="${COLLECTOR_DEPLOY_MODE[$SERVICE_NAME]:-all}"
         
-        case "$COLLECTOR_MODE" in
-            1)
-                echo "  🔧 ticker-collector Active-Active 이중화 모드 배포 중..."
-                kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
-                ;;
-            2)
-                echo "  🔧 ticker-collector 다중 인스턴스 배포 중 (process_id 2개)..."
-                kubectl apply -f $DEPLOYMENT_DIR/deployment-1.yaml
-                kubectl apply -f $DEPLOYMENT_DIR/deployment-2.yaml
-                kubectl apply -f $DEPLOYMENT_DIR/service-1.yaml
-                kubectl apply -f $DEPLOYMENT_DIR/service-2.yaml
-                ;;
-            3)
-                echo "  🔧 ticker-collector 단일 인스턴스 배포 중..."
-                kubectl apply -f $DEPLOYMENT_DIR/deployment.yaml
-                kubectl apply -f $DEPLOYMENT_DIR/service.yaml
-                ;;
-            *)
-                echo "  ⚠️  잘못된 선택입니다. Active-Active 모드로 배포합니다."
-                kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
-                ;;
-        esac
+        if [ "$DEPLOY_MODE" = "primary-only" ]; then
+            # Primary만 배포
+            echo "  🔧 ticker-collector Primary만 배포 중..."
+            kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+            # Primary Deployment와 Service만 명시적으로 확인
+            kubectl wait --for=condition=available --timeout=300s deployment/ticker-collector-primary -n bonanza-index 2>/dev/null || true
+        elif [ "$DEPLOY_MODE" = "secondary-only" ]; then
+            # Secondary만 배포
+            echo "  🔧 ticker-collector Secondary만 배포 중..."
+            kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+            # Secondary Deployment와 Service만 명시적으로 확인
+            kubectl wait --for=condition=available --timeout=300s deployment/ticker-collector-secondary -n bonanza-index 2>/dev/null || true
+        else
+            # 전체 배포 모드 선택
+            echo "  🔧 ticker-collector 배포 모드 선택..."
+            echo ""
+            echo "    1) Active-Active 이중화 모드 (권장)"
+            echo "    2) 다중 인스턴스 모드 (deployment-1, deployment-2)"
+            echo "    3) 단일 인스턴스 모드"
+            echo ""
+            read -p "    선택하세요 (1-3, 기본값: 1): " COLLECTOR_MODE
+            COLLECTOR_MODE=${COLLECTOR_MODE:-1}
+            
+            case "$COLLECTOR_MODE" in
+                1)
+                    echo "  🔧 ticker-collector Active-Active 이중화 모드 배포 중..."
+                    kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+                    ;;
+                2)
+                    echo "  🔧 ticker-collector 다중 인스턴스 배포 중 (process_id 2개)..."
+                    kubectl apply -f $DEPLOYMENT_DIR/deployment-1.yaml
+                    kubectl apply -f $DEPLOYMENT_DIR/deployment-2.yaml
+                    kubectl apply -f $DEPLOYMENT_DIR/service-1.yaml
+                    kubectl apply -f $DEPLOYMENT_DIR/service-2.yaml
+                    ;;
+                3)
+                    echo "  🔧 ticker-collector 단일 인스턴스 배포 중..."
+                    kubectl apply -f $DEPLOYMENT_DIR/deployment.yaml
+                    kubectl apply -f $DEPLOYMENT_DIR/service.yaml
+                    ;;
+                *)
+                    echo "  ⚠️  잘못된 선택입니다. Active-Active 모드로 배포합니다."
+                    kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+                    ;;
+            esac
+        fi
     else
         echo "  🔧 백엔드 서비스 배포 중: $SERVICE_NAME..."
         kubectl apply -f $DEPLOYMENT_DIR/
