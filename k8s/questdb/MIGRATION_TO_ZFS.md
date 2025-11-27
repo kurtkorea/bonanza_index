@@ -286,6 +286,6 @@ kubectl apply -f k8s/questdb/statefulset.yaml
 
 ---
 
-**작성일:** 2024-11-28  
+**작성일:** 2025-11-28  
 **버전:** 1.0
 

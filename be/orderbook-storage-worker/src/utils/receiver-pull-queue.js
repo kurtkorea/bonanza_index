@@ -285,12 +285,20 @@ async function startPullQueue() {
     global.__flushedBuffers = new Set(); // flush된 bufferKey를 추적
   }
 
+  // 거래소별 마지막 flush된 버퍼 저장 (데이터가 안들어온 경우 이전 데이터 유지용)
+  if (!global.__lastFlushedBuffer) {
+    global.__lastFlushedBuffer = new Map(); // key: "exchange_cd:product_id", value: { bid: Map, ask: Map, ... }
+  }
+
   // marketAt 기준으로 1초가 지난 버퍼를 flush하는 함수
   function flushReadyBuffers() {
     const now = Date.now();
+    const currentSecond = Math.floor(now / 1000);
+    const targetSecond = currentSecond - 1; // 1초 전 초를 flush 대상으로
     
     // marketAt 기준으로 1초 이상 지난 버퍼 항목들을 flush
     const keysToFlush = [];
+    
     for (const [key, buffer] of global.__orderbookBuffer.entries()) {
       // marketAt 기준으로 1초(1000ms) 이상 지난 항목만 flush
       // 이미 flush된 버퍼는 제외
@@ -299,87 +307,137 @@ async function startPullQueue() {
       }
     }
 
-      for (const key of keysToFlush) {
-        const buffer = global.__orderbookBuffer.get(key);
-        if (!buffer) continue;
+    // 데이터가 안들어온 거래소:상품 조합에 대해 이전 데이터 사용
+    // 모든 거래소:상품 조합을 확인하여 데이터가 없는 경우 이전 버퍼 사용
+    for (const [exchangeProductKey, lastBuffer] of global.__lastFlushedBuffer.entries()) {
+      const [exchange_cd, product_id] = exchangeProductKey.split(':');
+      const targetBufferKey = `${exchange_cd}:${product_id}:${targetSecond}`;
+      
+      // 해당 초의 버퍼가 없고, 아직 flush되지 않았다면 이전 버퍼 사용
+      if (!global.__orderbookBuffer.has(targetBufferKey) && !global.__flushedBuffers.has(targetBufferKey)) {
+        // 이전 버퍼를 복사하여 새 버퍼 생성
+        const clonedBuffer = {
+          topic: lastBuffer.topic,
+          exchange_cd: lastBuffer.exchange_cd,
+          price_id: lastBuffer.price_id,
+          product_id: lastBuffer.product_id,
+          tran_date: lastBuffer.tran_date,
+          tran_time: lastBuffer.tran_time,
+          marketAt: targetSecond * 1000, // 현재 초의 시작 시간
+          coollectorAt: lastBuffer.coollectorAt,
+          diff_ms: lastBuffer.diff_ms,
+          bid: new Map(lastBuffer.bid), // Map 복사
+          ask: new Map(lastBuffer.ask), // Map 복사
+        };
         
-        // 이미 flush된 버퍼인지 다시 확인 (동시성 문제 방지)
-        if (global.__flushedBuffers.has(key)) {
-          continue;
-        }
+        // tran_date, tran_time 업데이트
+        const targetDate = new Date(targetSecond * 1000);
+        clonedBuffer.tran_date = targetDate.toISOString().split("T")[0].replace(/-/g, "");
+        clonedBuffer.tran_time = targetDate.toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
         
-        // flush 표시 (flush 전에 표시하여 중복 방지)
-        global.__flushedBuffers.add(key);
-
-        const lines = [];
-
-        // bid 상위 15개 선택 (가격 내림차순)
-        const sortedBids = Array.from(buffer.bid.entries())
-          .sort((a, b) => b[0] - a[0]) // 가격 내림차순
-          .slice(0, 15);
-        
-        // ask 상위 15개 선택 (가격 오름차순)
-        const sortedAsks = Array.from(buffer.ask.entries())
-          .sort((a, b) => a[0] - b[0]) // 가격 오름차순
-          .slice(0, 15);
-
-        const dbAt = new Date().getTime();
-        const diff_ms_db = (dbAt - buffer.marketAt) / 1000;
-
-        // bid 저장
-        for (const [price, size] of sortedBids) {
-          const row = {
-            tran_date: buffer.tran_date,
-            tran_time: buffer.tran_time,
-            exchange_cd: buffer.exchange_cd,
-            price_id: buffer.price_id,
-            product_id: buffer.product_id,
-            order_tp: "B",
-            price,
-            size,
-            marketAt: buffer.marketAt,
-            coollectorAt: buffer.coollectorAt,
-            dbAt: dbAt,
-            diff_ms: buffer.diff_ms,
-            diff_ms_db: diff_ms_db,
-          };
-          lines.push(toILP(buffer.topic, buffer.marketAt, row));
-        }
-
-        // ask 저장
-        for (const [price, size] of sortedAsks) {
-          const row = {
-            tran_date: buffer.tran_date,
-            tran_time: buffer.tran_time,
-            exchange_cd: buffer.exchange_cd,
-            price_id: buffer.price_id,
-            product_id: buffer.product_id,
-            order_tp: "A",
-            price,
-            size,
-            marketAt: buffer.marketAt,
-            coollectorAt: buffer.coollectorAt,
-            dbAt: dbAt,
-            diff_ms: buffer.diff_ms,
-            diff_ms_db: diff_ms_db,
-          };
-          lines.push(toILP(buffer.topic, buffer.marketAt, row));
-        }
-
-        if (lines.length > 0 && process.env.IS_SAVE_DB === "true") {
-          ilp.write(lines);
-        }
-
-        // 버퍼 삭제
-        global.__orderbookBuffer.delete(key);
-        
-        // 오래된 flush 기록 정리 (1분 이상 지난 기록 삭제)
-        if (global.__flushedBuffers.size > 1000) {
-          // 간단한 정리: flush 기록이 너무 많아지면 초기화
-          // (실제로는 타임스탬프를 저장해서 오래된 것만 삭제하는 것이 좋지만, 간단하게 처리)
-          global.__flushedBuffers.clear();
-        }
+        global.__orderbookBuffer.set(targetBufferKey, clonedBuffer);
+        keysToFlush.push(targetBufferKey);
       }
+    }
+
+    // 버퍼 flush 처리
+    for (const key of keysToFlush) {
+      const buffer = global.__orderbookBuffer.get(key);
+      if (!buffer) continue;
+      
+      // 이미 flush된 버퍼인지 다시 확인 (동시성 문제 방지)
+      if (global.__flushedBuffers.has(key)) {
+        continue;
+      }
+      
+      // flush 표시 (flush 전에 표시하여 중복 방지)
+      global.__flushedBuffers.add(key);
+
+      const lines = [];
+
+      // bid 상위 15개 선택 (가격 내림차순)
+      const sortedBids = Array.from(buffer.bid.entries())
+        .sort((a, b) => b[0] - a[0]) // 가격 내림차순
+        .slice(0, 15);
+      
+      // ask 상위 15개 선택 (가격 오름차순)
+      const sortedAsks = Array.from(buffer.ask.entries())
+        .sort((a, b) => a[0] - b[0]) // 가격 오름차순
+        .slice(0, 15);
+
+      const dbAt = new Date().getTime();
+      const diff_ms_db = (dbAt - buffer.marketAt) / 1000;
+
+      // bid 저장
+      for (const [price, size] of sortedBids) {
+        const row = {
+          tran_date: buffer.tran_date,
+          tran_time: buffer.tran_time,
+          exchange_cd: buffer.exchange_cd,
+          price_id: buffer.price_id,
+          product_id: buffer.product_id,
+          order_tp: "B",
+          price,
+          size,
+          marketAt: buffer.marketAt,
+          coollectorAt: buffer.coollectorAt,
+          dbAt: dbAt,
+          diff_ms: buffer.diff_ms,
+          diff_ms_db: diff_ms_db,
+        };
+        lines.push(toILP(buffer.topic, buffer.marketAt, row));
+      }
+
+      // ask 저장
+      for (const [price, size] of sortedAsks) {
+        const row = {
+          tran_date: buffer.tran_date,
+          tran_time: buffer.tran_time,
+          exchange_cd: buffer.exchange_cd,
+          price_id: buffer.price_id,
+          product_id: buffer.product_id,
+          order_tp: "A",
+          price,
+          size,
+          marketAt: buffer.marketAt,
+          coollectorAt: buffer.coollectorAt,
+          dbAt: dbAt,
+          diff_ms: buffer.diff_ms,
+          diff_ms_db: diff_ms_db,
+        };
+        lines.push(toILP(buffer.topic, buffer.marketAt, row));
+      }
+
+      if (lines.length > 0 && process.env.IS_SAVE_DB === "true") {
+        ilp.write(lines);
+      }
+
+      // 마지막 flush된 버퍼로 저장 (다음 초에 데이터가 없을 때 사용)
+      const exchangeProductKey = `${buffer.exchange_cd}:${buffer.product_id}`;
+      global.__lastFlushedBuffer.set(exchangeProductKey, {
+        topic: buffer.topic,
+        exchange_cd: buffer.exchange_cd,
+        price_id: buffer.price_id,
+        product_id: buffer.product_id,
+        tran_date: buffer.tran_date,
+        tran_time: buffer.tran_time,
+        marketAt: buffer.marketAt,
+        coollectorAt: buffer.coollectorAt,
+        diff_ms: buffer.diff_ms,
+        bid: new Map(buffer.bid), // Map 복사
+        ask: new Map(buffer.ask), // Map 복사
+      });
+
+      // 버퍼 삭제
+      global.__orderbookBuffer.delete(key);
+      
+      // 오래된 flush 기록 정리 (1분 이상 지난 기록 삭제)
+      if (global.__flushedBuffers.size > 1000) {
+        // 간단한 정리: flush 기록이 너무 많아지면 초기화
+        // (실제로는 타임스탬프를 저장해서 오래된 것만 삭제하는 것이 좋지만, 간단하게 처리)
+        global.__flushedBuffers.clear();
+      }
+    }
   }
 
   // marketAt 기준으로 1초가 지난 버퍼를 flush하는 타이머

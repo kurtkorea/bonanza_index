@@ -1011,25 +1011,28 @@ function scheduleDailyReport() {
 
     try {
       if (quest_db && quest_db.sequelize) {
+        const reportContent = JSON.stringify({
+          type: "daily_queue_statistics",
+          timestamp: new Date().toISOString(),
+          exchanges: dailyStats,
+        });
+        
         await quest_db.sequelize.query(
-          `INSERT INTO tb_report (title, content, createdAt) VALUES (?, ?, ?)`,
+          `INSERT INTO tb_report (title, content, createdAt) VALUES (:title, :content, NOW())`,
           {
-            replacements: [
-              "orderbook-collector",
-              JSON.stringify({
-                type: "interval_queue_statistics",
-                timestamp: new Date().toISOString(),
-                exchanges: dailyStats,
-              }),
-              Date.now(),
-            ],
+            replacements: {
+              title: "orderbook-collector",
+              content: reportContent,
+            },
           }
         );
+        
+        logger.info({ ex: "REPORT", title: "orderbook-collector", exchanges: dailyStats.length }, "[tb_report] Successfully inserted daily report");
       } else {
         logger.warn("[tb_report] Unable to insert report: missing sequelize instance.");
       }
     } catch (err) {
-      logger.error("[tb_report] insert error", err);
+      logger.error({ ex: "REPORT", err: String(err), stack: err.stack }, "[tb_report] insert error");
     }
 
     clients.forEach((client) => {

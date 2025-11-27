@@ -172,25 +172,85 @@ kubectl get pods -n "$OPENEBS_NAMESPACE" -l role=openebs-zfs 2>/dev/null || echo
 helm list -n "$OPENEBS_NAMESPACE" | grep zfs || echo "Helm 릴리스 없음"
 echo ""
 
+echo ""
+echo "=========================================="
+echo "9. 호스트 파일 시스템 정리 (선택사항)"
+echo "=========================================="
+
+# ZFS 풀 확인
+POOL_NAME="bonanza"
+POOL_DIR="/var/lib/zfs-pool"
+POOL_FILE="$POOL_DIR/zfs-pool.img"
+
+if zpool list "$POOL_NAME" &>/dev/null; then
+    echo -e "${YELLOW}ZFS 풀 '$POOL_NAME'이 존재합니다.${NC}"
+    read -p "ZFS 풀을 제거하시겠습니까? (yes/no): " confirm_pool
+    if [ "$confirm_pool" = "yes" ]; then
+        echo "ZFS 풀 제거 중..."
+        sudo zpool destroy "$POOL_NAME" -f 2>/dev/null || true
+        echo -e "${GREEN}✓ ZFS 풀 제거 완료${NC}"
+        
+        # 루프 디바이스 해제
+        LOOP_DEV=$(losetup -j "$POOL_FILE" 2>/dev/null | cut -d: -f1)
+        if [ -n "$LOOP_DEV" ]; then
+            echo "루프 디바이스 해제 중: $LOOP_DEV"
+            sudo losetup -d "$LOOP_DEV" 2>/dev/null || true
+            echo -e "${GREEN}✓ 루프 디바이스 해제 완료${NC}"
+        fi
+        
+        # 파일 삭제
+        if [ -f "$POOL_FILE" ]; then
+            read -p "파일 기반 풀 파일($POOL_FILE)을 삭제하시겠습니까? (yes/no): " confirm_file
+            if [ "$confirm_file" = "yes" ]; then
+                sudo rm -f "$POOL_FILE"
+                echo -e "${GREEN}✓ 파일 삭제 완료${NC}"
+            fi
+        fi
+    fi
+else
+    echo "ZFS 풀 '$POOL_NAME'이 없습니다."
+    
+    # 파일만 남아있는 경우
+    if [ -f "$POOL_FILE" ]; then
+        echo -e "${YELLOW}파일 기반 풀 파일이 남아있습니다: $POOL_FILE${NC}"
+        read -p "파일을 삭제하시겠습니까? (yes/no): " confirm_file
+        if [ "$confirm_file" = "yes" ]; then
+            # 루프 디바이스 해제 (있는 경우)
+            LOOP_DEV=$(losetup -j "$POOL_FILE" 2>/dev/null | cut -d: -f1)
+            if [ -n "$LOOP_DEV" ]; then
+                echo "루프 디바이스 해제 중: $LOOP_DEV"
+                sudo losetup -d "$LOOP_DEV" 2>/dev/null || true
+            fi
+            sudo rm -f "$POOL_FILE"
+            echo -e "${GREEN}✓ 파일 삭제 완료${NC}"
+        fi
+    fi
+fi
+
+echo ""
 echo "=========================================="
 echo -e "${GREEN}제거 작업 완료!${NC}"
 echo "=========================================="
 echo ""
 echo -e "${YELLOW}참고사항:${NC}"
 echo ""
-echo "1. ZFS 풀(bonanza)은 호스트에 남아있습니다."
+echo "1. ZFS 풀(bonanza)은 호스트에 남아있을 수 있습니다."
 echo "   필요시 수동으로 제거하세요:"
 echo "   sudo zpool destroy bonanza"
 echo ""
-echo "2. OpenEBS 네임스페이스는 남아있을 수 있습니다."
+echo "2. 파일 기반 풀 파일(/var/lib/zfs-pool/zfs-pool.img)은 위에서 처리되었습니다."
+echo "   남아있다면 수동으로 삭제하세요:"
+echo "   sudo rm -f /var/lib/zfs-pool/zfs-pool.img"
+echo ""
+echo "3. OpenEBS 네임스페이스는 남아있을 수 있습니다."
 echo "   필요시 삭제하세요:"
 echo "   kubectl delete namespace $OPENEBS_NAMESPACE"
 echo ""
-echo "3. 모든 리소스가 제거되었는지 확인하세요:"
+echo "4. 모든 리소스가 제거되었는지 확인하세요:"
 echo "   kubectl get all -n $NAMESPACE"
 echo "   kubectl get all -n $OPENEBS_NAMESPACE"
 echo ""
-echo "4. 재설치를 위해 다음을 확인하세요:"
+echo "5. 재설치를 위해 다음을 확인하세요:"
 echo "   - ZFS 풀이 생성되어 있는지: zpool list"
 echo "   - Helm이 설치되어 있는지: helm version"
 echo ""
