@@ -59,7 +59,7 @@ spec:
         - name: WS_QUEUE_PROCESS_INTERVAL
           value: "20"
         - name: WS_QUEUE_MONITOR_INTERVAL
-          value: "30000"
+          value: "600000"
         - name: CPU_CORES
           value: "2"
         # 로그 출력 최적화

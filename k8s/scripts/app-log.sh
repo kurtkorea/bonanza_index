@@ -88,6 +88,73 @@ elif [ "$SERVICE" = "questdb" ] || [ "$SERVICE" = "mariadb" ]; then
     if ! kubectl get pod "$APP_POD" -n bonanza-index &>/dev/null; then
         APP_POD=""
     fi
+elif [ "$SERVICE" = "orderbook-collector" ] || [ "$SERVICE" = "ticker-collector" ]; then
+    # Collector 서비스: Active-Active 모드 확인
+    PRIMARY_EXISTS=$(kubectl get deployment ${SERVICE}-primary -n bonanza-index -o name 2>/dev/null || echo "")
+    SECONDARY_EXISTS=$(kubectl get deployment ${SERVICE}-secondary -n bonanza-index -o name 2>/dev/null || echo "")
+    INSTANCE_1_EXISTS=$(kubectl get deployment ${SERVICE}-1 -n bonanza-index -o name 2>/dev/null || echo "")
+    INSTANCE_2_EXISTS=$(kubectl get deployment ${SERVICE}-2 -n bonanza-index -o name 2>/dev/null || echo "")
+    
+    if [ -n "$PRIMARY_EXISTS" ] && [ -n "$SECONDARY_EXISTS" ]; then
+        # Active-Active 모드
+        echo "📊 Active-Active 이중화 모드 감지"
+        echo ""
+        echo "인스턴스 선택:"
+        echo "  1) Primary"
+        echo "  2) Secondary"
+        echo ""
+        read -p "선택하세요 (1-2, 기본값: 1): " INSTANCE_SELECTION
+        INSTANCE_SELECTION=${INSTANCE_SELECTION:-1}
+        
+        case "$INSTANCE_SELECTION" in
+            1)
+                APP_POD=$(kubectl get pods -n bonanza-index -l app=$SERVICE,role=primary -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+                INSTANCE_NAME="Primary"
+                ;;
+            2)
+                APP_POD=$(kubectl get pods -n bonanza-index -l app=$SERVICE,role=secondary -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+                INSTANCE_NAME="Secondary"
+                ;;
+            *)
+                echo "⚠️  잘못된 선택입니다. Primary를 사용합니다."
+                APP_POD=$(kubectl get pods -n bonanza-index -l app=$SERVICE,role=primary -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+                INSTANCE_NAME="Primary"
+                ;;
+        esac
+        echo ""
+        echo "✅ 선택된 인스턴스: $INSTANCE_NAME"
+    elif [ -n "$INSTANCE_1_EXISTS" ] && [ -n "$INSTANCE_2_EXISTS" ]; then
+        # 다중 인스턴스 모드
+        echo "📊 다중 인스턴스 모드 감지"
+        echo ""
+        echo "인스턴스 선택:"
+        echo "  1) 인스턴스 1"
+        echo "  2) 인스턴스 2"
+        echo ""
+        read -p "선택하세요 (1-2, 기본값: 1): " INSTANCE_SELECTION
+        INSTANCE_SELECTION=${INSTANCE_SELECTION:-1}
+        
+        case "$INSTANCE_SELECTION" in
+            1)
+                APP_POD=$(kubectl get pods -n bonanza-index -l app=$SERVICE,instance=1 -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+                INSTANCE_NAME="인스턴스 1"
+                ;;
+            2)
+                APP_POD=$(kubectl get pods -n bonanza-index -l app=$SERVICE,instance=2 -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+                INSTANCE_NAME="인스턴스 2"
+                ;;
+            *)
+                echo "⚠️  잘못된 선택입니다. 인스턴스 1을 사용합니다."
+                APP_POD=$(kubectl get pods -n bonanza-index -l app=$SERVICE,instance=1 -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+                INSTANCE_NAME="인스턴스 1"
+                ;;
+        esac
+        echo ""
+        echo "✅ 선택된 인스턴스: $INSTANCE_NAME"
+    else
+        # 단일 인스턴스 모드
+        APP_POD=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+    fi
 else
     # 일반적인 app label 사용
     APP_POD=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
@@ -97,23 +164,36 @@ if [ -z "$APP_POD" ]; then
     echo "❌ $SERVICE Pod를 찾을 수 없습니다"
     echo ""
     echo "💡 Pod 상태 확인:"
-    kubectl get pods -n bonanza-index -l app=$SERVICE 2>/dev/null || echo "  Pod가 존재하지 않습니다"
+    if [ "$SERVICE" = "orderbook-collector" ] || [ "$SERVICE" = "ticker-collector" ]; then
+        echo "  Active-Active 모드:"
+        kubectl get pods -n bonanza-index -l app=$SERVICE,role=primary 2>/dev/null || echo "    Primary Pod 없음"
+        kubectl get pods -n bonanza-index -l app=$SERVICE,role=secondary 2>/dev/null || echo "    Secondary Pod 없음"
+        echo "  다중 인스턴스 모드:"
+        kubectl get pods -n bonanza-index -l app=$SERVICE,instance=1 2>/dev/null || echo "    인스턴스 1 Pod 없음"
+        kubectl get pods -n bonanza-index -l app=$SERVICE,instance=2 2>/dev/null || echo "    인스턴스 2 Pod 없음"
+        echo "  단일 인스턴스 모드:"
+        kubectl get pods -n bonanza-index -l app=$SERVICE 2>/dev/null || echo "    Pod 없음"
+    else
+        kubectl get pods -n bonanza-index -l app=$SERVICE 2>/dev/null || echo "  Pod가 존재하지 않습니다"
+    fi
     echo ""
     echo "💡 모든 Pod 확인:"
     kubectl get pods -n bonanza-index
     exit 1
 fi
 
-# 여러 Pod가 있는 경우 선택
-POD_COUNT=$(kubectl get pods -n bonanza-index -l app=$SERVICE --no-headers 2>/dev/null | wc -l)
-
-if [ "$POD_COUNT" -gt 1 ]; then
-    echo "⚠️  $SERVICE Pod가 ${POD_COUNT}개 있습니다:"
-    kubectl get pods -n bonanza-index -l app=$SERVICE
-    echo ""
-    read -p "Pod 이름을 입력하세요 (기본값: $APP_POD): " SELECTED_POD
-    if [ ! -z "$SELECTED_POD" ]; then
-        APP_POD="$SELECTED_POD"
+# 여러 Pod가 있는 경우 (일반적인 경우)
+if [ "$SERVICE" != "orderbook-collector" ] && [ "$SERVICE" != "ticker-collector" ]; then
+    POD_COUNT=$(kubectl get pods -n bonanza-index -l app=$SERVICE --no-headers 2>/dev/null | wc -l)
+    
+    if [ "$POD_COUNT" -gt 1 ]; then
+        echo "⚠️  $SERVICE Pod가 ${POD_COUNT}개 있습니다:"
+        kubectl get pods -n bonanza-index -l app=$SERVICE
+        echo ""
+        read -p "Pod 이름을 입력하세요 (기본값: $APP_POD): " SELECTED_POD
+        if [ ! -z "$SELECTED_POD" ]; then
+            APP_POD="$SELECTED_POD"
+        fi
     fi
 fi
 

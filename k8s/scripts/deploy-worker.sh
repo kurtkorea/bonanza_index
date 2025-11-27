@@ -124,20 +124,38 @@ for SERVICE in "${SELECTED_SERVICES[@]}"; do
     if [ "$DEPLOYMENT_NAME" = "index-calc-fe" ]; then
         kubectl delete deployment $DEPLOYMENT_NAME -n bonanza-index --ignore-not-found=true
     elif [ "$DEPLOYMENT_NAME" = "orderbook-collector" ]; then
-        # orderbook-collector 다중 인스턴스 삭제
+        # orderbook-collector 모든 배포 모드 삭제
+        echo "  🗑️  orderbook-collector 모든 배포 모드 삭제 중..."
+        # Active-Active 모드
+        kubectl delete deployment orderbook-collector-primary -n bonanza-index --ignore-not-found=true
+        kubectl delete deployment orderbook-collector-secondary -n bonanza-index --ignore-not-found=true
+        kubectl delete service orderbook-collector-primary -n bonanza-index --ignore-not-found=true
+        kubectl delete service orderbook-collector-secondary -n bonanza-index --ignore-not-found=true
+        kubectl delete pdb orderbook-collector-pdb -n bonanza-index --ignore-not-found=true
+        # 다중 인스턴스 모드
         kubectl delete deployment orderbook-collector-1 -n bonanza-index --ignore-not-found=true
         kubectl delete deployment orderbook-collector-2 -n bonanza-index --ignore-not-found=true
-        kubectl delete deployment orderbook-collector -n bonanza-index --ignore-not-found=true
         kubectl delete service orderbook-collector-service-1 -n bonanza-index --ignore-not-found=true
         kubectl delete service orderbook-collector-service-2 -n bonanza-index --ignore-not-found=true
+        # 단일 인스턴스 모드
+        kubectl delete deployment orderbook-collector -n bonanza-index --ignore-not-found=true
         kubectl delete service orderbook-collector-service -n bonanza-index --ignore-not-found=true
     elif [ "$DEPLOYMENT_NAME" = "ticker-collector" ]; then
-        # ticker-collector 다중 인스턴스 삭제
+        # ticker-collector 모든 배포 모드 삭제
+        echo "  🗑️  ticker-collector 모든 배포 모드 삭제 중..."
+        # Active-Active 모드
+        kubectl delete deployment ticker-collector-primary -n bonanza-index --ignore-not-found=true
+        kubectl delete deployment ticker-collector-secondary -n bonanza-index --ignore-not-found=true
+        kubectl delete service ticker-collector-primary -n bonanza-index --ignore-not-found=true
+        kubectl delete service ticker-collector-secondary -n bonanza-index --ignore-not-found=true
+        kubectl delete pdb ticker-collector-pdb -n bonanza-index --ignore-not-found=true
+        # 다중 인스턴스 모드
         kubectl delete deployment ticker-collector-1 -n bonanza-index --ignore-not-found=true
         kubectl delete deployment ticker-collector-2 -n bonanza-index --ignore-not-found=true
-        kubectl delete deployment ticker-collector -n bonanza-index --ignore-not-found=true
         kubectl delete service ticker-collector-service-1 -n bonanza-index --ignore-not-found=true
         kubectl delete service ticker-collector-service-2 -n bonanza-index --ignore-not-found=true
+        # 단일 인스턴스 모드
+        kubectl delete deployment ticker-collector -n bonanza-index --ignore-not-found=true
         kubectl delete service ticker-collector-service -n bonanza-index --ignore-not-found=true
     else
         kubectl delete deployment $DEPLOYMENT_NAME -n bonanza-index --ignore-not-found=true
@@ -183,19 +201,69 @@ for SERVICE in "${SELECTED_SERVICES[@]}"; do
         echo "  🎨 프론트엔드 배포 중: $SERVICE_NAME..."
         kubectl apply -f $DEPLOYMENT_DIR/
     elif [ "$SERVICE_NAME" = "orderbook-collector" ]; then
-        echo "  🔧 orderbook-collector 다중 인스턴스 배포 중 (process_id 2개)..."
-        # deployment-1.yaml과 deployment-2.yaml 배포
-        kubectl apply -f $DEPLOYMENT_DIR/deployment-1.yaml
-        kubectl apply -f $DEPLOYMENT_DIR/deployment-2.yaml
-        kubectl apply -f $DEPLOYMENT_DIR/service-1.yaml
-        kubectl apply -f $DEPLOYMENT_DIR/service-2.yaml
+        echo "  🔧 orderbook-collector 배포 모드 선택..."
+        echo ""
+        echo "    1) Active-Active 이중화 모드 (권장)"
+        echo "    2) 다중 인스턴스 모드 (deployment-1, deployment-2)"
+        echo "    3) 단일 인스턴스 모드"
+        echo ""
+        read -p "    선택하세요 (1-3, 기본값: 1): " COLLECTOR_MODE
+        COLLECTOR_MODE=${COLLECTOR_MODE:-1}
+        
+        case "$COLLECTOR_MODE" in
+            1)
+                echo "  🔧 orderbook-collector Active-Active 이중화 모드 배포 중..."
+                kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+                ;;
+            2)
+                echo "  🔧 orderbook-collector 다중 인스턴스 배포 중 (process_id 2개)..."
+                kubectl apply -f $DEPLOYMENT_DIR/deployment-1.yaml
+                kubectl apply -f $DEPLOYMENT_DIR/deployment-2.yaml
+                kubectl apply -f $DEPLOYMENT_DIR/service-1.yaml
+                kubectl apply -f $DEPLOYMENT_DIR/service-2.yaml
+                ;;
+            3)
+                echo "  🔧 orderbook-collector 단일 인스턴스 배포 중..."
+                kubectl apply -f $DEPLOYMENT_DIR/deployment.yaml
+                kubectl apply -f $DEPLOYMENT_DIR/service.yaml
+                ;;
+            *)
+                echo "  ⚠️  잘못된 선택입니다. Active-Active 모드로 배포합니다."
+                kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+                ;;
+        esac
     elif [ "$SERVICE_NAME" = "ticker-collector" ]; then
-        echo "  🔧 ticker-collector 다중 인스턴스 배포 중 (process_id 2개)..."
-        # deployment-1.yaml과 deployment-2.yaml 배포
-        kubectl apply -f $DEPLOYMENT_DIR/deployment-1.yaml
-        kubectl apply -f $DEPLOYMENT_DIR/deployment-2.yaml
-        kubectl apply -f $DEPLOYMENT_DIR/service-1.yaml
-        kubectl apply -f $DEPLOYMENT_DIR/service-2.yaml
+        echo "  🔧 ticker-collector 배포 모드 선택..."
+        echo ""
+        echo "    1) Active-Active 이중화 모드 (권장)"
+        echo "    2) 다중 인스턴스 모드 (deployment-1, deployment-2)"
+        echo "    3) 단일 인스턴스 모드"
+        echo ""
+        read -p "    선택하세요 (1-3, 기본값: 1): " COLLECTOR_MODE
+        COLLECTOR_MODE=${COLLECTOR_MODE:-1}
+        
+        case "$COLLECTOR_MODE" in
+            1)
+                echo "  🔧 ticker-collector Active-Active 이중화 모드 배포 중..."
+                kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+                ;;
+            2)
+                echo "  🔧 ticker-collector 다중 인스턴스 배포 중 (process_id 2개)..."
+                kubectl apply -f $DEPLOYMENT_DIR/deployment-1.yaml
+                kubectl apply -f $DEPLOYMENT_DIR/deployment-2.yaml
+                kubectl apply -f $DEPLOYMENT_DIR/service-1.yaml
+                kubectl apply -f $DEPLOYMENT_DIR/service-2.yaml
+                ;;
+            3)
+                echo "  🔧 ticker-collector 단일 인스턴스 배포 중..."
+                kubectl apply -f $DEPLOYMENT_DIR/deployment.yaml
+                kubectl apply -f $DEPLOYMENT_DIR/service.yaml
+                ;;
+            *)
+                echo "  ⚠️  잘못된 선택입니다. Active-Active 모드로 배포합니다."
+                kubectl apply -f $DEPLOYMENT_DIR/deployment-active-active.yaml
+                ;;
+        esac
     else
         echo "  🔧 백엔드 서비스 배포 중: $SERVICE_NAME..."
         kubectl apply -f $DEPLOYMENT_DIR/
@@ -251,33 +319,91 @@ ALL_SERVICES=(
 
 for SERVICE in "${ALL_SERVICES[@]}"; do
     if [ "$SERVICE" = "orderbook-collector" ]; then
-        # orderbook-collector는 다중 인스턴스이므로 각각 확인
-        echo "$SERVICE (인스턴스 1):"
-        SERVICE_PHASE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=1 -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
-        SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=1 -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
-        SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=1 -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
-        echo "  Phase: $SERVICE_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
-        echo ""
-        echo "$SERVICE (인스턴스 2):"
-        SERVICE_PHASE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=2 -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
-        SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=2 -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
-        SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=2 -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
-        echo "  Phase: $SERVICE_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
-        echo ""
+        # orderbook-collector 배포 모드에 따라 확인
+        PRIMARY_PHASE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,role=primary -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        SECONDARY_PHASE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,role=secondary -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        INSTANCE_1_PHASE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=1 -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        INSTANCE_2_PHASE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=2 -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        SINGLE_PHASE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        
+        if [ "$PRIMARY_PHASE" != "N/A" ] && [ "$SECONDARY_PHASE" != "N/A" ]; then
+            # Active-Active 모드
+            echo "$SERVICE (Primary):"
+            SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,role=primary -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+            SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,role=primary -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+            echo "  Phase: $PRIMARY_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+            echo ""
+            echo "$SERVICE (Secondary):"
+            SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,role=secondary -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+            SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,role=secondary -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+            echo "  Phase: $SECONDARY_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+            echo ""
+        elif [ "$INSTANCE_1_PHASE" != "N/A" ] && [ "$INSTANCE_2_PHASE" != "N/A" ]; then
+            # 다중 인스턴스 모드
+            echo "$SERVICE (인스턴스 1):"
+            SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=1 -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+            SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=1 -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+            echo "  Phase: $INSTANCE_1_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+            echo ""
+            echo "$SERVICE (인스턴스 2):"
+            SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=2 -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+            SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector,instance=2 -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+            echo "  Phase: $INSTANCE_2_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+            echo ""
+        elif [ "$SINGLE_PHASE" != "N/A" ]; then
+            # 단일 인스턴스 모드
+            SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=orderbook-collector -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+            SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=orderbook-collector -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+            echo "$SERVICE:"
+            echo "  Phase: $SINGLE_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+            echo ""
+        else
+            echo "$SERVICE: 배포되지 않음"
+            echo ""
+        fi
     elif [ "$SERVICE" = "ticker-collector" ]; then
-        # ticker-collector는 다중 인스턴스이므로 각각 확인
-        echo "$SERVICE (인스턴스 1):"
-        SERVICE_PHASE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=1 -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
-        SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=1 -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
-        SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=1 -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
-        echo "  Phase: $SERVICE_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
-        echo ""
-        echo "$SERVICE (인스턴스 2):"
-        SERVICE_PHASE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=2 -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
-        SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=2 -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
-        SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=2 -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
-        echo "  Phase: $SERVICE_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
-        echo ""
+        # ticker-collector 배포 모드에 따라 확인
+        PRIMARY_PHASE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,role=primary -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        SECONDARY_PHASE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,role=secondary -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        INSTANCE_1_PHASE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=1 -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        INSTANCE_2_PHASE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=2 -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        SINGLE_PHASE=$(kubectl get pods -n bonanza-index -l app=ticker-collector -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+        
+        if [ "$PRIMARY_PHASE" != "N/A" ] && [ "$SECONDARY_PHASE" != "N/A" ]; then
+            # Active-Active 모드
+            echo "$SERVICE (Primary):"
+            SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=ticker-collector,role=primary -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+            SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,role=primary -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+            echo "  Phase: $PRIMARY_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+            echo ""
+            echo "$SERVICE (Secondary):"
+            SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=ticker-collector,role=secondary -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+            SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,role=secondary -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+            echo "  Phase: $SECONDARY_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+            echo ""
+        elif [ "$INSTANCE_1_PHASE" != "N/A" ] && [ "$INSTANCE_2_PHASE" != "N/A" ]; then
+            # 다중 인스턴스 모드
+            echo "$SERVICE (인스턴스 1):"
+            SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=1 -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+            SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=1 -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+            echo "  Phase: $INSTANCE_1_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+            echo ""
+            echo "$SERVICE (인스턴스 2):"
+            SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=2 -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+            SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=ticker-collector,instance=2 -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+            echo "  Phase: $INSTANCE_2_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+            echo ""
+        elif [ "$SINGLE_PHASE" != "N/A" ]; then
+            # 단일 인스턴스 모드
+            SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=ticker-collector -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
+            SERVICE_NODE=$(kubectl get pods -n bonanza-index -l app=ticker-collector -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "N/A")
+            echo "$SERVICE:"
+            echo "  Phase: $SINGLE_PHASE, Ready: $SERVICE_READY, Node: $SERVICE_NODE"
+            echo ""
+        else
+            echo "$SERVICE: 배포되지 않음"
+            echo ""
+        fi
     else
         SERVICE_PHASE=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
         SERVICE_READY=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")

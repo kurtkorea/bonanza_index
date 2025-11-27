@@ -219,8 +219,38 @@ echo ""
 read -p "Pod를 재시작하시겠습니까? (y/N): " RESTART_PODS
 if [[ "$RESTART_PODS" =~ ^[Yy]$ ]]; then
     for SERVICE in "${SELECTED_SERVICES[@]}"; do
-        echo "🔄 ${SERVICE} Pod 재시작 중..."
-        kubectl delete pods -n bonanza-index -l app="$SERVICE" 2>/dev/null || echo "   ⚠️  Pod를 찾을 수 없습니다"
+        if [ "$SERVICE" = "orderbook-collector" ]; then
+            echo "🔄 ${SERVICE} Pod 재시작 중..."
+            # Active-Active 모드 확인
+            PRIMARY_EXISTS=$(kubectl get deployment orderbook-collector-primary -n bonanza-index -o name 2>/dev/null || echo "")
+            SECONDARY_EXISTS=$(kubectl get deployment orderbook-collector-secondary -n bonanza-index -o name 2>/dev/null || echo "")
+            
+            if [ -n "$PRIMARY_EXISTS" ] && [ -n "$SECONDARY_EXISTS" ]; then
+                echo "   Active-Active 모드 감지: Primary와 Secondary 모두 재시작"
+                kubectl rollout restart deployment orderbook-collector-primary -n bonanza-index 2>/dev/null || echo "   ⚠️  Primary를 찾을 수 없습니다"
+                kubectl rollout restart deployment orderbook-collector-secondary -n bonanza-index 2>/dev/null || echo "   ⚠️  Secondary를 찾을 수 없습니다"
+            else
+                # 다중 인스턴스 또는 단일 인스턴스 모드
+                kubectl delete pods -n bonanza-index -l app="$SERVICE" 2>/dev/null || echo "   ⚠️  Pod를 찾을 수 없습니다"
+            fi
+        elif [ "$SERVICE" = "ticker-collector" ]; then
+            echo "🔄 ${SERVICE} Pod 재시작 중..."
+            # Active-Active 모드 확인
+            PRIMARY_EXISTS=$(kubectl get deployment ticker-collector-primary -n bonanza-index -o name 2>/dev/null || echo "")
+            SECONDARY_EXISTS=$(kubectl get deployment ticker-collector-secondary -n bonanza-index -o name 2>/dev/null || echo "")
+            
+            if [ -n "$PRIMARY_EXISTS" ] && [ -n "$SECONDARY_EXISTS" ]; then
+                echo "   Active-Active 모드 감지: Primary와 Secondary 모두 재시작"
+                kubectl rollout restart deployment ticker-collector-primary -n bonanza-index 2>/dev/null || echo "   ⚠️  Primary를 찾을 수 없습니다"
+                kubectl rollout restart deployment ticker-collector-secondary -n bonanza-index 2>/dev/null || echo "   ⚠️  Secondary를 찾을 수 없습니다"
+            else
+                # 다중 인스턴스 또는 단일 인스턴스 모드
+                kubectl delete pods -n bonanza-index -l app="$SERVICE" 2>/dev/null || echo "   ⚠️  Pod를 찾을 수 없습니다"
+            fi
+        else
+            echo "🔄 ${SERVICE} Pod 재시작 중..."
+            kubectl delete pods -n bonanza-index -l app="$SERVICE" 2>/dev/null || echo "   ⚠️  Pod를 찾을 수 없습니다"
+        fi
         echo ""
     done
     
