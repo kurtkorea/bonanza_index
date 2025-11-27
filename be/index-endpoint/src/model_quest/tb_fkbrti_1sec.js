@@ -64,7 +64,8 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		if (fromDate && toDate) {
 			whereClause = `WHERE to_timezone(createdAt, 'Asia/Seoul') >= to_timezone(:fromDate, 'Asia/Seoul')
 							AND to_timezone(createdAt, 'Asia/Seoul') < to_timezone(:toDate, 'Asia/Seoul')
-							AND index_mid IS NOT NULL AND symbol = :symbol`;
+							AND index_mid IS NOT NULL AND symbol = :symbol 
+							and no_publish = false and provisional = false and no_data = false and actual_avg > 0`;
 			replacements.fromDate = fromDate;
 			replacements.toDate = toDate;
 		} else {
@@ -181,7 +182,8 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		if (fromDate && toDate) {
 			// QuestDB의 to_timezone 함수는 ISO 8601 문자열 형식을 요구합니다
 			whereClause = `WHERE to_timezone(createdAt, 'Asia/Seoul') >= to_timezone(:fromDate, 'Asia/Seoul')
-							AND to_timezone(createdAt, 'Asia/Seoul') < to_timezone(:toDate, 'Asia/Seoul')`;
+							AND to_timezone(createdAt, 'Asia/Seoul') < to_timezone(:toDate, 'Asia/Seoul')
+							AND no_publish = false AND provisional = false AND no_data = false actual_avg > 0`;
 			// ISO 문자열을 그대로 전달 (QuestDB가 인식할 수 있는 형식)
 			replacements.fromDate = fromDate;
 			replacements.toDate = toDate;
@@ -222,6 +224,8 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 			ORDER BY createdAt ${orderDirection}
 			LIMIT ${maxLimit}
 		`;
+
+		logger.info({ ex: "FKBRTI", query }, "FKBRTI query");
 
 		const results = await this.sequelize.query(query, {
 			replacements,
@@ -589,8 +593,8 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 				if (!expectedStatus || !Array.isArray(expectedStatus)) continue;
 
 				// UPBIT(101) 및 BITTHUMB(102) 가격 추출
-				const upbit = expectedStatus.find(x => x.exchange === '101' || x.exchange === 101);
-				const bitthumb = expectedStatus.find(x => x.exchange === '102' || x.exchange === 102);
+				const upbit = expectedStatus.find(x => x.exchange === 'E0010001');
+				const bitthumb = expectedStatus.find(x => x.exchange === 'E0020001');
 				
 				const basePrice = (upbit && upbit.price !== undefined && upbit.price !== null) 
 					? upbit.price 

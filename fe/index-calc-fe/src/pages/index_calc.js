@@ -1,7 +1,7 @@
 import { Divider, message, Modal, Popconfirm, Switch, Button, Select } from "antd";
 import axios from "axios";
 import classNames from "classnames";
-import React, { useCallback, useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import common, { getServiceUrl } from "../common";
 import { useNavigate } from "react-router-dom";
@@ -243,9 +243,18 @@ const IndexCalcTable = () => {
   const [selectedSymbol, setSelectedSymbol] = useState(symbols[0] || null);
   const [previousSymbol, setPreviousSymbol] = useState(null);
 
+  // 중복 요청 방지를 위한 ref
+  const fetchingRef = useRef(false);
+  const fetchingStatsRef = useRef(false);
+
   // Fetch data with paging
   const fetchData = async (page = currentPage, size = pageSize, symbol = selectedSymbol, updateWebSocket = false) => 
   {
+    // 중복 요청 방지
+    if (fetchingRef.current) {
+      return;
+    }
+    fetchingRef.current = true;
     setLoading(true);
     try {
       const fromDate = range[0] ? range[0].format("YYYY-MM-DD") : moment().subtract(7, 'day').format("YYYY-MM-DD");
@@ -331,10 +340,16 @@ const IndexCalcTable = () => {
       message.error("데이터를 불러오는데 실패했습니다.");
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   };
 
   const fetchStats = useCallback(async () => {
+    // 중복 요청 방지
+    if (fetchingStatsRef.current) {
+      return;
+    }
+    fetchingStatsRef.current = true;
     setStatsLoading(true);
     try {
       // 데이터 가공하여 Redux의 summaryStats 구조에 맞는 statsMap 생성
@@ -426,6 +441,7 @@ const IndexCalcTable = () => {
       message.error("통계 조회 중 오류가 발생했습니다.");
     } finally {
       setStatsLoading(false);
+      fetchingStatsRef.current = false;
     }
   }, [dispatch, selectedSymbol, symbols]);
 
@@ -436,6 +452,17 @@ const IndexCalcTable = () => {
     }
   }, [symbols, selectedSymbol]);
 
+  // 초기 마운트 시 한 번 API 호출
+  useEffect(() => {
+    if (selectedSymbol && previousSymbol === null) {
+      // 초기 로드 시 fetchData와 fetchStats 호출
+      fetchData(1, pageSize, selectedSymbol, true);
+      fetchStats();
+      setPreviousSymbol(selectedSymbol);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSymbol, previousSymbol]);
+
   // 종목 변경 시 fetchData 호출 후 WebSocket subscribe 업데이트
   useEffect(() => {
     // 이전 종목과 다르고, selectedSymbol이 유효한 경우에만 처리
@@ -445,27 +472,29 @@ const IndexCalcTable = () => {
       // fetchStats 호출
       fetchStats();
       setPreviousSymbol(selectedSymbol);
-    } else if (selectedSymbol && previousSymbol === null) {
-      // 초기 로드 시 previousSymbol 설정만
-      setPreviousSymbol(selectedSymbol);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSymbol, fetchStats]);
+  }, [selectedSymbol, previousSymbol]);
 
   useEffect(() => {
-    fetchData(1, pageSize, selectedSymbol, false);
-    fetchStats();
-    setCurrentPage(1);
+    if (selectedSymbol) {
+      fetchData(1, pageSize, selectedSymbol, false);
+      fetchStats();
+      setCurrentPage(1);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range, pageSize, fetchStats]);
+  }, [range, pageSize]);
 
   useEffect(() => {
+    if (!selectedSymbol) return;
+    
     const intervalId = setInterval(() => {
       fetchStats();
     }, 60_000);
 
     return () => clearInterval(intervalId);
-  }, [fetchStats]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSymbol]);
 
   useEffect(() => {
     const stats1D = {

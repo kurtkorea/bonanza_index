@@ -6,6 +6,9 @@ export default defineConfig(({ mode }) => {
   // 환경 변수 로드
   const env = loadEnv(mode, process.cwd(), '');
   
+  // 프록시 타겟 설정 (환경 변수 또는 기본값)
+  const PROXY_TARGET = env.VITE_PROXY_TARGET || 'http://218.145.67.182:30076';
+  
   // WebSocket 에러 억제 플러그인
   const suppressWsErrors = () => {
     return {
@@ -70,14 +73,15 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // /proxy 경로 프록시
         '/proxy': {
-          target: 'http://218.145.67.182:30076',
+          target: PROXY_TARGET,
           changeOrigin: true,
           secure: false,
           ws: true,
           configure: (proxy, _options) => {
             proxy.on('proxyReq', (proxyReq, req, res) => {
-              proxyReq.setHeader('Origin', 'http://218.145.67.182:30076');
-              proxyReq.setHeader('Host', '218.145.67.182:30076');
+              const targetUrl = new URL(PROXY_TARGET);
+              proxyReq.setHeader('Origin', PROXY_TARGET);
+              proxyReq.setHeader('Host', targetUrl.host);
               if (req.url.includes('xhr_streaming') || req.url.includes('xhr_send')) {
                 proxyReq.removeHeader('Upgrade');
                 proxyReq.removeHeader('Connection');
@@ -105,8 +109,9 @@ export default defineConfig(({ mode }) => {
             // WebSocket 프록시 에러 핸들링
             proxy.on('proxyReqWs', (proxyReq, req, socket) => {
               // WebSocket 요청 시 헤더 설정
-              proxyReq.setHeader('Origin', 'http://218.145.67.182:30076');
-              proxyReq.setHeader('Host', '218.145.67.182:30076');
+              const targetUrl = new URL(PROXY_TARGET);
+              proxyReq.setHeader('Origin', PROXY_TARGET);
+              proxyReq.setHeader('Host', targetUrl.host);
             });
             proxy.on('proxyErrorWs', (err, req, socket) => {
               // WebSocket 에러는 조용히 무시
@@ -122,7 +127,7 @@ export default defineConfig(({ mode }) => {
         },
         // /v1, /service, /order, /virtual 경로 프록시
         '/v1': {
-          target: 'http://218.145.67.182:30076',
+          target: PROXY_TARGET,
           changeOrigin: true,
           secure: false,
           ws: true,
@@ -153,7 +158,7 @@ export default defineConfig(({ mode }) => {
           },
         },
         '/service': {
-          target: 'http://218.145.67.182:30076',
+          target: PROXY_TARGET,
           changeOrigin: true,
           secure: false,
           ws: true,
@@ -177,7 +182,7 @@ export default defineConfig(({ mode }) => {
           },
         },
         '/order': {
-          target: 'http://218.145.67.182:30076',
+          target: PROXY_TARGET,
           changeOrigin: true,
           secure: false,
           ws: true,
@@ -201,7 +206,7 @@ export default defineConfig(({ mode }) => {
           },
         },
         '/virtual': {
-          target: 'http://218.145.67.182:30076',
+          target: PROXY_TARGET,
           changeOrigin: true,
           secure: false,
           ws: true,
