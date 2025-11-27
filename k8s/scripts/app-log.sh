@@ -24,30 +24,74 @@ APP_SERVICES=(
     "index-calc-fe"
 )
 
+# 마스터 노드 서비스 (DB 및 인프라)
+MASTER_SERVICES=(
+    "questdb"
+    "redis"
+    "mariadb"
+    "nginx"
+    "minio"
+    "zfs-csi-controller"
+    "zfs-csi-node"
+)
+
 # 서비스 선택 메뉴
 echo "📋 서비스 선택:"
 echo ""
+echo "🚀 애플리케이션 서비스:"
 for i in "${!APP_SERVICES[@]}"; do
     INDEX=$((i + 1))
     echo "   ${INDEX}) ${APP_SERVICES[$i]}"
 done
 echo ""
-read -p "선택하세요 (1-${#APP_SERVICES[@]}): " SERVICE_SELECTION
+echo "🗄️  마스터 노드 서비스 (DB 및 인프라):"
+START_INDEX=$((${#APP_SERVICES[@]} + 1))
+for i in "${!MASTER_SERVICES[@]}"; do
+    INDEX=$((START_INDEX + i))
+    echo "   ${INDEX}) ${MASTER_SERVICES[$i]}"
+done
+echo ""
+TOTAL_SERVICES=$((${#APP_SERVICES[@]} + ${#MASTER_SERVICES[@]}))
+read -p "선택하세요 (1-${TOTAL_SERVICES}): " SERVICE_SELECTION
 
-if [[ ! "$SERVICE_SELECTION" =~ ^[1-9][0-9]*$ ]] || [ "$SERVICE_SELECTION" -lt 1 ] || [ "$SERVICE_SELECTION" -gt "${#APP_SERVICES[@]}" ]; then
+if [[ ! "$SERVICE_SELECTION" =~ ^[1-9][0-9]*$ ]] || [ "$SERVICE_SELECTION" -lt 1 ] || [ "$SERVICE_SELECTION" -gt "$TOTAL_SERVICES" ]; then
     echo "❌ 잘못된 선택입니다"
     exit 1
 fi
 
-SERVICE_INDEX=$((SERVICE_SELECTION - 1))
-SERVICE="${APP_SERVICES[$SERVICE_INDEX]}"
+if [ "$SERVICE_SELECTION" -le "${#APP_SERVICES[@]}" ]; then
+    # 애플리케이션 서비스
+    SERVICE_INDEX=$((SERVICE_SELECTION - 1))
+    SERVICE="${APP_SERVICES[$SERVICE_INDEX]}"
+else
+    # 마스터 노드 서비스
+    SERVICE_INDEX=$((SERVICE_SELECTION - ${#APP_SERVICES[@]} - 1))
+    SERVICE="${MASTER_SERVICES[$SERVICE_INDEX]}"
+fi
 
 echo ""
 echo "✅ 선택된 서비스: $SERVICE"
 echo ""
 
-# Pod 찾기
-APP_POD=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+# Pod 찾기 (ZFS는 특별 처리)
+if [ "$SERVICE" = "zfs-csi-controller" ] || [ "$SERVICE" = "zfs-csi-node" ]; then
+    # ZFS CSI Driver는 app label 사용
+    APP_POD=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+elif [ "$SERVICE" = "questdb" ] || [ "$SERVICE" = "mariadb" ]; then
+    # StatefulSet은 Pod 이름이 고정됨
+    if [ "$SERVICE" = "questdb" ]; then
+        APP_POD="questdb-0"
+    elif [ "$SERVICE" = "mariadb" ]; then
+        APP_POD="mariadb-0"
+    fi
+    # Pod 존재 확인
+    if ! kubectl get pod "$APP_POD" -n bonanza-index &>/dev/null; then
+        APP_POD=""
+    fi
+else
+    # 일반적인 app label 사용
+    APP_POD=$(kubectl get pods -n bonanza-index -l app=$SERVICE -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+fi
 
 if [ -z "$APP_POD" ]; then
     echo "❌ $SERVICE Pod를 찾을 수 없습니다"

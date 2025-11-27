@@ -24,6 +24,10 @@ spec:
         securityContext:
           privileged: true
           allowPrivilegeEscalation: true
+        args:
+        - "--endpoint=unix:///var/lib/kubelet/plugins/zfs.csi.openebs.io/csi.sock"
+        - "--plugin=node"
+        - "--nodename=$(NODE_NAME)"
         env:
         - name: OPENEBS_NAMESPACE
           valueFrom:
@@ -46,6 +50,17 @@ spec:
           mountPath: /usr/bin/mount
         - name: sys
           mountPath: /sys
+        - name: zfs-lib
+          mountPath: /lib/x86_64-linux-gnu
+        - name: zfs-lib64
+          mountPath: /lib64
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
       volumes:
       - name: plugin-dir
         hostPath:
@@ -69,6 +84,12 @@ spec:
       - name: sys
         hostPath:
           path: /sys
+      - name: zfs-lib
+        hostPath:
+          path: /lib/x86_64-linux-gnu
+      - name: zfs-lib64
+        hostPath:
+          path: /lib64
       tolerations:
       - operator: Exists
         effect: NoSchedule

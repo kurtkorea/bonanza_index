@@ -10,12 +10,12 @@ spec:
   ports:
   - port: 9000
     targetPort: 9000
-    nodePort: 30900
+    nodePort: 30902
     protocol: TCP
     name: api
   - port: 9001
     targetPort: 9001
-    nodePort: 30901
+    nodePort: 30903
     protocol: TCP
     name: console
   selector:

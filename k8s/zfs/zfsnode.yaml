@@ -1,0 +1,11 @@
+# ZFSNode 리소스 (수동 생성용)
+# ZFS CSI Driver가 자동으로 노드를 등록하지 못하는 경우 수동으로 생성
+
+apiVersion: zfs.openebs.io/v1
+kind: ZFSNode
+metadata:
+  name: ubuntu  # 노드 이름 (kubectl get nodes로 확인)
+spec:
+  poolName: "bonanza"  # ZFS 풀 이름
+  nodeID: "ubuntu"     # 노드 이름과 동일
+

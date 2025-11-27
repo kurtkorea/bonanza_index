@@ -112,7 +112,7 @@ spec:
       name: questdb-data
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: "local-path"
+      storageClassName: "zfs"
       resources:
         requests:
-          storage: 500Gi
+          storage: 200Gi

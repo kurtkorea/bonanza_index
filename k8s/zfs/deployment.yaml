@@ -22,7 +22,8 @@ spec:
         imagePullPolicy: IfNotPresent
         args:
         - "--endpoint=$(CSI_ENDPOINT)"
-        - "--nodeid=$(NODE_NAME)"
+        - "--plugin=controller"
+        - "--nodename=$(NODE_NAME)"
         env:
         - name: CSI_ENDPOINT
           value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
@@ -33,6 +34,13 @@ spec:
         volumeMounts:
         - name: socket-dir
           mountPath: /var/lib/csi/sockets/pluginproxy/
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
       volumes:
       - name: socket-dir
         emptyDir: {}
