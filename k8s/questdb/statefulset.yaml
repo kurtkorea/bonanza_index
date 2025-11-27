@@ -112,7 +112,7 @@ spec:
       name: questdb-data
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: "zfs"
+      storageClassName: "zfs-openebs"
       resources:
         requests:
-          storage: 200Gi
+          storage: 150Gi  # ZFS 풀 용량에 맞게 조정 (199GB 사용 가능)

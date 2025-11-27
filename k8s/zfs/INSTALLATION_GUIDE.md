@@ -5,14 +5,15 @@
 ## 목차
 
 1. [사전 요구사항](#사전-요구사항)
-2. [ZFS 풀 생성](#zfs-풀-생성)
-3. [Helm 설치](#helm-설치)
-4. [OpenEBS ZFS Operator 설치](#openebs-zfs-operator-설치)
-5. [ZFSNode 리소스 생성](#zfsnode-리소스-생성)
-6. [StorageClass 생성](#storageclass-생성)
-7. [QuestDB 마이그레이션](#questdb-마이그레이션)
-8. [검증](#검증)
-9. [트러블슈팅](#트러블슈팅)
+2. [기존 설치 제거 (재설치 시)](#기존-설치-제거-재설치-시)
+3. [ZFS 풀 생성](#zfs-풀-생성)
+4. [Helm 설치](#helm-설치)
+5. [OpenEBS ZFS Operator 설치](#openebs-zfs-operator-설치)
+6. [ZFSNode 리소스 생성](#zfsnode-리소스-생성)
+7. [StorageClass 생성](#storageclass-생성)
+8. [QuestDB 마이그레이션](#questdb-마이그레이션)
+9. [검증](#검증)
+10. [트러블슈팅](#트러블슈팅)
 
 ---
 
@@ -32,6 +33,64 @@ zfs --version
 # ZFS 풀 목록 확인
 zpool list
 ```
+
+---
+
+## 기존 설치 제거 (재설치 시)
+
+기존 ZFS 설치를 완전히 제거하고 처음부터 다시 설치하려는 경우, 다음 스크립트를 사용하세요.
+
+### 완전 제거 스크립트 사용
+
+```bash
+chmod +x k8s/zfs/uninstall-all.sh
+./k8s/zfs/uninstall-all.sh
+```
+
+이 스크립트는 다음을 모두 제거합니다:
+- QuestDB StatefulSet 및 PVC (데이터 손실 주의)
+- 모든 ZFSVolume 리소스
+- 모든 ZFSNode 리소스
+- 모든 ZFS StorageClass
+- OpenEBS ZFS Operator (Helm)
+- 모든 ZFS CRD (zfsnodes, zfsvolumes, zfsbackups, zfsrestores)
+- CSIDriver 리소스
+- 관련 RBAC 리소스
+
+### 수동 제거 (선택사항)
+
+스크립트를 사용하지 않고 수동으로 제거하려면:
+
+```bash
+# 1. QuestDB 제거
+kubectl delete statefulset questdb -n bonanza-index
+kubectl delete pvc questdb-data-questdb-0 -n bonanza-index
+
+# 2. ZFSVolume 제거
+kubectl delete zfsvolume --all -A
+
+# 3. StorageClass 제거
+kubectl delete storageclass zfs zfs-openebs
+
+# 4. ZFSNode 제거
+kubectl delete zfsnode --all
+
+# 5. Helm Operator 제거
+helm uninstall zfs-localpv -n openebs
+
+# 6. CRD 제거
+kubectl delete crd zfsvolumes.zfs.openebs.io
+kubectl delete crd zfsbackups.zfs.openebs.io
+kubectl delete crd zfsrestores.zfs.openebs.io
+kubectl delete crd zfsnodes.zfs.openebs.io
+
+# 7. CSIDriver 제거
+kubectl delete csidriver zfs.csi.openebs.io
+```
+
+**주의사항:**
+- ZFS 풀(bonanza)은 호스트에 남아있습니다. 필요시 `sudo zpool destroy bonanza`로 제거하세요.
+- 데이터 백업이 필요한 경우 제거 전에 백업을 수행하세요.
 
 ---
 
@@ -124,6 +183,167 @@ kubectl get pods -n openebs -l role=openebs-zfs
 
 모든 Pod가 `Running` 상태가 될 때까지 대기합니다.
 
+### 4. CRD 확인
+
+OpenEBS ZFS Operator 설치 시 CRD가 자동으로 설치되어야 합니다. 다음 명령어로 확인:
+
+```bash
+# ZFS 관련 CRD 확인
+kubectl get crd | grep zfs
+
+# 예상 출력:
+# zfsbackups.zfs.openebs.io     2024-11-27T16:00:00Z
+# zfsnodes.zfs.openebs.io        2024-11-27T16:00:00Z
+# zfsrestores.zfs.openebs.io     2024-11-27T16:00:00Z
+# zfsvolumes.zfs.openebs.io      2024-11-27T16:00:00Z
+```
+
+**중요:** `zfsvolumes.zfs.openebs.io` CRD가 없으면 PVC가 Pending 상태로 유지됩니다.
+
+### 5. CRD 수동 설치 (필요한 경우)
+
+Helm 설치 후 CRD가 자동으로 설치되지 않는 경우, 수동으로 설치할 수 있습니다:
+
+```bash
+# CRD 파일 적용
+kubectl apply -f k8s/zfs/crd.yaml
+
+# CRD 확인
+kubectl get crd | grep zfs
+```
+
+**CRD 파일 내용 (`k8s/zfs/crd.yaml`):**
+
+```yaml
+# OpenEBS ZFS CRD (Custom Resource Definitions)
+# OpenEBS ZFS Local PV에 필요한 CRD
+
+---
+# ZFSNode CRD
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: zfsnodes.zfs.openebs.io
+spec:
+  group: zfs.openebs.io
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              poolName:
+                type: string
+              nodeID:
+                type: string
+          status:
+            type: object
+  scope: Cluster
+  names:
+    plural: zfsnodes
+    singular: zfsnode
+    kind: ZFSNode
+
+---
+# ZFSVolume CRD (필수)
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: zfsvolumes.zfs.openebs.io
+spec:
+  group: zfs.openebs.io
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              capacity:
+                type: string
+              ownerNodeID:
+                type: string
+              poolName:
+                type: string
+              volumeType:
+                type: string
+              fsType:
+                type: string
+          status:
+            type: object
+            properties:
+              state:
+                type: string
+              nodeID:
+                type: string
+  scope: Namespaced
+  names:
+    plural: zfsvolumes
+    singular: zfsvolume
+    kind: ZFSVolume
+
+---
+# ZFSBackup CRD (선택사항)
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: zfsbackups.zfs.openebs.io
+spec:
+  group: zfs.openebs.io
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+  scope: Namespaced
+  names:
+    plural: zfsbackups
+    singular: zfsbackup
+    kind: ZFSBackup
+
+---
+# ZFSRestore CRD (선택사항)
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: zfsrestores.zfs.openebs.io
+spec:
+  group: zfs.openebs.io
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+  scope: Namespaced
+  names:
+    plural: zfsrestores
+    singular: zfsrestore
+    kind: ZFSRestore
+```
+
+**CRD 설치 후 Controller Pod 재시작:**
+
+```bash
+# Controller Pod 재시작 (CRD 인식)
+kubectl delete pod -n openebs -l app=openebs-zfs-controller
+
+# 재시작 확인
+kubectl get pods -n openebs -l app=openebs-zfs-controller
+```
+
 ---
 
 ## ZFSNode 리소스 생성
@@ -143,33 +363,64 @@ kubectl get zfsnode
 
 ### 수동 생성 (필요한 경우)
 
-노드 이름 확인:
-```bash
-kubectl get nodes
-```
+**중요:** OpenEBS ZFS Operator의 CRD 스키마는 `spec` 필드가 없고, `pools` 배열이 최상위 레벨에 있어야 합니다. 각 풀에는 `name`, `uuid`, `used`, `free` 필드가 모두 필수입니다.
 
-ZFSNode 생성:
+#### 방법 1: 자동 생성 스크립트 사용 (권장)
+
 ```bash
+# ZFS 풀 정보를 자동으로 가져와서 ZFSNode 생성
 NODE_NAME=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
-echo "Node: $NODE_NAME"
+POOL_NAME="bonanza"
+POOL_UUID=$(zpool get -H -o value guid "$POOL_NAME" | head -1)
+POOL_USED=$(zpool list -H -o alloc "$POOL_NAME" | sed 's/K$/Ki/; s/M$/Mi/; s/G$/Gi/; s/T$/Ti/; s/P$/Pi/; s/E$/Ei/')
+POOL_FREE=$(zpool list -H -o free "$POOL_NAME" | sed 's/K$/Ki/; s/M$/Mi/; s/G$/Gi/; s/T$/Ti/; s/P$/Pi/; s/E$/Ei/')
 
 cat <<EOF | kubectl apply -f -
 apiVersion: zfs.openebs.io/v1
 kind: ZFSNode
 metadata:
   name: $NODE_NAME
-spec:
-  pools:
-    - name: bonanza
-      type: striped
+pools:
+  - name: $POOL_NAME
+    uuid: "$POOL_UUID"
+    used: "$POOL_USED"
+    free: "$POOL_FREE"
 EOF
 ```
 
-또는 `k8s/zfs/zfsnode.yaml` 파일 사용:
+#### 방법 2: YAML 파일 사용
+
+1. ZFS 풀 정보 확인:
 ```bash
-# 노드 이름에 맞게 수정 후
+# ZFS 풀 목록 확인
+zpool list bonanza
+
+# ZFS 풀 UUID 확인
+zpool get guid bonanza
+```
+
+2. `k8s/zfs/zfsnode.yaml` 파일 수정:
+```yaml
+apiVersion: zfs.openebs.io/v1
+kind: ZFSNode
+metadata:
+  name: ubuntu  # 노드 이름으로 수정
+pools:
+  - name: bonanza
+    uuid: "13388825031031991397"  # 실제 UUID로 수정
+    used: "292Ki"  # zpool list의 ALLOC 값 (K->Ki, M->Mi, G->Gi로 변환)
+    free: "150Gi"  # zpool list의 FREE 값 (K->Ki, M->Mi, G->Gi로 변환)
+```
+
+3. 적용:
+```bash
 kubectl apply -f k8s/zfs/zfsnode.yaml
 ```
+
+**주의사항:**
+- `used`와 `free` 값은 Kubernetes 리소스 형식을 사용해야 합니다 (`Ki`, `Mi`, `Gi` 등)
+- ZFS의 `K`, `M`, `G` 형식을 `Ki`, `Mi`, `Gi`로 변환해야 합니다
+- `uuid`는 `zpool get guid` 명령어로 확인할 수 있습니다
 
 ---
 
@@ -387,9 +638,92 @@ kubectl get pods -n openebs -l app=openebs-zfs-node
 kubectl logs -n openebs -l app=openebs-zfs-node --tail=50
 
 # 3. 수동으로 ZFSNode 생성 (위의 "ZFSNode 리소스 생성" 섹션 참조)
+#    주의: pools 배열에 uuid, used, free 필드가 모두 필요합니다.
 ```
 
-### 문제 4: StorageClass의 volumeBindingMode 변경 불가
+### 문제 4: ZFSNode 생성 시 "unknown field spec" 오류
+
+**원인:**
+- OpenEBS ZFS Operator의 CRD 스키마에는 `spec` 필드가 없습니다.
+- `pools` 배열이 최상위 레벨에 있어야 합니다.
+
+**해결 방법:**
+
+```bash
+# 올바른 형식으로 생성 (spec 없이 pools를 최상위에)
+NODE_NAME=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
+POOL_UUID=$(zpool get -H -o value guid bonanza | head -1)
+POOL_USED=$(zpool list -H -o alloc bonanza | sed 's/K$/Ki/; s/M$/Mi/; s/G$/Gi/')
+POOL_FREE=$(zpool list -H -o free bonanza | sed 's/K$/Ki/; s/M$/Mi/; s/G$/Gi/')
+
+cat <<EOF | kubectl apply -f -
+apiVersion: zfs.openebs.io/v1
+kind: ZFSNode
+metadata:
+  name: $NODE_NAME
+pools:
+  - name: bonanza
+    uuid: "$POOL_UUID"
+    used: "$POOL_USED"
+    free: "$POOL_FREE"
+EOF
+```
+
+### 문제 5: ZFSNode 생성 시 "pools[0].used: Invalid value" 오류
+
+**원인:**
+- `used`와 `free` 값의 형식이 올바르지 않음
+- Kubernetes 리소스 형식(`Ki`, `Mi`, `Gi`)을 사용해야 함
+
+**해결 방법:**
+
+```bash
+# ZFS의 K, M, G 형식을 Kubernetes 형식으로 변환
+POOL_USED=$(zpool list -H -o alloc bonanza | sed 's/K$/Ki/; s/M$/Mi/; s/G$/Gi/')
+POOL_FREE=$(zpool list -H -o free bonanza | sed 's/K$/Ki/; s/M$/Mi/; s/G$/Gi/')
+
+# 변환된 값 확인
+echo "Used: $POOL_USED"
+echo "Free: $POOL_FREE"
+```
+
+### 문제 6: PVC가 Pending 상태로 유지되고 "get zfsvolumes.zfs.openebs.io" 오류 발생
+
+**증상:**
+```
+Warning  ProvisioningFailed  failed to provision volume with StorageClass "zfs-openebs": 
+rpc error: code = Internal desc = get node map failed : 
+the server could not find the requested resource (get zfsvolumes.zfs.openebs.io)
+```
+
+**원인:**
+- `zfsvolumes.zfs.openebs.io` CRD가 설치되지 않음
+- Helm 설치 시 CRD가 자동으로 설치되지 않았을 수 있음
+
+**해결 방법:**
+
+```bash
+# 1. CRD 확인
+kubectl get crd zfsvolumes.zfs.openebs.io
+
+# 2. CRD가 없으면 설치
+kubectl apply -f k8s/zfs/crd.yaml
+
+# 3. CRD 설치 확인
+kubectl get crd | grep zfs
+
+# 4. Controller Pod 재시작 (CRD 인식)
+kubectl delete pod -n openebs -l app=openebs-zfs-controller
+
+# 5. PVC 상태 확인 (자동으로 바인딩될 수 있음)
+kubectl get pvc questdb-data-questdb-0 -n bonanza-index
+
+# 6. 여전히 Pending이면 PVC 재생성
+kubectl delete pvc questdb-data-questdb-0 -n bonanza-index
+kubectl apply -f k8s/questdb/statefulset.yaml
+```
+
+### 문제 7: StorageClass의 volumeBindingMode 변경 불가
 
 **원인:**
 - StorageClass의 `volumeBindingMode`는 불변(immutable) 필드입니다.

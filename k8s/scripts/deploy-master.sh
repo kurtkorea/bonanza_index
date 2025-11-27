@@ -312,6 +312,8 @@ if [ "$SELECTED_ZFS" = true ]; then
     echo "  ⚠️  주의: 마스터 노드에 ZFS가 설치되어 있어야 합니다."
     echo "  - CRD 설치 중..."
     kubectl apply -f zfs/crd.yaml
+    echo "  - CSIDriver 생성 중..."
+    kubectl apply -f zfs/csidriver.yaml
     echo "  - RBAC 적용 중..."
     kubectl apply -f zfs/rbac.yaml
     echo "  - Controller 배포 중..."

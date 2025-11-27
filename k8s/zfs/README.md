@@ -9,14 +9,14 @@ k8s/zfs/
 ├── README.md                    # 이 파일
 ├── INSTALLATION_GUIDE.md        # 상세 설치 가이드
 ├── QUICK_START.md               # 빠른 시작 가이드
-├── crd.yaml                     # Custom Resource Definitions
-├── csidriver.yaml               # CSI Driver 리소스
-├── rbac.yaml                    # RBAC 설정
-├── deployment.yaml              # ZFS CSI Controller Deployment
-├── daemonset.yaml               # ZFS CSI Node Driver DaemonSet
+├── ZFS_POOL_TYPES.md            # ZFS 풀 타입 비교 가이드
+├── crd.yaml                     # Custom Resource Definitions (CRD 수동 설치용)
 ├── storageclass.yaml            # StorageClass 정의
-└── zfsnode.yaml                 # ZFSNode 리소스 예제
+├── zfsnode.yaml                 # ZFSNode 리소스 예제
+└── uninstall-all.sh             # 완전 제거 스크립트
 ```
+
+**참고:** OpenEBS ZFS Operator는 Helm을 통해 설치하므로, 수동 설치용 파일들(deployment.yaml, daemonset.yaml, rbac.yaml, csidriver.yaml)은 제거되었습니다.
 
 ## 빠른 시작
 
@@ -46,6 +46,20 @@ k8s/zfs/
 ### ZFSNode
 
 각 Kubernetes 노드에 대해 ZFSNode 리소스가 생성되어야 합니다. OpenEBS ZFS Operator의 Node Agent가 자동으로 생성하지만, 수동으로 생성할 수도 있습니다.
+
+**중요:** ZFSNode 생성 시 `pools` 배열의 각 항목에 `name`, `uuid`, `used`, `free` 필드가 모두 필수입니다. `used`와 `free` 값은 Kubernetes 리소스 형식(`Ki`, `Mi`, `Gi`)을 사용해야 합니다.
+
+```yaml
+apiVersion: zfs.openebs.io/v1
+kind: ZFSNode
+metadata:
+  name: ubuntu
+pools:
+  - name: bonanza
+    uuid: "13388825031031991397"
+    used: "292Ki"
+    free: "150Gi"
+```
 
 ## 사용 예시
 

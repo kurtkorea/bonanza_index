@@ -29,21 +29,46 @@ helm repo update
 helm install zfs-localpv openebs-zfs/zfs-localpv --namespace openebs --create-namespace
 ```
 
+### 3-1. CRD 확인 및 설치 (필요한 경우)
+
+```bash
+# CRD 확인
+kubectl get crd | grep zfs
+
+# CRD가 없으면 수동 설치
+kubectl apply -f k8s/zfs/crd.yaml
+
+# Controller Pod 재시작
+kubectl delete pod -n openebs -l app=openebs-zfs-controller
+```
+
+**중요:** `zfsvolumes.zfs.openebs.io` CRD가 없으면 PVC가 Pending 상태로 유지됩니다.
+
 ### 4. ZFSNode 생성 (자동 생성 안 될 경우)
+
+**중요:** `pools` 배열의 각 항목에 `name`, `uuid`, `used`, `free` 필드가 모두 필수입니다.
 
 ```bash
 NODE_NAME=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
+POOL_NAME="bonanza"
+POOL_UUID=$(zpool get -H -o value guid "$POOL_NAME" | head -1)
+POOL_USED=$(zpool list -H -o alloc "$POOL_NAME" | sed 's/K$/Ki/; s/M$/Mi/; s/G$/Gi/')
+POOL_FREE=$(zpool list -H -o free "$POOL_NAME" | sed 's/K$/Ki/; s/M$/Mi/; s/G$/Gi/')
+
 cat <<EOF | kubectl apply -f -
 apiVersion: zfs.openebs.io/v1
 kind: ZFSNode
 metadata:
   name: $NODE_NAME
-spec:
-  pools:
-    - name: bonanza
-      type: striped
+pools:
+  - name: $POOL_NAME
+    uuid: "$POOL_UUID"
+    used: "$POOL_USED"
+    free: "$POOL_FREE"
 EOF
 ```
+
+**참고:** `used`와 `free` 값은 Kubernetes 형식(`Ki`, `Mi`, `Gi`)을 사용해야 합니다.
 
 ### 5. StorageClass 생성
 
