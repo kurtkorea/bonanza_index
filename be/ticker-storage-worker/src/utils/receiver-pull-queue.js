@@ -14,6 +14,7 @@ const zmq = require("zeromq");
 const net = require("net");
 const logger = require("../utils/logger");
 const { quest_db, QueryTypes } = require("../db/quest_db.js");                  // (옵션) raw SQL fallback 시 사용
+const { DataDeduplicator } = require("./deduplicator.js");
 
 /** =========================
  *  ILP Writer (TCP 9009)
@@ -318,6 +319,12 @@ async function startPullQueue() {
   
   const ilp = createIlpWriter({}); // env: QDB_ILP_HOST / QDB_ILP_PORT
 
+  // 중복 제거기 초기화 (환경 변수로 윈도우 시간 설정 가능, 기본 1초)
+  const DEDUP_WINDOW_MS = Number(process.env.DEDUP_WINDOW_MS || 1000);
+  const deduplicator = new DataDeduplicator(DEDUP_WINDOW_MS);
+  let duplicateCount = 0;
+  let totalProcessedCount = 0;
+
   // 1) ZMQ PULL
   const pull = new zmq.Pull();
   await pull.bind(process.env.ZMQ_PULL_HOST);
@@ -346,6 +353,28 @@ async function startPullQueue() {
         let d = data;
         if (typeof d === "string") {
           try { d = JSON.parse(d); } catch { d = { raw: d }; }
+        }
+
+        // 중복 데이터 체크 및 스킵
+        if (d.marketAt) {
+          totalProcessedCount++;
+          // marketAt을 숫자로 변환 (문자열일 수 있음)
+          const marketAtTimestamp = typeof d.marketAt === 'string' ? new Date(d.marketAt).getTime() : d.marketAt;
+          
+          if (deduplicator.isDuplicate(d, marketAtTimestamp)) {
+            duplicateCount++;
+            // 중복 데이터는 스킵
+            if (duplicateCount % 100 === 0) {
+              logger.debug({ 
+                ex: "DEDUP", 
+                duplicateCount, 
+                totalProcessedCount,
+                duplicateRate: ((duplicateCount / totalProcessedCount) * 100).toFixed(2) + '%',
+                type: d.type
+              }, "[DEDUP] Duplicate data skipped");
+            }
+            continue;
+          }
         }
 
         // console.log("d", d);
@@ -453,10 +482,42 @@ async function startPullQueue() {
     }
   })().catch((e) => logger.error({ ex: "PULL", err: String(e) }, "[PULL] loop error:"));
 
+  // 중복 제거 통계 로깅 (주기적)
+  const statsInterval = setInterval(() => {
+    if (totalProcessedCount > 0) {
+      const duplicateRate = ((duplicateCount / totalProcessedCount) * 100).toFixed(2);
+      logger.info({ 
+        ex: "DEDUP", 
+        duplicateCount, 
+        totalProcessedCount,
+        duplicateRate: duplicateRate + '%'
+      }, "[DEDUP] Statistics");
+    }
+  }, 60000); // 1분마다 통계 로깅
+
   // 5) 종료 시그널
   async function shutdown() {
     logger.info("\n[SHUTDOWN] draining...");
     try {
+      // 통계 인터벌 정리
+      if (statsInterval) {
+        clearInterval(statsInterval);
+      }
+
+      // 중복 제거기 정리
+      deduplicator.destroy();
+
+      // 최종 통계 로깅
+      if (totalProcessedCount > 0) {
+        const duplicateRate = ((duplicateCount / totalProcessedCount) * 100).toFixed(2);
+        logger.info({ 
+          ex: "DEDUP", 
+          duplicateCount, 
+          totalProcessedCount,
+          duplicateRate: duplicateRate + '%'
+        }, "[DEDUP] Final statistics");
+      }
+
       await batcher.close();      // 남은 배치 flush
       workQueue.close();
       await workQueue.drain();
