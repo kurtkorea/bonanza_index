@@ -3,6 +3,7 @@ const zmq = require("zeromq");
 const net = require("net");
 const logger = require('./logger.js');
 const { send_publisher } = require("./zmq-sender-pub.js");
+const { DataDeduplicator } = require("./deduplicator.js");
 /** =========================
  *  ILP Writer (TCP 9009)
  *  - 자동 재연결, backpressure 처리, 대기버퍼
@@ -257,6 +258,12 @@ async function startPullQueue() {
   
   const ilp = createIlpWriter({}); // env: QDB_ILP_HOST / QDB_ILP_PORT
 
+  // 중복 제거기 초기화 (환경 변수로 윈도우 시간 설정 가능, 기본 1초)
+  const DEDUP_WINDOW_MS = Number(process.env.DEDUP_WINDOW_MS || 1000);
+  const deduplicator = new DataDeduplicator(DEDUP_WINDOW_MS);
+  let duplicateCount = 0;
+  let totalProcessedCount = 0;
+
   // 프로세스 시작 시간 기록 (재기동 시 첫 데이터 스킵용)
   const processStartTime = Date.now();
   let isFirstData = true;
@@ -471,6 +478,25 @@ async function startPullQueue() {
         if (typeof d === "string") {
           try { d = JSON.parse(d); } catch { d = { raw: d }; }
         }
+
+        // 중복 데이터 체크 및 스킵
+        if (d.marketAt) {
+          totalProcessedCount++;
+          if (deduplicator.isDuplicate(d, d.marketAt)) {
+            duplicateCount++;
+            // 중복 데이터는 스킵
+            if (duplicateCount % 100 === 0) {
+              logger.debug({ 
+                ex: "DEDUP", 
+                duplicateCount, 
+                totalProcessedCount,
+                duplicateRate: ((duplicateCount / totalProcessedCount) * 100).toFixed(2) + '%'
+              }, "[DEDUP] Duplicate data skipped");
+            }
+            continue;
+          }
+        }
+
         const dbAt = new Date().getTime();
         const diff_ms_db = (dbAt - d.marketAt) / 1000;
         let seq = 0;
@@ -581,6 +607,22 @@ async function startPullQueue() {
             }
             isFirstData = false;
           }
+
+          // 중복 데이터 체크 및 스킵 (IS_SECOND 경로에서도 적용)
+          totalProcessedCount++;
+          if (deduplicator.isDuplicate(d, d.marketAt)) {
+            duplicateCount++;
+            // 중복 데이터는 스킵
+            if (duplicateCount % 100 === 0) {
+              logger.debug({ 
+                ex: "DEDUP", 
+                duplicateCount, 
+                totalProcessedCount,
+                duplicateRate: ((duplicateCount / totalProcessedCount) * 100).toFixed(2) + '%'
+              }, "[DEDUP] Duplicate data skipped (IS_SECOND mode)");
+            }
+            continue;
+          }
           
           // marketAt을 초 단위로 변환 (밀리초를 초로 변환)
           const marketAtSecond = Math.floor(d.marketAt / 1000);
@@ -680,10 +722,42 @@ async function startPullQueue() {
     }
   })().catch((e) => logger.error({ ex: "PULL", err: String(e), stack: e.stack }, "[PULL] loop error:"));
 
+  // 중복 제거 통계 로깅 (주기적)
+  const statsInterval = setInterval(() => {
+    if (totalProcessedCount > 0) {
+      const duplicateRate = ((duplicateCount / totalProcessedCount) * 100).toFixed(2);
+      logger.info({ 
+        ex: "DEDUP", 
+        duplicateCount, 
+        totalProcessedCount,
+        duplicateRate: duplicateRate + '%'
+      }, "[DEDUP] Statistics");
+    }
+  }, 60000); // 1분마다 통계 로깅
+
   // 5) 종료 시그널
   async function shutdown() {
     logger.info({ ex: "SHUTDOWN" }, "[SHUTDOWN] draining...");
     try {
+      // 통계 인터벌 정리
+      if (statsInterval) {
+        clearInterval(statsInterval);
+      }
+
+      // 중복 제거기 정리
+      deduplicator.destroy();
+
+      // 최종 통계 로깅
+      if (totalProcessedCount > 0) {
+        const duplicateRate = ((duplicateCount / totalProcessedCount) * 100).toFixed(2);
+        logger.info({ 
+          ex: "DEDUP", 
+          duplicateCount, 
+          totalProcessedCount,
+          duplicateRate: duplicateRate + '%'
+        }, "[DEDUP] Final statistics");
+      }
+
       // flushTimer 정리
       if (flushTimer) {
         clearInterval(flushTimer);
