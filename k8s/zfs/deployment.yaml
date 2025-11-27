@@ -41,6 +41,30 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "100m"
+      - name: csi-provisioner
+        image: quay.io/k8scsi/csi-provisioner:v3.5.0
+        imagePullPolicy: IfNotPresent
+        args:
+        - "--csi-address=$(ADDRESS)"
+        - "--v=5"
+        - "--timeout=30s"
+        - "--leader-election"
+        - "--leader-election-lease-duration=15s"
+        - "--leader-election-renew-deadline=10s"
+        - "--leader-election-retry-period=5s"
+        env:
+        - name: ADDRESS
+          value: /var/lib/csi/sockets/pluginproxy/csi.sock
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /var/lib/csi/sockets/pluginproxy/
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "20m"
+          limits:
+            memory: "64Mi"
+            cpu: "50m"
       volumes:
       - name: socket-dir
         emptyDir: {}

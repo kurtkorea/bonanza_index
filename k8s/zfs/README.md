@@ -109,6 +109,9 @@ parameters:
 # CRD 설치 (필수)
 kubectl apply -f zfs/crd.yaml
 
+# CSIDriver 생성 (필수)
+kubectl apply -f zfs/csidriver.yaml
+
 # RBAC 적용
 kubectl apply -f zfs/rbac.yaml
 
@@ -122,7 +125,9 @@ kubectl apply -f zfs/daemonset.yaml
 kubectl apply -f zfs/storageclass.yaml
 ```
 
-**중요**: CRD는 반드시 먼저 설치해야 합니다. CRD 없이는 ZFS CSI Driver가 정상 작동하지 않습니다.
+**중요**: 
+- CRD는 반드시 먼저 설치해야 합니다.
+- CSIDriver도 필수입니다. CSIDriver 없이는 Kubernetes가 CSI Driver를 인식하지 못합니다.
 
 ## 사용 방법
 
