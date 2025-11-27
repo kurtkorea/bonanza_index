@@ -1,11 +1,26 @@
 # ZFSNode 리소스 (수동 생성용)
-# ZFS CSI Driver가 자동으로 노드를 등록하지 못하는 경우 수동으로 생성
+# OpenEBS ZFS Operator 설치 후 자동 생성되지 않는 경우 수동으로 생성
+#
+# 사용 방법:
+# 1. 자동 생성 스크립트 사용 (권장):
+#    ./create-zfsnode-auto.sh
+#
+# 2. 수동 생성:
+#    - 노드 이름 확인: kubectl get nodes
+#    - ZFS 풀 정보 확인: zpool list bonanza
+#    - ZFS 풀 UUID 확인: zpool get guid bonanza
+#    - 아래 YAML의 값들을 실제 값으로 수정
+#    - 적용: kubectl apply -f zfsnode.yaml
+#
+# 참고: pools 배열의 각 항목에 name, uuid, used, free 필드가 모두 필수입니다.
 
 apiVersion: zfs.openebs.io/v1
 kind: ZFSNode
 metadata:
-  name: ubuntu  # 노드 이름 (kubectl get nodes로 확인)
-spec:
-  poolName: "bonanza"  # ZFS 풀 이름
-  nodeID: "ubuntu"     # 노드 이름과 동일
+  name: ubuntu  # 노드 이름 (kubectl get nodes로 확인 후 수정)
+pools:
+  - name: bonanza  # ZFS 풀 이름
+    uuid: "13388825031031991397"  # zpool get guid bonanza로 확인
+    used: "292Ki"  # zpool list bonanza의 ALLOC 값 (K -> Ki로 변환)
+    free: "150Gi"  # zpool list bonanza의 FREE 값 (G -> Gi로 변환)
 

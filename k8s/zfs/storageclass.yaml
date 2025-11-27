@@ -5,12 +5,14 @@ metadata:
   annotations:
     storageclass.kubernetes.io/is-default-class: "false"
 provisioner: zfs.csi.openebs.io
-volumeBindingMode: Immediate
+volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 reclaimPolicy: Delete
 parameters:
   poolname: "bonanza"  # ZFS 풀 이름
-  # 또는 hostpath를 사용하는 경우:
-  # provisioner: "kubernetes.io/no-provisioner"
-  # volumeBindingMode: "WaitForFirstConsumer"
+allowedTopologies:
+  - matchLabelExpressions:
+    - key: kubernetes.io/hostname
+      values:
+      - ubuntu  # 노드 이름 (kubectl get nodes로 확인)
 
