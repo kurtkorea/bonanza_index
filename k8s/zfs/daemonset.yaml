@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: zfs-csi-node
+  namespace: bonanza-index
+  labels:
+    app: zfs-csi-node
+spec:
+  selector:
+    matchLabels:
+      app: zfs-csi-node
+  template:
+    metadata:
+      labels:
+        app: zfs-csi-node
+    spec:
+      serviceAccountName: zfs-csi-node-sa
+      hostNetwork: true
+      hostPID: true
+      containers:
+      - name: zfs-driver
+        image: openebs/zfs-driver:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+          allowPrivilegeEscalation: true
+        env:
+        - name: OPENEBS_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: plugin-dir
+          mountPath: /var/lib/kubelet/plugins/zfs.csi.openebs.io
+        - name: device-dir
+          mountPath: /dev
+        - name: zfs
+          mountPath: /usr/sbin/zfs
+        - name: zpool
+          mountPath: /usr/sbin/zpool
+        - name: mount
+          mountPath: /usr/bin/mount
+        - name: sys
+          mountPath: /sys
+      volumes:
+      - name: plugin-dir
+        hostPath:
+          path: /var/lib/kubelet/plugins/zfs.csi.openebs.io
+          type: DirectoryOrCreate
+      - name: device-dir
+        hostPath:
+          path: /dev
+      - name: zfs
+        hostPath:
+          path: /usr/sbin/zfs
+          type: File
+      - name: zpool
+        hostPath:
+          path: /usr/sbin/zpool
+          type: File
+      - name: mount
+        hostPath:
+          path: /usr/bin/mount
+          type: File
+      - name: sys
+        hostPath:
+          path: /sys
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+

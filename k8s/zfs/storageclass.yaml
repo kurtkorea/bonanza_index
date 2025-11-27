@@ -1,0 +1,16 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: zfs
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: zfs.csi.openebs.io
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+parameters:
+  poolname: "rpool"  # ZFS 풀 이름 (노드의 실제 ZFS 풀 이름으로 변경 필요)
+  # 또는 hostpath를 사용하는 경우:
+  # provisioner: "kubernetes.io/no-provisioner"
+  # volumeBindingMode: "WaitForFirstConsumer"
+
