@@ -6,7 +6,7 @@
  * @returns {string} 텔레그램 리포트 문자열
  */
 
-function generateQueueReport(clients) {
+function generateQueueReport(clients, collectorRole) {
   const report = [];
   report.push("📊 큐 상태 리포트(ORDER-BOOK)");
   report.push("================================");
@@ -68,6 +68,7 @@ function generateQueueReport(clients) {
     report.push(`  속도: ${avgRate} (평균) | ${recentRate} (최근)`);
     report.push(`  1초당 평균 큐 처리: ${avgPerSecondRate} | 평균 처리시간: ${stats.avgProcessingTime}`);
     report.push(`  상태: ${processingIcon} ${stats.isProcessing ? "처리중" : "대기중"}`);
+    report.push(`  역할: ${collectorRole}`);
     report.push("");
   });
   

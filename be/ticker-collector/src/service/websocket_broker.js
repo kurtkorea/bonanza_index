@@ -22,7 +22,7 @@ const { redisManager } = require("../redis.js");
 const QUEUE_MAX_SIZE = Number(process.env.WS_QUEUE_MAX_SIZE || 5000); // 큐 최대 크기
 const QUEUE_PROCESS_INTERVAL = Number(process.env.WS_QUEUE_PROCESS_INTERVAL || 20); // 큐 처리 간격 (ms) - 2 vCPU에 맞게 조정
 const QUEUE_BATCH_SIZE = Number(process.env.WS_QUEUE_BATCH_SIZE || 50); // 배치 처리 크기 - 2 vCPU에 맞게 조정
-const QUEUE_MONITOR_INTERVAL = Number(process.env.WS_QUEUE_MONITOR_INTERVAL || 30000); // 모니터링 간격 (ms, 기본 30초)
+const QUEUE_MONITOR_INTERVAL = Number(process.env.WS_QUEUE_MONITOR_INTERVAL || 600000); // 모니터링 간격 (ms, 기본 30초)
 
 // CPU 코어 수 기반 동적 조정 (2 vCPU 환경 최적화)
 const CPU_CORES = Number(process.env.CPU_CORES || require('os').cpus().length);
@@ -30,6 +30,8 @@ const CPU_CORES = Number(process.env.CPU_CORES || require('os').cpus().length);
 const OPTIMAL_BATCH_SIZE = Math.max(10, Math.min(QUEUE_BATCH_SIZE, Math.floor(CPU_CORES * 25)));
 // 처리 간격: 2 vCPU 기준으로 조정 (클라이언트 간 경합 최소화)
 const OPTIMAL_PROCESS_INTERVAL = Math.max(10, Math.floor(QUEUE_PROCESS_INTERVAL * (2 / Math.max(1, CPU_CORES))));
+
+const COLLECTOR_ROLE = process.env.COLLECTOR_ROLE || "primary";
 
 function logQueueConfiguration() {
   const config = {
@@ -955,7 +957,7 @@ setInterval(() => {
 // 30초마다 큐 상태 리포트 전송
 setInterval(() => {
   try {
-    const report = generateQueueReport(clients);
+    const report = generateQueueReport(clients, COLLECTOR_ROLE);
     sendTelegramMessageQueue("QueueMonitor", report, true);
     // logger.info("Queue status report sent to Telegram", report);
   } catch (e) {

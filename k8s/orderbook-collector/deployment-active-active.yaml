@@ -83,7 +83,7 @@ spec:
           value: "collector-process"
         # Collector 역할 설정
         - name: COLLECTOR_ROLE
-          value: "active"
+          value: "primary"
         envFrom:
         - configMapRef:
             name: bonanza-common-config
@@ -194,7 +194,7 @@ spec:
           value: "collector-process"
         # Collector 역할 설정
         - name: COLLECTOR_ROLE
-          value: "active"
+          value: "secondary"
         envFrom:
         - configMapRef:
             name: bonanza-common-config

@@ -30,7 +30,7 @@ const DEPTH = 15;
 const QUEUE_MAX_SIZE = Number(process.env.WS_QUEUE_MAX_SIZE || 5000);
 const QUEUE_PROCESS_INTERVAL = Number(process.env.WS_QUEUE_PROCESS_INTERVAL || 20);
 const QUEUE_BATCH_SIZE = Number(process.env.WS_QUEUE_BATCH_SIZE || 50);
-const QUEUE_MONITOR_INTERVAL = Number(process.env.WS_QUEUE_MONITOR_INTERVAL || 30000);
+const QUEUE_MONITOR_INTERVAL = Number(process.env.WS_QUEUE_MONITOR_INTERVAL || 600000);
 const CPU_CORES = Number(process.env.CPU_CORES || require("os").cpus().length);
 const OPTIMAL_BATCH_SIZE = Math.max(
   10,
@@ -40,6 +40,8 @@ const OPTIMAL_PROCESS_INTERVAL = Math.max(
   10,
   Math.floor((QUEUE_PROCESS_INTERVAL * 2) / Math.max(1, CPU_CORES))
 );
+
+const COLLECTOR_ROLE = process.env.COLLECTOR_ROLE || "primary";
 
 // 큐 설정 로깅
 function logQueueConfiguration() {
@@ -958,7 +960,7 @@ function startIntervals() {
     monitorInterval = setInterval(() => {
       if (clients.length === 0) return;
       try {
-        const report = generateQueueReport(clients);
+        const report = generateQueueReport(clients, COLLECTOR_ROLE);
         sendTelegramMessageQueue("QueueMonitor", report, true);
       } catch (e) {
         logger.error({ err: String(e) }, "queue monitoring error");
@@ -1003,6 +1005,7 @@ function scheduleDailyReport() {
           type: "daily_queue_statistics",
           timestamp: new Date().toISOString(),
           exchanges: dailyStats,
+          collectorRole: COLLECTOR_ROLE,
         },
         null,
         2
@@ -1015,6 +1018,7 @@ function scheduleDailyReport() {
           type: "daily_queue_statistics",
           timestamp: new Date().toISOString(),
           exchanges: dailyStats,
+          collectorRole: COLLECTOR_ROLE,
         });
         
         await quest_db.sequelize.query(
