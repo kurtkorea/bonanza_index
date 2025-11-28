@@ -2087,7 +2087,7 @@ fi
   - SYMBOL 필드: tran_date(8) + tran_time(6) + exchange_cd(10) + order_tp(1) = ~25바이트
   - LONG: price_id(8) + product_id(8) = 16바이트
   - DOUBLE: price(8) + size(8) + diff_ms(8) + diff_ms_db(8) = 32바이트
-  - TIMESTAMP: marketAt(8) + coollectorAt(8) + dbAt(8) = 24바이트
+  - TIMESTAMP: marketAt(8) + collectorAt(8) + dbAt(8) = 24바이트
   - 오버헤드: ~15바이트
 - **일일 데이터량: ~2.37GB** (전체의 약 90%)
 
