@@ -27,7 +27,7 @@ const { redisManager } = require("../redis.js");
 
 // ===== 설정 =====
 const DEPTH = 15;
-const QUEUE_MAX_SIZE = Number(process.env.WS_QUEUE_MAX_SIZE || 5000);
+const QUEUE_MAX_SIZE = Number(process.env.WS_QUEUE_MAX_SIZE || 50000);
 const QUEUE_PROCESS_INTERVAL = Number(process.env.WS_QUEUE_PROCESS_INTERVAL || 20);
 const QUEUE_BATCH_SIZE = Number(process.env.WS_QUEUE_BATCH_SIZE || 50);
 const QUEUE_MONITOR_INTERVAL = Number(process.env.WS_QUEUE_MONITOR_INTERVAL || 600000);

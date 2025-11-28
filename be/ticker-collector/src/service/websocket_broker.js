@@ -8,7 +8,7 @@
 
 const WebSocket = require("ws");
 const { MARKET_NO_ENUM, MARKET_NAME_ENUM, RECONNECT_INTERVAL, PING_INTERVAL, isJsonValue } = require("../utils/common.js");
-const { send_push } = require("../utils/zmq-sender-push.js");
+const { send_push, isZMQConnected } = require("../utils/zmq-sender-push.js");
 const { sendTelegramMessage, sendTelegramMessageQueue } = require("../utils/telegram_push.js");
 const { generateQueueReport } = require("../utils/report.js");
 const logger = require("../utils/logger.js");
@@ -72,6 +72,7 @@ class WebSocketBroker {
     // 큐 통계
     this.queueStats = this._initQueueStats();
     this.symbols = new Map();
+    
   }
 
   addSymbol(process_info) {
@@ -274,6 +275,7 @@ class WebSocketBroker {
     this.queueStats.lastProcessedCount = this.queueStats.totalProcessed;
     this.queueStats.lastReportTime = Date.now();
   }
+
 
   async saveToRedis( type, exchange_cd, item ) {
 
@@ -798,6 +800,7 @@ class WebSocketBroker {
         logger.error({ ex: this.exchange_nm, err: String(e) }, "queue process interval error");
       });
     }, OPTIMAL_PROCESS_INTERVAL);
+
     this.websocket.on("close", () => {
       // 큐 처리 중지
       logger.info({ ex: this.exchange_nm, msg: "WebSocket closed" });
@@ -819,7 +822,7 @@ class WebSocketBroker {
   }
 }
 
-// Trade 데이터 전송 함수 
+// Trade 데이터 전송 함수 (ZMQ 연결 실패 시 Redis 큐에 저장)
 async function SendToTrade_ZMQ(trade_item, msg) {
   const topic = `${trade_item.exchange_cd}`;
   const payload = {
@@ -827,11 +830,20 @@ async function SendToTrade_ZMQ(trade_item, msg) {
     "type": "trade",
   };
   const ts = Date.now();
-  await Promise.all([
-    send_push(topic, ts, payload),
-  ]);
+  
+  try {
+    await Promise.all([
+      send_push(topic, ts, payload),
+    ]);
+  } catch (zmqError) {
+    logger.error(
+      { ex: trade_item.exchange_cd, err: String(zmqError), type: "trade" },
+      "ZMQ send failed for trade"
+    );
+  }
 }
 
+// Ticker 데이터 전송 함수
 async function SendToTicker_ZMQ(trade_item, msg) {
   const topic = `${trade_item.exchange_cd}`;
   const payload = {
@@ -839,9 +851,17 @@ async function SendToTicker_ZMQ(trade_item, msg) {
     "type": "ticker",
   };
   const ts = Date.now();
-  await Promise.all([
-    send_push(topic, ts, payload),
-  ]);
+  
+  try {
+    await Promise.all([
+      send_push(topic, ts, payload),
+    ]);
+  } catch (zmqError) {
+    logger.error(
+      { ex: trade_item.exchange_cd, err: String(zmqError), type: "ticker" },
+      "ZMQ send failed for ticker"
+    );
+  }
 }
 
 /** ------------------- 실행부 ------------------- */

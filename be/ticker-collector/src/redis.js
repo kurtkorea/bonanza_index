@@ -193,6 +193,55 @@ class RedisManager {
             throw error;
         }
     }
+
+    // List 기반 큐 작업 (LPUSH/RPOP)
+    async lPush(key, value) {
+        try {
+            if (!this.isConnected) {
+                await this.initialize();
+            }
+            return await this.client.lPush(key, value);
+        } catch (error) {
+            logger.error('[Redis] lPush error:', error);
+            throw error;
+        }
+    }
+
+    async rPop(key) {
+        try {
+            if (!this.isConnected) {
+                await this.initialize();
+            }
+            return await this.client.rPop(key);
+        } catch (error) {
+            logger.error('[Redis] rPop error:', error);
+            throw error;
+        }
+    }
+
+    async lLen(key) {
+        try {
+            if (!this.isConnected) {
+                await this.initialize();
+            }
+            return await this.client.lLen(key);
+        } catch (error) {
+            logger.error('[Redis] lLen error:', error);
+            throw error;
+        }
+    }
+
+    async lRange(key, start, stop) {
+        try {
+            if (!this.isConnected) {
+                await this.initialize();
+            }
+            return await this.client.lRange(key, start, stop);
+        } catch (error) {
+            logger.error('[Redis] lRange error:', error);
+            throw error;
+        }
+    }
 }
 
 // Redis 매니저 인스턴스 생성

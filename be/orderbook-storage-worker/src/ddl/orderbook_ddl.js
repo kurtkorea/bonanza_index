@@ -33,7 +33,7 @@ async function orderbook_schema(db) {
             price           DOUBLE,
             size            DOUBLE,                  -- 여기까지 DAYFIN DML과 SYNC 맞춤 (아래부터는 성능 체크용 추가)
             marketAt        TIMESTAMP,               -- 거래소에서 찍혀온 시간
-            coollectorAt    TIMESTAMP,               -- 수집 시간
+            collectorAt    TIMESTAMP,               -- 수집 시간
             dbAt            TIMESTAMP,               -- DB에 저장된 시간
             diff_ms         DOUBLE,                  -- 거래소에서 찍혀온 시간과 수집 시간의 차이
             diff_ms_db      DOUBLE                   -- 거래소에서 찍혀온 시간과 DB에 저장된 시간의 차이

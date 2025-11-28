@@ -159,7 +159,7 @@ function toNs(anyTs, fallbackMs = Date.now()) {
      if (data.price != null)            fields.push(`price=${floatField(data.price)}`);
      if (data.size != null)             fields.push(`size=${floatField(data.size)}`);
      if (data.marketAt)                 fields.push(`marketAt=${tsFieldMicros(data.marketAt)}`); // ★ TIMESTAMP → μs + t
-     if (data.coollectorAt)             fields.push(`coollectorAt=${tsFieldMicros(data.coollectorAt)}`); // ★ TIMESTAMP → μs + t
+     if (data.collectorAt)             fields.push(`collectorAt=${tsFieldMicros(data.collectorAt)}`); // ★ TIMESTAMP → μs + t
      if (data.dbAt)                     fields.push(`dbAt=${tsFieldMicros(data.dbAt)}`); // ★ TIMESTAMP → μs + t
      if (data.diff_ms != null && data.diff_ms !== undefined) fields.push(`diff_ms=${floatField(data.diff_ms)}`);
      if (data.diff_ms_db != null && data.diff_ms_db !== undefined) fields.push(`diff_ms_db=${floatField(data.diff_ms_db)}`);
@@ -331,7 +331,7 @@ async function startPullQueue() {
           tran_date: lastBuffer.tran_date,
           tran_time: lastBuffer.tran_time,
           marketAt: targetSecond * 1000, // 현재 초의 시작 시간
-          coollectorAt: lastBuffer.coollectorAt,
+          collectorAt: lastBuffer.collectorAt,
           diff_ms: lastBuffer.diff_ms,
           bid: new Map(lastBuffer.bid), // Map 복사
           ask: new Map(lastBuffer.ask), // Map 복사
@@ -387,7 +387,7 @@ async function startPullQueue() {
           price,
           size,
           marketAt: buffer.marketAt,
-          coollectorAt: buffer.coollectorAt,
+          collectorAt: buffer.collectorAt,
           dbAt: dbAt,
           diff_ms: buffer.diff_ms,
           diff_ms_db: diff_ms_db,
@@ -407,7 +407,7 @@ async function startPullQueue() {
           price,
           size,
           marketAt: buffer.marketAt,
-          coollectorAt: buffer.coollectorAt,
+          collectorAt: buffer.collectorAt,
           dbAt: dbAt,
           diff_ms: buffer.diff_ms,
           diff_ms_db: diff_ms_db,
@@ -429,7 +429,7 @@ async function startPullQueue() {
         tran_date: buffer.tran_date,
         tran_time: buffer.tran_time,
         marketAt: buffer.marketAt,
-        coollectorAt: buffer.coollectorAt,
+        collectorAt: buffer.collectorAt,
         diff_ms: buffer.diff_ms,
         bid: new Map(buffer.bid), // Map 복사
         ask: new Map(buffer.ask), // Map 복사
@@ -512,7 +512,7 @@ async function startPullQueue() {
               price,
               size,
               marketAt: d.marketAt,
-              coollectorAt: d.coollectorAt,
+              collectorAt: d.collectorAt,
               dbAt: dbAt,
               diff_ms: d.diff_ms,
               diff_ms_db: diff_ms_db,
@@ -534,7 +534,7 @@ async function startPullQueue() {
               price,
               size,
               marketAt: d.marketAt,
-              coollectorAt: d.coollectorAt,
+              collectorAt: d.collectorAt,
               dbAt: dbAt,
               diff_ms: d.diff_ms,
               diff_ms_db: diff_ms_db,
@@ -649,7 +649,7 @@ async function startPullQueue() {
               tran_date: tran_date,
               tran_time: tran_time,
               marketAt: d.marketAt, // 첫 번째 marketAt 저장
-              coollectorAt: d.coollectorAt,
+              collectorAt: d.collectorAt,
               diff_ms: d.diff_ms,
               bid: new Map(),
               ask: new Map(),
@@ -684,10 +684,9 @@ async function startPullQueue() {
             }
           }
           
-          // marketAt, coollectorAt 업데이트 (가장 최신 값으로)
           if (d.marketAt && (!buffer.marketAt || d.marketAt > buffer.marketAt)) {
             buffer.marketAt = d.marketAt;
-            buffer.coollectorAt = d.coollectorAt;
+            buffer.collectorAt = d.collectorAt;
             buffer.diff_ms = d.diff_ms;
             // tran_date, tran_time도 최신 값으로 업데이트
             const latestDate = new Date(d.marketAt);
@@ -792,7 +791,7 @@ async function startPullQueue() {
               price,
               size,
               marketAt: buffer.marketAt,
-              coollectorAt: buffer.coollectorAt,
+              collectorAt: buffer.collectorAt,
               dbAt: dbAt,
               diff_ms: buffer.diff_ms,
               diff_ms_db: diff_ms_db,
@@ -811,7 +810,7 @@ async function startPullQueue() {
               price,
               size,
               marketAt: buffer.marketAt,
-              coollectorAt: buffer.coollectorAt,
+              collectorAt: buffer.collectorAt,
               dbAt: dbAt,
               diff_ms: buffer.diff_ms,
               diff_ms_db: diff_ms_db,
