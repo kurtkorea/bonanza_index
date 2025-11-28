@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 마스터 노드용 배포 스크립트
-# 데이터베이스 서비스 (QuestDB, Redis, MariaDB), 인프라 서비스 (Nginx, MinIO, ZFS)를 배포합니다
+# 데이터베이스 서비스 (QuestDB, Redis, MariaDB), 인프라 서비스 (Nginx, MinIO)를 배포합니다
 
 set -e
 
@@ -96,24 +96,13 @@ else
     MINIO_ICON="⚠️ "
 fi
 echo "   5) ${MINIO_ICON} minio"
-
-ZFS_STATUS=$(kubectl get pods -n bonanza-index -l app=zfs-csi-controller -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
-if [ "$ZFS_STATUS" = "Running" ]; then
-    ZFS_ICON="✅"
-elif [ "$ZFS_STATUS" = "N/A" ]; then
-    ZFS_ICON="⚪"
-else
-    ZFS_ICON="⚠️ "
-fi
-echo "   6) ${ZFS_ICON} zfs"
 echo ""
-read -p "선택하세요 (0-6, 여러 개 선택 시 쉼표로 구분): " SELECTIONS
+read -p "선택하세요 (0-5, 여러 개 선택 시 쉼표로 구분): " SELECTIONS
 
 # 선택된 서비스 확인
 SELECTED_DB_SERVICES=()
 SELECTED_NGINX=false
 SELECTED_MINIO=false
-SELECTED_ZFS=false
 
 if [ -z "$SELECTIONS" ]; then
     echo "❌ 선택이 없습니다. 종료합니다."
@@ -142,8 +131,6 @@ elif [[ "$SELECTIONS" =~ ^[0-9,]+$ ]]; then
             SELECTED_NGINX=true
         elif [ "$SEL" = "5" ]; then
             SELECTED_MINIO=true
-        elif [ "$SEL" = "6" ]; then
-            SELECTED_ZFS=true
         else
             echo ""
             echo "⚠️  잘못된 선택: $SEL (건너뜀)"
@@ -154,7 +141,7 @@ else
     exit 1
 fi
 
-if [ ${#SELECTED_DB_SERVICES[@]} -eq 0 ] && [ "$SELECTED_NGINX" = false ] && [ "$SELECTED_MINIO" = false ] && [ "$SELECTED_ZFS" = false ]; then
+if [ ${#SELECTED_DB_SERVICES[@]} -eq 0 ] && [ "$SELECTED_NGINX" = false ] && [ "$SELECTED_MINIO" = false ]; then
     echo "❌ 선택된 서비스가 없습니다. 종료합니다."
     exit 1
 fi
@@ -168,16 +155,13 @@ if [ ${#SELECTED_DB_SERVICES[@]} -gt 0 ]; then
         echo "   - $SERVICE_NAME"
     done
 fi
-if [ "$SELECTED_NGINX" = true ] || [ "$SELECTED_MINIO" = true ] || [ "$SELECTED_ZFS" = true ]; then
+if [ "$SELECTED_NGINX" = true ] || [ "$SELECTED_MINIO" = true ]; then
     echo "🌐 인프라:"
     if [ "$SELECTED_NGINX" = true ]; then
         echo "   - nginx"
     fi
     if [ "$SELECTED_MINIO" = true ]; then
         echo "   - minio"
-    fi
-    if [ "$SELECTED_ZFS" = true ]; then
-        echo "   - zfs"
     fi
 fi
 echo ""
@@ -203,12 +187,6 @@ fi
 
 if [ "$SELECTED_MINIO" = true ]; then
     kubectl delete statefulset minio -n bonanza-index --ignore-not-found=true
-fi
-
-if [ "$SELECTED_ZFS" = true ]; then
-    kubectl delete deployment zfs-csi-controller -n bonanza-index --ignore-not-found=true
-    kubectl delete daemonset zfs-csi-node -n bonanza-index --ignore-not-found=true
-    kubectl delete storageclass zfs --ignore-not-found=true
 fi
 
 # PVC 삭제 여부 확인 (선택된 DB 서비스 및 MinIO에 대해)
@@ -305,28 +283,6 @@ if [ "$SELECTED_MINIO" = true ]; then
     kubectl apply -f minio/service.yaml
 fi
 
-# ZFS 배포
-if [ "$SELECTED_ZFS" = true ]; then
-    echo ""
-    echo "💾 ZFS CSI Driver 배포 중..."
-    echo "  ⚠️  주의: 마스터 노드에 ZFS가 설치되어 있어야 합니다."
-    echo "  - CRD 설치 중..."
-    kubectl apply -f zfs/crd.yaml
-    echo "  - CSIDriver 생성 중..."
-    kubectl apply -f zfs/csidriver.yaml
-    echo "  - RBAC 적용 중..."
-    kubectl apply -f zfs/rbac.yaml
-    echo "  - Controller 배포 중..."
-    kubectl apply -f zfs/deployment.yaml
-    echo "  - Node Driver 배포 중..."
-    kubectl apply -f zfs/daemonset.yaml
-    echo "  - StorageClass 생성 중..."
-    kubectl apply -f zfs/storageclass.yaml
-    echo ""
-    echo "  💡 ZFS 풀 확인: sudo zpool list"
-    echo "  💡 StorageClass 파라미터 수정 필요 시: k8s/zfs/storageclass.yaml"
-fi
-
 echo ""
 echo "⏳ 마스터 노드 배포 완료 대기 중 (15초)..."
 for i in {15..1}; do
@@ -392,14 +348,6 @@ MINIO_PHASE=$(kubectl get pod minio-0 -n bonanza-index -o jsonpath='{.status.pha
 MINIO_READY=$(kubectl get pod minio-0 -n bonanza-index -o jsonpath='{.status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
 MINIO_NODE=$(kubectl get pod minio-0 -n bonanza-index -o jsonpath='{.spec.nodeName}' 2>/dev/null || echo "N/A")
 echo "  Phase: $MINIO_PHASE, Ready: $MINIO_READY, Node: $MINIO_NODE"
-
-echo ""
-echo "ZFS CSI Driver:"
-ZFS_CONTROLLER_PHASE=$(kubectl get pods -n bonanza-index -l app=zfs-csi-controller -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
-ZFS_CONTROLLER_READY=$(kubectl get pods -n bonanza-index -l app=zfs-csi-controller -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "N/A")
-ZFS_NODE_COUNT=$(kubectl get pods -n bonanza-index -l app=zfs-csi-node --no-headers 2>/dev/null | wc -l)
-echo "  Controller Phase: $ZFS_CONTROLLER_PHASE, Ready: $ZFS_CONTROLLER_READY"
-echo "  Node Driver Pods: $ZFS_NODE_COUNT"
 
 # 문제가 있는 Pod 확인
 echo ""

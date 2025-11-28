@@ -10,6 +10,8 @@ const { prePaging } = require("../middleware/paging");
 const common= require("../utils/common");
 const { db, Op } = require("../db/quest_db");
 const { once } = require('events');
+const { processDailyFKBRTIBackup } = require("../cron/daily_fkbrti");
+const { processDailyOrderbookBackup } = require("../cron/daily_orderbook");
 
 router.use("/*", (req, resp, next) => {
 	//#swagger.tags = ["Index History"]
@@ -144,9 +146,11 @@ router.get("/", async (req, resp, next) => {
 		}
 		await writeRow(headers);
 
-		const batchSize = 99999999;
+		const batchSize = 10000; // 메모리 문제 방지를 위해 배치 크기 축소
 		let processedCount = 0;
 		let lastCreatedAt = null;
+		let maxIterations = 10000; // 무한 루프 방지
+		let iterationCount = 0;
 
 		const window5 = [];
 		let sum5 = 0;
@@ -155,140 +159,189 @@ router.get("/", async (req, resp, next) => {
 
 		console.log('[file_download] streaming CSV started !!!!!!!', { batchSize });
 
-		while (true) {
-			const chunkQuery = `
-				SELECT
-					createdAt AS "createdAt",
-					index_mid AS "indexMid",
-					expected_status AS "expectedStatus"
-				FROM tb_fkbrti_1sec
-				WHERE createdAt >= cast(:fromDateUTC as timestamp)
-					AND createdAt < cast(:toDateUTC as timestamp)
-					${lastCreatedAt ? 'AND createdAt > cast(:lastCreatedAt as timestamp)' : ''}
-				ORDER BY createdAt
-			`;
+		// 클라이언트 연결 끊김 감지
+		let isClientConnected = true;
+		resp.on('close', () => {
+			isClientConnected = false;
+			console.log('[file_download] client disconnected');
+		});
 
-			const replacements = {
-				fromDateUTC: fromDate,
-				toDateUTC: toDate,
-				limit: batchSize,
-			};
-			if (lastCreatedAt) {
-				replacements.lastCreatedAt = lastCreatedAt;
-			}
+		while (isClientConnected && iterationCount < maxIterations) {
+			iterationCount++;
+			
+			try {
+				const chunkQuery = `
+					SELECT
+						createdAt AS "createdAt",
+						index_mid AS "indexMid",
+						expected_status AS "expectedStatus"
+					FROM tb_fkbrti_1sec
+					WHERE createdAt >= cast(:fromDateUTC as timestamp)
+						AND createdAt < cast(:toDateUTC as timestamp)
+						${lastCreatedAt ? 'AND createdAt > cast(:lastCreatedAt as timestamp)' : ''}
+					ORDER BY createdAt
+					LIMIT :limit
+				`;
 
-			const chunk = await db.sequelize.query(chunkQuery, {
-				replacements,
-				type: db.Sequelize.QueryTypes.SELECT,
-				raw: true,
-			});
-
-			if (!chunk || chunk.length === 0) {
-				break;
-			}
-
-			for (const row of chunk) {
-				lastCreatedAt = row.createdAt;
-
-				const indexMid = Number(row.indexMid ?? 0) || 0;
-
-				window5.push(indexMid);
-				sum5 += indexMid;
-				if (window5.length > 5) {
-					sum5 -= window5.shift();
-				}
-				const fkbrti5 = window5.length ? sum5 / window5.length : indexMid;
-
-				window10.push(indexMid);
-				sum10 += indexMid;
-				if (window10.length > 10) {
-					sum10 -= window10.shift();
-				}
-				const fkbrti10 = window10.length ? sum10 / window10.length : indexMid;
-
-				let expectedStatus;
-				try {
-					expectedStatus = row.expectedStatus ? JSON.parse(row.expectedStatus) : [];
-				} catch (e) {
-					expectedStatus = [];
+				const replacements = {
+					fromDateUTC: fromDate,
+					toDateUTC: toDate,
+					limit: batchSize,
+				};
+				if (lastCreatedAt) {
+					replacements.lastCreatedAt = lastCreatedAt;
 				}
 
-				const upbitEntry = expectedStatus.find(x => x.exchange == "101" || x.exchange === 101);
-				const bitthumbEntry = expectedStatus.find(x => x.exchange == "102" || x.exchange === 102);
-				const coinoneEntry = expectedStatus.find(x => x.exchange == "104" || x.exchange === 104);
-				const korbitEntry = expectedStatus.find(x => x.exchange == "103" || x.exchange === 103);
+				const chunk = await db.sequelize.query(chunkQuery, {
+					replacements,
+					type: db.Sequelize.QueryTypes.SELECT,
+					raw: true,
+				});
 
-				const upbitPrice = upbitEntry?.price ?? null;
-				const bitthumbPrice = bitthumbEntry?.price ?? null;
-				const coinonePrice = coinoneEntry?.price ?? null;
-				const korbitPrice = korbitEntry?.price ?? null;
+				if (!chunk || chunk.length === 0) {
+					break;
+				}
 
-				let sum = 0;
-				let count = 0;
-				for (const expectedItem of expectedStatus) {
-					if (expectedItem?.reason === 'ok' && Number.isFinite(expectedItem?.price)) {
-						sum += expectedItem.price;
-						count++;
+				for (const row of chunk) {
+					if (!isClientConnected) {
+						console.log('[file_download] client disconnected during processing');
+						break;
 					}
+
+					lastCreatedAt = row.createdAt;
+
+					const indexMid = Number(row.indexMid ?? 0) || 0;
+
+					window5.push(indexMid);
+					sum5 += indexMid;
+					if (window5.length > 5) {
+						sum5 -= window5.shift();
+					}
+					const fkbrti5 = window5.length ? sum5 / window5.length : indexMid;
+
+					window10.push(indexMid);
+					sum10 += indexMid;
+					if (window10.length > 10) {
+						sum10 -= window10.shift();
+					}
+					const fkbrti10 = window10.length ? sum10 / window10.length : indexMid;
+
+					let expectedStatus;
+					try {
+						expectedStatus = row.expectedStatus ? JSON.parse(row.expectedStatus) : [];
+					} catch (e) {
+						expectedStatus = [];
+					}
+
+					const upbitEntry = expectedStatus.find(x => x.exchange == "E0010001");
+					const bitthumbEntry = expectedStatus.find(x => x.exchange == "E0020001");
+					const coinoneEntry = expectedStatus.find(x => x.exchange == "E0030001");
+					const korbitEntry = expectedStatus.find(x => x.exchange == "E0050001");
+
+					const upbitPrice = upbitEntry?.price ?? null;
+					const bitthumbPrice = bitthumbEntry?.price ?? null;
+					const coinonePrice = coinoneEntry?.price ?? null;
+					const korbitPrice = korbitEntry?.price ?? null;
+
+					let sum = 0;
+					let count = 0;
+					for (const expectedItem of expectedStatus) {
+						if (expectedItem?.reason === 'ok' && Number.isFinite(expectedItem?.price)) {
+							sum += expectedItem.price;
+							count++;
+						}
+					}
+					const actualAvg = count > 0 ? sum / count : 0;
+
+					let basePrice = upbitPrice;
+					if (basePrice === undefined || basePrice === null) {
+						basePrice = bitthumbPrice;
+					}
+
+					const diff1 = basePrice !== undefined && basePrice !== null ? basePrice - indexMid : 0;
+					const diff2 = basePrice !== undefined && basePrice !== null ? basePrice - fkbrti5 : 0;
+					const diff3 = basePrice !== undefined && basePrice !== null ? basePrice - fkbrti10 : 0;
+
+					let ratio1 = 0;
+					let ratio2 = 0;
+					let ratio3 = 0;
+					if (basePrice && basePrice !== 0) {
+						ratio1 = Math.abs(diff1 / basePrice) * 100;
+						ratio2 = Math.abs(diff2 / basePrice) * 100;
+						ratio3 = Math.abs(diff3 / basePrice) * 100;
+					}
+
+					const createdAtUtc = new Date(row.createdAt);
+					const createdAtKST = new Date(createdAtUtc.getTime() + 9 * 60 * 60 * 1000).toISOString().replace('Z', '+09:00');
+
+					await writeRow([
+						createdAtKST,
+						indexMid,
+						fkbrti5,
+						fkbrti10,
+						upbitPrice,
+						bitthumbPrice,
+						coinonePrice,
+						korbitPrice,
+						actualAvg,
+						diff1,
+						diff2,
+						diff3,
+						ratio1,
+						ratio2,
+						ratio3,
+					]);
+					processedCount += 1;
 				}
-				const actualAvg = count > 0 ? sum / count : 0;
 
-				let basePrice = upbitPrice;
-				if (basePrice === undefined || basePrice === null) {
-					basePrice = bitthumbPrice;
+				console.log('[file_download] chunk processed', { processedCount, lastCreatedAt, iterationCount });
+
+				if (chunk.length < batchSize) {
+					break;
 				}
-
-				const diff1 = basePrice !== undefined && basePrice !== null ? basePrice - indexMid : 0;
-				const diff2 = basePrice !== undefined && basePrice !== null ? basePrice - fkbrti5 : 0;
-				const diff3 = basePrice !== undefined && basePrice !== null ? basePrice - fkbrti10 : 0;
-
-				let ratio1 = 0;
-				let ratio2 = 0;
-				let ratio3 = 0;
-				if (basePrice && basePrice !== 0) {
-					ratio1 = Math.abs(diff1 / basePrice) * 100;
-					ratio2 = Math.abs(diff2 / basePrice) * 100;
-					ratio3 = Math.abs(diff3 / basePrice) * 100;
+			} catch (chunkError) {
+				console.error('[file_download] chunk processing error', chunkError);
+				// 에러 발생 시에도 응답을 정상적으로 종료
+				if (isClientConnected) {
+					resp.status(500).json({
+						result: false,
+						message: `데이터 처리 중 오류가 발생했습니다: ${chunkError.message}`
+					});
 				}
-
-				const createdAtUtc = new Date(row.createdAt);
-				const createdAtKST = new Date(createdAtUtc.getTime() + 9 * 60 * 60 * 1000).toISOString().replace('Z', '+09:00');
-
-				await writeRow([
-					createdAtKST,
-					indexMid,
-					fkbrti5,
-					fkbrti10,
-					upbitPrice,
-					bitthumbPrice,
-					coinonePrice,
-					korbitPrice,
-					actualAvg,
-					diff1,
-					diff2,
-					diff3,
-					ratio1,
-					ratio2,
-					ratio3,
-				]);
-				processedCount += 1;
+				return;
 			}
+		}
 
-			console.log('[file_download] chunk processed', { processedCount, lastCreatedAt });
-
-			if (chunk.length < batchSize) {
-				break;
+		if (iterationCount >= maxIterations) {
+			console.error('[file_download] max iterations reached', { iterationCount, processedCount });
+			if (isClientConnected) {
+				resp.status(500).json({
+					result: false,
+					message: '처리 시간이 초과되었습니다. 날짜 범위를 줄여주세요.'
+				});
 			}
+			return;
 		}
 
 		console.log('[file_download] processed data count', processedCount);
 
 		if (processedCount === 0) {
 			console.warn('[file_download] no data to export', { fromDate, toDate });
+			if (isClientConnected) {
+				resp.status(404).json({
+					result: false,
+					message: '다운로드할 데이터가 없습니다.'
+				});
+			}
+			return;
 		}
 
-		resp.end();
-		console.log('[file_download] completed successfully', { fileName, processedCount });
+		if (isClientConnected) {
+			resp.end();
+			console.log('[file_download] completed successfully', { fileName, processedCount });
+		} else {
+			console.log('[file_download] client disconnected before completion');
+		}
 
   	} catch (error) {
 		console.error('파일 다운로드 처리 중 에러 발생:', error);
@@ -296,6 +349,40 @@ router.get("/", async (req, resp, next) => {
   	}
 });
 
+
+router.get("/test_fkbrti_download", async (req, resp, next) => {
+	try {
+		const { from_date, to_date } = req.query;
+
+		await processDailyFKBRTIBackup();
+
+		resp.json({
+			result: true,
+			message: '파일 다운로드 완료',
+		});
+
+	} catch (error) {
+		console.error('파일 다운로드 처리 중 에러 발생:', error);
+		next(error);
+	}
+});
+
+router.get("/test_orderbook_download", async (req, resp, next) => {
+	try {
+		const { from_date, to_date } = req.query;
+
+		await processDailyOrderbookBackup();
+
+		resp.json({
+			result: true,
+			message: '파일 다운로드 완료',
+		});
+
+	} catch (error) {
+		console.error('파일 다운로드 처리 중 에러 발생:', error);
+		next(error);
+	}
+});
 
 
 module.exports = router;

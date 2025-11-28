@@ -44,7 +44,8 @@
 		"winston": "^3.17.0",
 		"ws": "^8.18.3",
 		"xlsx": "^0.18.5",
-		"zeromq": "^6.5.0"
+		"zeromq": "^6.5.0",
+		"node-cron": "^3.0.3"
 	},
 	"devDependencies": {
 		"@babel/cli": "^7.23.0",

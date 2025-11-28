@@ -93,7 +93,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		
 		// 페이징을 위해 필요한 전체 데이터만 조회 (page * size 만큼)
 		// 최대 10000개로 제한하여 성능 보호
-		const maxLimit = Math.min(page * size, 10000);
+		const maxLimit = Math.min(page * size, 99999999);
 
 		let query = `
 			SELECT

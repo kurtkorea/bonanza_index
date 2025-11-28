@@ -187,6 +187,40 @@
           "400": {
             "description": "잘못된 요청"
           },
+          "404": {
+            "description": "찾을 수 없음"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          },
+          "500": {
+            "description": "내부 서버 오류"
+          }
+        }
+      }
+    },
+    "/v1/file_download/test_download": {
+      "get": {
+        "tags": [
+          "Index History"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "from_date",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
           "440": {
             "description": "각종 오류 - 상세 내용은 message 참조"
           }
@@ -219,6 +253,22 @@
           },
           "400": {
             "description": "잘못된 요청"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          }
+        }
+      }
+    },
+    "/v1/master/": {
+      "get": {
+        "tags": [
+          "Index History"
+        ],
+        "description": "마스터 데이터 요청",
+        "responses": {
+          "200": {
+            "description": "성공"
           },
           "440": {
             "description": "각종 오류 - 상세 내용은 message 참조"

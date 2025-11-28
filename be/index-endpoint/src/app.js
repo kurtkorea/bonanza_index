@@ -14,6 +14,8 @@ const { init_server } = require('./service/realmgr');
 const { connect_quest_db, quest_db } = require("./db/quest_db.js");
 const tb_fkbrti_1sec = require("./model_quest/tb_fkbrti_1sec.js");
 const { init_zmq_pub } = require('./utils/zmq-sender-pub.js');
+const { startDailyFKBRTICron } = require('./cron/daily_fkbrti.js');
+const { startDailyOrderbookBackupCron } = require('./cron/daily_orderbook.js');
 
 // Start of Selection
 global.logging = false;
@@ -156,6 +158,13 @@ async function initializeApp() {
 		}
 
 		await init_server(server, app.get("port"));
+
+		// Daily backup cron job 시작
+		startDailyFKBRTICron();
+		logger.info('Daily FKBRTI backup cron job initialized');
+		
+		startDailyOrderbookBackupCron();
+		logger.info('Daily Orderbook backup cron job initialized');
 
 		logger.info('애플리케이션 초기화 완료');
 	} catch (error) {

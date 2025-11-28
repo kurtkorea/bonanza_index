@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 데이터베이스 및 인프라 서비스 삭제 스크립트
-# 단일 노드 구성에서 데이터베이스와 Nginx 서비스를 삭제합니다
+# 단일 노드 구성에서 데이터베이스, Nginx, MinIO 서비스를 삭제합니다
 
 set -e
 
@@ -24,7 +24,7 @@ echo ""
 
 # 현재 배포 상태 확인
 echo "📦 데이터베이스 및 인프라 Pod 상태:"
-kubectl get pods -n bonanza-index -o wide 2>/dev/null | grep -E "(questdb|redis|mariadb|nginx)" || echo "Pod가 없습니다."
+kubectl get pods -n bonanza-index -o wide 2>/dev/null | grep -E "(questdb|redis|mariadb|nginx|minio)" || echo "Pod가 없습니다."
 
 echo ""
 echo "💾 PVC 상태:"
@@ -32,7 +32,7 @@ kubectl get pvc -n bonanza-index 2>/dev/null || echo "PVC가 없습니다."
 
 echo ""
 echo "🔍 데이터베이스 및 인프라 서비스 상태:"
-kubectl get svc -n bonanza-index 2>/dev/null | grep -E "(redis|nginx|questdb|mariadb)" || echo "서비스가 없습니다."
+kubectl get svc -n bonanza-index 2>/dev/null | grep -E "(redis|nginx|questdb|mariadb|minio)" || echo "서비스가 없습니다."
 
 echo ""
 echo "⚙️  ConfigMap 상태:"
@@ -90,12 +90,23 @@ else
     NGINX_ICON="⚠️ "
 fi
 echo "   4) ${NGINX_ICON} nginx"
+
+MINIO_STATUS=$(kubectl get pods -n bonanza-index -l app=minio -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "N/A")
+if [ "$MINIO_STATUS" = "Running" ]; then
+    MINIO_ICON="✅"
+elif [ "$MINIO_STATUS" = "N/A" ]; then
+    MINIO_ICON="⚪"
+else
+    MINIO_ICON="⚠️ "
+fi
+echo "   5) ${MINIO_ICON} minio"
 echo ""
-read -p "선택하세요 (0-4, 여러 개 선택 시 쉼표로 구분): " SELECTIONS
+read -p "선택하세요 (0-5, 여러 개 선택 시 쉼표로 구분): " SELECTIONS
 
 # 선택된 서비스 확인
 SELECTED_DB_SERVICES=()
 SELECTED_NGINX=false
+SELECTED_MINIO=false
 
 if [ -z "$SELECTIONS" ]; then
     echo "❌ 선택이 없습니다. 종료합니다."
@@ -122,6 +133,8 @@ elif [[ "$SELECTIONS" =~ ^[0-9,]+$ ]]; then
             SELECTED_DB_SERVICES+=("${DB_SERVICES[$INDEX]}")
         elif [ "$SEL" = "4" ]; then
             SELECTED_NGINX=true
+        elif [ "$SEL" = "5" ]; then
+            SELECTED_MINIO=true
         else
             echo ""
             echo "⚠️  잘못된 선택: $SEL (건너뜀)"
@@ -132,7 +145,7 @@ else
     exit 1
 fi
 
-if [ ${#SELECTED_DB_SERVICES[@]} -eq 0 ] && [ "$SELECTED_NGINX" = false ]; then
+if [ ${#SELECTED_DB_SERVICES[@]} -eq 0 ] && [ "$SELECTED_NGINX" = false ] && [ "$SELECTED_MINIO" = false ]; then
     echo "❌ 선택된 서비스가 없습니다. 종료합니다."
     exit 1
 fi
@@ -146,9 +159,14 @@ if [ ${#SELECTED_DB_SERVICES[@]} -gt 0 ]; then
         echo "   - $SERVICE_NAME"
     done
 fi
-if [ "$SELECTED_NGINX" = true ]; then
+if [ "$SELECTED_NGINX" = true ] || [ "$SELECTED_MINIO" = true ]; then
     echo "🌐 인프라:"
-    echo "   - nginx"
+    if [ "$SELECTED_NGINX" = true ]; then
+        echo "   - nginx"
+    fi
+    if [ "$SELECTED_MINIO" = true ]; then
+        echo "   - minio"
+    fi
 fi
 echo ""
 
@@ -167,12 +185,12 @@ if [[ ! $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
     exit 0
 fi
 
-# PVC 삭제 확인 (선택된 DB 서비스에 대해)
+# PVC 삭제 확인 (선택된 DB 서비스 및 MinIO에 대해)
 DELETE_PVC=false
-if [ ${#SELECTED_DB_SERVICES[@]} -gt 0 ]; then
+if [ ${#SELECTED_DB_SERVICES[@]} -gt 0 ] || [ "$SELECTED_MINIO" = true ]; then
     echo ""
     echo "⚠️  PVC(PersistentVolumeClaim) 삭제 여부 확인 (데이터 손실 가능)"
-    read -p "선택된 DB 서비스의 PVC도 삭제하시겠습니까? (y/N): " -n 1 -r
+    read -p "선택된 서비스의 PVC도 삭제하시겠습니까? (y/N): " -n 1 -r
     echo ""
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         DELETE_PVC=true
@@ -232,6 +250,18 @@ if [ "$SELECTED_NGINX" = true ]; then
     echo "  ✅ Nginx 삭제 완료"
 fi
 
+# MinIO 삭제
+if [ "$SELECTED_MINIO" = true ]; then
+    echo ""
+    echo "🗑️  MinIO 삭제 중..."
+    kubectl delete statefulset minio -n bonanza-index --ignore-not-found=true
+    kubectl delete service minio-service -n bonanza-index --ignore-not-found=true
+    if [ "$DELETE_PVC" = true ]; then
+        kubectl delete pvc minio-data-minio-0 -n bonanza-index --ignore-not-found=true
+    fi
+    echo "  ✅ MinIO 삭제 완료"
+fi
+
 echo ""
 echo "  ℹ️  bonanza-common-config는 애플리케이션 서비스에서도 사용하므로 유지"
 echo "  ℹ️  bonanza-secrets는 애플리케이션 서비스에서도 사용하므로 유지"
@@ -250,18 +280,18 @@ echo "================================"
 echo ""
 
 echo "📦 데이터베이스 및 인프라 Pod 상태:"
-DB_PODS=$(kubectl get pods -n bonanza-index -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | grep -E "(questdb|redis|mariadb|nginx)" || echo "")
+DB_PODS=$(kubectl get pods -n bonanza-index -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | grep -E "(questdb|redis|mariadb|nginx|minio)" || echo "")
 if [ -z "$DB_PODS" ]; then
     echo "  ✅ 데이터베이스 및 인프라 Pod가 모두 삭제되었습니다"
 else
     echo "  ⚠️  남아있는 Pod:"
-    kubectl get pods -n bonanza-index | grep -E "(questdb|redis|mariadb|nginx)"
+    kubectl get pods -n bonanza-index | grep -E "(questdb|redis|mariadb|nginx|minio)"
 fi
 
 echo ""
 echo "💾 PVC 상태:"
-if [ "$DELETE_PVC" = true ] && [ ${#SELECTED_DB_SERVICES[@]} -gt 0 ]; then
-    # 선택된 DB 서비스의 PVC 확인
+if [ "$DELETE_PVC" = true ] && ([ ${#SELECTED_DB_SERVICES[@]} -gt 0 ] || [ "$SELECTED_MINIO" = true ]); then
+    # 선택된 서비스의 PVC 확인
     REMAINING_PVC=""
     for SERVICE in "${SELECTED_DB_SERVICES[@]}"; do
         SERVICE_NAME=$(echo "$SERVICE" | cut -d: -f1)
@@ -270,18 +300,23 @@ if [ "$DELETE_PVC" = true ] && [ ${#SELECTED_DB_SERVICES[@]} -gt 0 ]; then
                 REMAINING_PVC="$REMAINING_PVC redis-data"
             fi
         elif [ "$SERVICE_NAME" = "questdb" ]; then
-            if kubectl get pvc questdb-data -n bonanza-index &>/dev/null; then
-                REMAINING_PVC="$REMAINING_PVC questdb-data"
+            if kubectl get pvc questdb-data-questdb-0 -n bonanza-index &>/dev/null; then
+                REMAINING_PVC="$REMAINING_PVC questdb-data-questdb-0"
             fi
         elif [ "$SERVICE_NAME" = "mariadb" ]; then
-            if kubectl get pvc mariadb-data -n bonanza-index &>/dev/null; then
-                REMAINING_PVC="$REMAINING_PVC mariadb-data"
+            if kubectl get pvc mariadb-data-mariadb-0 -n bonanza-index &>/dev/null; then
+                REMAINING_PVC="$REMAINING_PVC mariadb-data-mariadb-0"
             fi
         fi
     done
+    if [ "$SELECTED_MINIO" = true ]; then
+        if kubectl get pvc minio-data-minio-0 -n bonanza-index &>/dev/null; then
+            REMAINING_PVC="$REMAINING_PVC minio-data-minio-0"
+        fi
+    fi
     
     if [ -z "$REMAINING_PVC" ]; then
-        echo "  ✅ 선택된 DB 서비스의 PVC가 모두 삭제되었습니다"
+        echo "  ✅ 선택된 서비스의 PVC가 모두 삭제되었습니다"
     else
         echo "  ⚠️  남아있는 PVC:"
         for pvc in $REMAINING_PVC; do
@@ -290,18 +325,21 @@ if [ "$DELETE_PVC" = true ] && [ ${#SELECTED_DB_SERVICES[@]} -gt 0 ]; then
     fi
 else
     echo "  ℹ️  PVC는 유지됩니다 (데이터 보존)"
-    if [ ${#SELECTED_DB_SERVICES[@]} -gt 0 ]; then
-        echo "  선택된 DB 서비스의 PVC:"
+    if [ ${#SELECTED_DB_SERVICES[@]} -gt 0 ] || [ "$SELECTED_MINIO" = true ]; then
+        echo "  선택된 서비스의 PVC:"
         for SERVICE in "${SELECTED_DB_SERVICES[@]}"; do
             SERVICE_NAME=$(echo "$SERVICE" | cut -d: -f1)
             if [ "$SERVICE_NAME" = "redis" ]; then
                 kubectl get pvc redis-data -n bonanza-index 2>/dev/null || echo "    - redis-data: 없음"
             elif [ "$SERVICE_NAME" = "questdb" ]; then
-                kubectl get pvc questdb-data -n bonanza-index 2>/dev/null || echo "    - questdb-data: 없음"
+                kubectl get pvc questdb-data-questdb-0 -n bonanza-index 2>/dev/null || echo "    - questdb-data-questdb-0: 없음"
             elif [ "$SERVICE_NAME" = "mariadb" ]; then
-                kubectl get pvc mariadb-data -n bonanza-index 2>/dev/null || echo "    - mariadb-data: 없음"
+                kubectl get pvc mariadb-data-mariadb-0 -n bonanza-index 2>/dev/null || echo "    - mariadb-data-mariadb-0: 없음"
             fi
         done
+        if [ "$SELECTED_MINIO" = true ]; then
+            kubectl get pvc minio-data-minio-0 -n bonanza-index 2>/dev/null || echo "    - minio-data-minio-0: 없음"
+        fi
     fi
 fi
 
@@ -330,6 +368,11 @@ fi
 if [ "$SELECTED_NGINX" = true ]; then
     if kubectl get svc nginx-service -n bonanza-index &>/dev/null; then
         REMAINING_SVC="$REMAINING_SVC nginx-service"
+    fi
+fi
+if [ "$SELECTED_MINIO" = true ]; then
+    if kubectl get svc minio-service -n bonanza-index &>/dev/null; then
+        REMAINING_SVC="$REMAINING_SVC minio-service"
     fi
 fi
 
