@@ -544,10 +544,10 @@ const IndexCalcTable = () => {
       
       if (continuationToken) {
         // 더 보기 버튼으로 추가 로드
-        setMinioFiles(prev => [...prev, ...(response.data.files || [])]);
+        setMinioFiles(prev => [...prev, ...((response.data.files || []).reverse())]);
       } else {
         // 새로 조회
-        setMinioFiles(response.data.files || []);
+        setMinioFiles((response.data.files || []).reverse());
       }
       
       setMinioContinuationToken(response.data.nextContinuationToken || null);

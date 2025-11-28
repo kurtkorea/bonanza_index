@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   // 프록시 타겟 설정 (환경 변수 또는 기본값)
-  const PROXY_TARGET = env.VITE_PROXY_TARGET || 'http://218.145.67.182:30076';
+  const PROXY_TARGET = env.VITE_PROXY_TARGET || 'http://130.162.133.208:30076';
   
   // WebSocket 에러 억제 플러그인
   const suppressWsErrors = () => {

@@ -111,12 +111,26 @@ router.get("/", async (req, resp, next) => {
 		
 		const response = await s3Client.send(command);
 		
-		const fileList = (response.Contents || []).map(item => ({
+		let fileList = (response.Contents || []).map(item => ({
 			key: item.Key,
 			size: item.Size,
 			lastModified: item.LastModified,
 			etag: item.ETag,
 		}));
+		// 파일명을 기준으로 최근 날짜순으로 내림차순 정렬 (파일명에 날짜가 포함된 경우)
+		fileList.sort((a, b) => {
+			// 예: 'orderbook_20231126_KRW-BTC.csv.gz' 파일명에서 20231126 추출
+			const getDateFromKey = key => {
+				const match = key.match(/(\d{8})/);
+				return match ? match[1] : null;
+			};
+			const dateA = getDateFromKey(a.key);
+			const dateB = getDateFromKey(b.key);
+			if (dateA === dateB) return 0;
+			if (!dateA) return 1;
+			if (!dateB) return -1;
+			return dateB.localeCompare(dateA);
+		});
 		
 		resp.status(200).json({
 			files: fileList,
