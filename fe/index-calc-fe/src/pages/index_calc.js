@@ -228,6 +228,15 @@ const IndexCalcTable = () => {
   const [loading, setLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState(false);
+  
+  // MinIO 다운로드 탭 관련 상태
+  const [minioFiles, setMinioFiles] = useState([]);
+  const [minioLoading, setMinioLoading] = useState(false);
+  const [minioPrefix, setMinioPrefix] = useState('orderbook');
+  const [minioPage, setMinioPage] = useState(1);
+  const [minioPageSize] = useState(50);
+  const [minioTotal, setMinioTotal] = useState(0);
+  const [minioContinuationToken, setMinioContinuationToken] = useState(null);
 
   const index_list = useSelector(state => state.IndexReducer.index_data);
   const minMaxInfo = useSelector((state) => state.IndexReducer.MIN_MAX_INFO);
@@ -517,6 +526,47 @@ const IndexCalcTable = () => {
     setTabIdx(parseInt(currentTarget.getAttribute("data")));
   };
 
+  // MinIO 파일 리스트 조회 함수
+  const fetchMinioFiles = useCallback(async (prefix, continuationToken = null) => {
+    setMinioLoading(true);
+    try {
+      const prefixPath = prefix ? `${prefix}/` : '';
+      const params = new URLSearchParams({
+        prefix: prefixPath,
+        maxKeys: minioPageSize.toString(),
+      });
+      
+      if (continuationToken) {
+        params.append('continuationToken', continuationToken);
+      }
+      
+      const response = await axios.get(`${getServiceUrl()}/v1/minio_access/list?${params.toString()}`);
+      
+      if (continuationToken) {
+        // 더 보기 버튼으로 추가 로드
+        setMinioFiles(prev => [...prev, ...(response.data.files || [])]);
+      } else {
+        // 새로 조회
+        setMinioFiles(response.data.files || []);
+      }
+      
+      setMinioContinuationToken(response.data.nextContinuationToken || null);
+      setMinioTotal(response.data.keyCount || 0);
+    } catch (error) {
+      console.error('MinIO 파일 리스트 조회 실패:', error);
+      message.error('파일 리스트를 불러오는데 실패했습니다.');
+    } finally {
+      setMinioLoading(false);
+    }
+  }, [minioPageSize]);
+
+  // 다운로드 탭이 열릴 때 자동으로 파일 리스트 조회
+  useEffect(() => {
+    if (tab_idx === 4) {
+      fetchMinioFiles(minioPrefix);
+    }
+  }, [tab_idx, minioPrefix, fetchMinioFiles]);
+
 	const handleFileDownload = useCallback(() => {
 		if (!range?.[0] || !range?.[1]) {
 			console.warn('[download] range not selected');
@@ -593,7 +643,7 @@ const IndexCalcTable = () => {
               다음
             </Button>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginLeft: "10px", marginRight: "10px" }}>
+            {/* <div style={{ display: "flex", alignItems: "center", gap: "10px", marginLeft: "10px", marginRight: "10px" }}>
               <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>다운로드 기간 (최대 3개월)</span>
               <RangePicker
                 className="inp date"
@@ -611,7 +661,7 @@ const IndexCalcTable = () => {
               disabled={downloadLoading}
             >
               파일다운로드
-            </Button>
+            </Button> */}
           </div>
 
           {/* 통계 테이블 */}
@@ -901,6 +951,9 @@ const IndexCalcTable = () => {
           <a className={classNames("tab", { on: tab_idx === 3 })} data="3" onClick={onClickTab} data-tab-group="list" data-tab-id="trade">
           VOLATILITY
           </a>
+          <a className={classNames("tab", { on: tab_idx === 4 })} data="4" onClick={onClickTab} data-tab-group="list" data-tab-id="download">
+          파일다운로드
+          </a>
         </div>
       </div>
 
@@ -1006,6 +1059,121 @@ const IndexCalcTable = () => {
               height={500}
             />
           </div>
+        </div>
+      )}
+      {tab_idx === 4 && (
+        <div className="thbit-trade-table-container" style={{ height: "100%", marginTop: "10px", padding: "20px" }}>
+          <div style={{ marginBottom: "20px", display: "flex", gap: "10px", alignItems: "center" }}>
+            <Select
+              value={minioPrefix}
+              onChange={(value) => {
+                setMinioPrefix(value);
+                setMinioPage(1);
+                setMinioContinuationToken(null);
+              }}
+              style={{ width: 200 }}
+            >
+              <Select.Option value="orderbook">Orderbook</Select.Option>
+              <Select.Option value="trade">Trade</Select.Option>
+              <Select.Option value="fkbrti_1sec">FKBRTI 1sec</Select.Option>
+            </Select>
+            <Button
+              type="primary"
+              onClick={() => {
+                setMinioPage(1);
+                setMinioContinuationToken(null);
+                fetchMinioFiles(minioPrefix);
+              }}
+              loading={minioLoading}
+            >
+              조회
+            </Button>
+          </div>
+          
+          <Table
+            columns={[
+              {
+                title: '파일명',
+                dataIndex: 'key',
+                key: 'key',
+                render: (text) => {
+                  const fileName = text.split('/').pop();
+                  return <span title={text}>{fileName}</span>;
+                },
+              },
+              {
+                title: '크기',
+                dataIndex: 'size',
+                key: 'size',
+                width: 120,
+                align: 'right',
+                render: (size) => {
+                  if (!size) return '-';
+                  const mb = (size / 1024 / 1024).toFixed(2);
+                  return `${mb} MB`;
+                },
+              },
+              {
+                title: '수정일시',
+                dataIndex: 'lastModified',
+                key: 'lastModified',
+                width: 180,
+                render: (date) => {
+                  if (!date) return '-';
+                  return moment(date).format('YYYY-MM-DD HH:mm:ss');
+                },
+              },
+              {
+                title: '다운로드',
+                key: 'action',
+                width: 100,
+                align: 'center',
+                render: (_, record) => (
+                  <Button
+                    type="link"
+                    onClick={() => {
+                      const downloadUrl = `${getServiceUrl()}/v1/minio_access/download?key=${encodeURIComponent(record.key)}`;
+                      const link = document.createElement('a');
+                      link.href = downloadUrl;
+                      link.download = record.key.split('/').pop();
+                      link.style.display = 'none';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
+                    다운로드
+                  </Button>
+                ),
+              },
+            ]}
+            dataSource={minioFiles}
+            rowKey="key"
+            loading={minioLoading}
+            pagination={{
+              current: minioPage,
+              pageSize: minioPageSize,
+              total: minioTotal,
+              showSizeChanger: false,
+              onChange: (page) => {
+                setMinioPage(page);
+                // 다음 페이지는 continuationToken을 사용해야 하므로 여기서는 간단히 처리
+                // 실제로는 continuationToken 기반 페이징이 필요할 수 있음
+              },
+            }}
+            scroll={{ y: 600 }}
+          />
+          
+          {minioContinuationToken && (
+            <div style={{ marginTop: "10px", textAlign: "center" }}>
+              <Button
+                onClick={() => fetchMinioFiles(minioPrefix, minioContinuationToken)}
+                loading={minioLoading}
+              >
+                더 보기
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

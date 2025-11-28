@@ -10,8 +10,6 @@ const { prePaging } = require("../middleware/paging");
 const common= require("../utils/common");
 const { db, Op } = require("../db/quest_db");
 const { once } = require('events');
-const { processDailyFKBRTIBackup } = require("../cron/daily_fkbrti");
-const { processDailyOrderbookBackup } = require("../cron/daily_orderbook");
 
 router.use("/*", (req, resp, next) => {
 	//#swagger.tags = ["Index History"]
@@ -347,41 +345,6 @@ router.get("/", async (req, resp, next) => {
 		console.error('파일 다운로드 처리 중 에러 발생:', error);
   		next(error);
   	}
-});
-
-
-router.get("/test_fkbrti_download", async (req, resp, next) => {
-	try {
-		const { from_date, to_date } = req.query;
-
-		await processDailyFKBRTIBackup();
-
-		resp.json({
-			result: true,
-			message: '파일 다운로드 완료',
-		});
-
-	} catch (error) {
-		console.error('파일 다운로드 처리 중 에러 발생:', error);
-		next(error);
-	}
-});
-
-router.get("/test_orderbook_download", async (req, resp, next) => {
-	try {
-		const { from_date, to_date } = req.query;
-
-		await processDailyOrderbookBackup();
-
-		resp.json({
-			result: true,
-			message: '파일 다운로드 완료',
-		});
-
-	} catch (error) {
-		console.error('파일 다운로드 처리 중 에러 발생:', error);
-		next(error);
-	}
 });
 
 

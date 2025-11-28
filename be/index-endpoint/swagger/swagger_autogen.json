@@ -199,34 +199,6 @@
         }
       }
     },
-    "/v1/file_download/test_download": {
-      "get": {
-        "tags": [
-          "Index History"
-        ],
-        "description": "",
-        "parameters": [
-          {
-            "name": "from_date",
-            "in": "query",
-            "type": "string"
-          },
-          {
-            "name": "to_date",
-            "in": "query",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "성공"
-          },
-          "440": {
-            "description": "각종 오류 - 상세 내용은 message 참조"
-          }
-        }
-      }
-    },
     "/v1/command/": {
       "get": {
         "tags": [
@@ -266,6 +238,77 @@
           "Index History"
         ],
         "description": "마스터 데이터 요청",
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          }
+        }
+      }
+    },
+    "/v1/minio_access/list": {
+      "get": {
+        "tags": [
+          "MinIO Access"
+        ],
+        "description": "MinIO 버킷 파일 리스트 조회",
+        "parameters": [
+          {
+            "name": "prefix",
+            "in": "query",
+            "type": "string",
+            "description": "파일 경로 prefix (예: orderbook/)"
+          },
+          {
+            "name": "maxKeys",
+            "in": "query",
+            "type": "integer",
+            "description": "최대 반환 개수 (기본: 1000)"
+          },
+          {
+            "name": "continuationToken",
+            "in": "query",
+            "type": "string",
+            "description": "페이징용 continuation token"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          }
+        }
+      }
+    },
+    "/v1/minio_access/": {
+      "get": {
+        "tags": [
+          "MinIO Access"
+        ],
+        "description": "MinIO 버킷 파일 리스트 조회 (기본 엔드포인트)",
+        "parameters": [
+          {
+            "name": "continuationToken",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "prefix",
+            "in": "query",
+            "type": "string",
+            "description": "파일 경로 prefix (예: orderbook/)"
+          },
+          {
+            "name": "maxKeys",
+            "in": "query",
+            "type": "integer",
+            "description": "최대 반환 개수 (기본: 1000)"
+          }
+        ],
         "responses": {
           "200": {
             "description": "성공"

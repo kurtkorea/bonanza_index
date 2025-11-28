@@ -360,6 +360,8 @@ class WebSocketBroker {
 
       // 최근 1시간 데이터 저장을 위해 Redis Sorted Set을 사용합니다.
       // exchange_cd 및 symbol, marketAt(time) 정보를 key/value로 활용\
+
+      return;
           
       if (!item || !item.symbol || !item.marketAt) {
         logger.warn(`[Redis] saveToRedis: missing symbol or marketAt in item: ${this.exchange_cd} ${item.symbol} ${JSON.stringify(item)}`);

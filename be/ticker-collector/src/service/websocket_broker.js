@@ -276,8 +276,10 @@ class WebSocketBroker {
   }
 
   async saveToRedis( type, exchange_cd, item ) {
-    try {
 
+    return;
+
+    try {
       if ( type === "trade" ) {
         await redisManager.set(`trade:${exchange_cd}:${item.symbol}`, JSON.stringify(item));
       } else if ( type === "ticker" ) {

@@ -14,8 +14,6 @@ const { init_server } = require('./service/realmgr');
 const { connect_quest_db, quest_db } = require("./db/quest_db.js");
 const tb_fkbrti_1sec = require("./model_quest/tb_fkbrti_1sec.js");
 const { init_zmq_pub } = require('./utils/zmq-sender-pub.js');
-const { startDailyFKBRTICron } = require('./cron/daily_fkbrti.js');
-const { startDailyOrderbookBackupCron } = require('./cron/daily_orderbook.js');
 
 // Start of Selection
 global.logging = false;
@@ -102,12 +100,15 @@ const indexCalcRouter = require("./router/index_calc.js");
 const fileDownloadRouter = require("./router/file_download.js");
 const commandRouter = require("./router/command.js");
 const masterRouter = require("./router/master.js");
+const minioAccessRouter = require("./router/minio_access.js");
+
 // 라우터 등록
 app.use("/v1/index_history", indexHistoryRouter);
 app.use("/v1/index_calc", indexCalcRouter);
 app.use("/v1/file_download", fileDownloadRouter);
 app.use("/v1/command", commandRouter);
 app.use("/v1/master", masterRouter);
+app.use("/v1/minio_access", minioAccessRouter);
 
 //404 handling middleware
 app.use((req, res) => {
@@ -158,13 +159,6 @@ async function initializeApp() {
 		}
 
 		await init_server(server, app.get("port"));
-
-		// Daily backup cron job 시작
-		startDailyFKBRTICron();
-		logger.info('Daily FKBRTI backup cron job initialized');
-		
-		startDailyOrderbookBackupCron();
-		logger.info('Daily Orderbook backup cron job initialized');
 
 		logger.info('애플리케이션 초기화 완료');
 	} catch (error) {
