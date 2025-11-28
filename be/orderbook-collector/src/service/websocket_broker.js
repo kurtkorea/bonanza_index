@@ -439,7 +439,7 @@ class WebSocketBroker {
         bid: [],
         ask: [],
         marketAt: 0,
-        coollectorAt: 0,
+        collectorAt: 0,
         diff_ms: 0,
       };
 
@@ -447,7 +447,7 @@ class WebSocketBroker {
     // 업비트
     if (this.exchange_cd === "E0010001") {
       const marketAt = msg.tms;
-      const coollectorAt = now;
+      const collectorAt = now;
       const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
       const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
       const units = msg?.obu || msg?.orderbook_units || [];
@@ -469,8 +469,8 @@ class WebSocketBroker {
           bid: bids,
           ask: asks,
           marketAt: marketAt,
-          coollectorAt: coollectorAt,
-          diff_ms: (coollectorAt - marketAt) / 1000,
+          collectorAt: collectorAt,
+          diff_ms: (collectorAt - marketAt) / 1000,
         };
         await this.saveToRedis(orderbook_item);
       } else {
@@ -483,7 +483,7 @@ class WebSocketBroker {
     // 빗썸
     else if (this.exchange_cd === "E0020001") {
       const marketAt = parseInt(msg.tms / 1000);
-      const coollectorAt = now;
+      const collectorAt = now;
       const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
       const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
       const units = msg?.obu || msg?.orderbook_units || [];
@@ -504,8 +504,8 @@ class WebSocketBroker {
           bid: bids,
           ask: asks,
           marketAt: marketAt,
-          coollectorAt: coollectorAt,
-          diff_ms: (coollectorAt - marketAt) / 1000,
+          collectorAt: collectorAt,
+          diff_ms: (collectorAt - marketAt) / 1000,
         };
         await this.saveToRedis(orderbook_item);
         // console.log(this.exchange_cd, this.exchange_nm, orderbook_item);
@@ -522,7 +522,7 @@ class WebSocketBroker {
       const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
       const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
       const symbol = `${d.qc}-${d.tc}`;
-      const coollectorAt = now;
+      const collectorAt = now;
       bids = (d.b || d.bids || []).map((u) => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, DEPTH);
       asks = (d.a || d.asks || []).reverse().map((u) => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, DEPTH);
       
@@ -540,8 +540,8 @@ class WebSocketBroker {
           bid: bids,
           ask: asks,
           marketAt: marketAt,
-          coollectorAt: coollectorAt,
-          diff_ms: (coollectorAt - marketAt) / 1000,
+          collectorAt: collectorAt,
+          diff_ms: (collectorAt - marketAt) / 1000,
         };
         await this.saveToRedis(orderbook_item);
         // console.log(this.exchange_cd, this.exchange_nm, orderbook_item);
@@ -553,7 +553,7 @@ class WebSocketBroker {
     // 코빗
     else if (this.exchange_cd === "E0050001") {
       const marketAt = msg.timestamp;
-      const coollectorAt = now;
+      const collectorAt = now;
       const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
       const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
       const symbol = msg.symbol;
@@ -574,8 +574,8 @@ class WebSocketBroker {
           bid: bids,
             ask: asks,
             marketAt: marketAt,
-            coollectorAt: coollectorAt,
-            diff_ms: (coollectorAt - marketAt) / 1000,
+            collectorAt: collectorAt,
+            diff_ms: (collectorAt - marketAt) / 1000,
         };
         await this.saveToRedis(orderbook_item);
         // console.log(this.exchange_cd, this.exchange_nm, orderbook_item);
@@ -587,7 +587,7 @@ class WebSocketBroker {
     // 고팍스
     else if (this.exchange_cd === "E0080001") {
       const marketAt = now;
-      const coollectorAt = now;
+      const collectorAt = now;
       const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
       const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
       const symbol = msg.o?.tradingPairName;
@@ -607,8 +607,8 @@ class WebSocketBroker {
           bid: bids,
           ask: asks,
           marketAt: marketAt,
-          coollectorAt: coollectorAt,
-          diff_ms: (coollectorAt - marketAt) / 1000,
+          collectorAt: collectorAt,
+          diff_ms: (collectorAt - marketAt) / 1000,
         };
         await this.saveToRedis(orderbook_item);
         // console.log(this.exchange_cd, this.exchange_nm, orderbook_item);
