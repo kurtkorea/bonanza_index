@@ -1,7 +1,7 @@
 {
-	"name": "TWDMA_DASH_BOARD",
+	"name": "BONANZA_INDEX_CALC_FE",
 	"version": "0.0.1",
-	"description": "TWDMA-DASH-BOARD",
+	"description": "BONANZA-INDEX-CALC-FE",
 	"license": "zenaway",
 	"main": "./src/index.js",
 	"scripts": {
@@ -11,7 +11,7 @@
 		"preview": "vite preview",
 		"start": "vite",
 		"start:dev": "vite --mode development",
-		"local": "vite --mode local"
+		"local": "vite --mode development"
 	},
 	"dependencies": {
 		"@commitlint/cli": "^17.7.2",

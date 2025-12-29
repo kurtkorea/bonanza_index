@@ -30,18 +30,28 @@ RUN echo "=== Checking public folder before build ===" && \
     ls -la public/js/ 2>/dev/null | head -5 || echo "WARNING: js/ directory not found in public"
 
 # 환경 변수 파일 처리 (Vite는 .env.production 파일을 자동으로 읽음)
-# .env.production 파일이 없으면 env/prod.env를 기반으로 생성
-RUN if [ ! -f .env.production ] && [ -f env/prod.env ]; then \
-        echo "Creating .env.production from env/prod.env..." && \
-        awk -F'=' '/^[A-Z_]+=/ { \
-            key=$1; \
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", key); \
-            value=substr($0, index($0, "=") + 1); \
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", value); \
-            if (key != "" && key !~ /^#/) print "VITE_" key "=" value \
-        }' env/prod.env > .env.production && \
-        echo "VITE_ORDERSERVERURL=" >> .env.production && \
-        echo "VITE_CHATSERVERURL=" >> .env.production; \
+# .env.production 파일이 없으면 env/.env.production 또는 env/prod.env를 사용, 없으면 기본값 사용
+RUN if [ ! -f .env.production ]; then \
+        if [ -f env/.env.production ]; then \
+            echo "Copying env/.env.production to .env.production..." && \
+            cp env/.env.production .env.production; \
+        elif [ -f env/prod.env ]; then \
+            echo "Creating .env.production from env/prod.env..." && \
+            awk -F'=' '/^[A-Z_]+=/ { \
+                key=$1; \
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "", key); \
+                value=substr($0, index($0, "=") + 1); \
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "", value); \
+                if (key != "" && key !~ /^#/) print "VITE_" key "=" value \
+            }' env/prod.env > .env.production && \
+            echo "VITE_ORDERSERVERURL=" >> .env.production && \
+            echo "VITE_CHATSERVERURL=" >> .env.production; \
+        else \
+            echo "env/.env.production and env/prod.env not found, creating default .env.production..." && \
+            echo "VITE_SERVICE=/proxy/rest" > .env.production && \
+            echo "VITE_ORDERSERVERURL=" >> .env.production && \
+            echo "VITE_CHATSERVERURL=" >> .env.production; \
+        fi; \
     fi && \
     echo "=== Checking .env.production file ===" && \
     if [ -f .env.production ]; then \
@@ -49,7 +59,7 @@ RUN if [ ! -f .env.production ] && [ -f env/prod.env ]; then \
         cat .env.production && \
         echo "" && \
         echo "Checking VITE_SERVICE value:" && \
-        grep "VITE_SERVICE" .env.production || echo "ERROR: VITE_SERVICE not found!"; \
+        grep "VITE_SERVICE" .env.production || echo "WARNING: VITE_SERVICE not found in .env.production"; \
     else \
         echo "ERROR: .env.production file not found!"; \
         exit 1; \
