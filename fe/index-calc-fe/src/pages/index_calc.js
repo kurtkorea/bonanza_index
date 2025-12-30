@@ -234,7 +234,7 @@ const IndexCalcTable = () => {
   const [minioLoading, setMinioLoading] = useState(false);
   const [minioPrefix, setMinioPrefix] = useState('orderbook');
   const [minioPage, setMinioPage] = useState(1);
-  const [minioPageSize] = useState(50);
+  const [minioPageSize] = useState(365);
   const [minioTotal, setMinioTotal] = useState(0);
   const [minioContinuationToken, setMinioContinuationToken] = useState(null);
 
@@ -245,9 +245,9 @@ const IndexCalcTable = () => {
   const symbols = useSelector((state) => state.MasterReducer.symbols) || [];
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5000);
+  const [pageSize, setPageSize] = useState(1000);
   const [totalCount, setTotalCount] = useState(0);
-  const [pagination, setPagination] = useState({hasNext: false, hasPrev: false, page: 1, size: 5000, totalCount: 0, totalPages: 0});
+  const [pagination, setPagination] = useState({hasNext: false, hasPrev: false, page: 1, size: 1000, totalCount: 0, totalPages: 0});
 
   const [selectedSymbol, setSelectedSymbol] = useState(symbols[0] || null);
   const [previousSymbol, setPreviousSymbol] = useState(null);
@@ -266,7 +266,7 @@ const IndexCalcTable = () => {
     fetchingRef.current = true;
     setLoading(true);
     try {
-      const fromDate = range[0] ? range[0].format("YYYY-MM-DD") : moment().subtract(7, 'day').format("YYYY-MM-DD");
+      const fromDate = range[0] ? range[0].format("YYYY-MM-DD") : moment().subtract(1, 'day').format("YYYY-MM-DD");
       const toDate = range[1] ? range[1].format("YYYY-MM-DD") : moment().format("YYYY-MM-DD");
       
       const res = await axios.get(getServiceUrl() + "/v1/index_calc", {
@@ -285,7 +285,7 @@ const IndexCalcTable = () => {
       let new_datalist = [];
       for (const item of res.data.datalist) {
         let new_item = {
-          createdAt: item.createdAt,
+          createdAt: moment(item.createdAt).add(9, 'hours').toISOString(),
           fkbrti_1s: item.fkbrti_1s,
           fkbrti_5s: item.fkbrti_5s,
           fkbrti_10s: item.fkbrti_10s,
@@ -541,17 +541,44 @@ const IndexCalcTable = () => {
       }
       
       const response = await axios.get(`${getServiceUrl()}/v1/minio_access/list?${params.toString()}`);
+
+      console.log("response.data.files", response.data.files);
       
+      // 백엔드에서 이미 파일명 기준으로 정렬되어 있음
+      // 추가로 파일명 기준 정렬 (백엔드 정렬이 누락된 경우 대비)
+      // const newFiles = (response.data.files || []).sort((a, b) => {
+      //   // 파일명에서 날짜 추출 (예: orderbook_20231126_KRW-BTC.csv.gz)
+      //   const getDateFromKey = key => {
+      //     const match = key.match(/(\d{8})/);
+      //     return match ? match[1] : null;
+      //   };
+      //   const dateA = getDateFromKey(a.key);
+      //   const dateB = getDateFromKey(b.key);
+        
+      //   // 날짜가 있으면 날짜 기준으로 정렬 (내림차순)
+      //   if (dateA && dateB) {
+      //     return dateB.localeCompare(dateA);
+      //   }
+      //   // 날짜가 없으면 파일명 전체로 정렬 (내림차순)
+      //   return b.key.localeCompare(a.key);
+      // });
+      
+      const newFiles = response.data.files;
+
       if (continuationToken) {
         // 더 보기 버튼으로 추가 로드
-        setMinioFiles(prev => [...prev, ...((response.data.files || []).reverse())]);
+        setMinioFiles(prev => [...prev, ...newFiles]);
+        // 현재까지 로드된 파일 개수 업데이트
+        setMinioTotal(prev => prev + (response.data.keyCount || 0));
       } else {
         // 새로 조회
-        setMinioFiles((response.data.files || []).reverse());
+        setMinioFiles(newFiles);
+        // 현재 페이지의 파일 개수로 초기화
+        setMinioTotal(newFiles.length);
       }
       
+      // nextContinuationToken이 있으면 다음 페이지가 있음
       setMinioContinuationToken(response.data.nextContinuationToken || null);
-      setMinioTotal(response.data.keyCount || 0);
     } catch (error) {
       console.error('MinIO 파일 리스트 조회 실패:', error);
       message.error('파일 리스트를 불러오는데 실패했습니다.');
@@ -961,7 +988,7 @@ const IndexCalcTable = () => {
         <div className="thbit-trade-table-container" data-simplebar style={{ height: "100%", marginTop: "10px" }}>          
           <Table 
             columns={columns}
-            dataSource={index_list.slice(0, 100)}
+            dataSource={index_list.slice(0, 1000)}
             rowKey={(record) => `${record.createdAt}`}
             pagination={false}
             loading={loading}
@@ -1070,11 +1097,13 @@ const IndexCalcTable = () => {
                 setMinioPrefix(value);
                 setMinioPage(1);
                 setMinioContinuationToken(null);
+                setMinioFiles([]);
+                setMinioTotal(0);
               }}
               style={{ width: 200 }}
             >
               <Select.Option value="orderbook">Orderbook</Select.Option>
-              <Select.Option value="trade">Trade</Select.Option>
+              {/* <Select.Option value="trade">Trade</Select.Option> */}
               <Select.Option value="fkbrti_1sec">FKBRTI 1sec</Select.Option>
             </Select>
             <Button
@@ -1082,6 +1111,8 @@ const IndexCalcTable = () => {
               onClick={() => {
                 setMinioPage(1);
                 setMinioContinuationToken(null);
+                setMinioFiles([]);
+                setMinioTotal(0);
                 fetchMinioFiles(minioPrefix);
               }}
               loading={minioLoading}
@@ -1150,30 +1181,24 @@ const IndexCalcTable = () => {
             dataSource={minioFiles}
             rowKey="key"
             loading={minioLoading}
-            pagination={{
-              current: minioPage,
-              pageSize: minioPageSize,
-              total: minioTotal,
-              showSizeChanger: false,
-              onChange: (page) => {
-                setMinioPage(page);
-                // 다음 페이지는 continuationToken을 사용해야 하므로 여기서는 간단히 처리
-                // 실제로는 continuationToken 기반 페이징이 필요할 수 있음
-              },
-            }}
+            pagination={false}
             scroll={{ y: 600 }}
           />
           
-          {minioContinuationToken && (
-            <div style={{ marginTop: "10px", textAlign: "center" }}>
+          <div style={{ marginTop: "10px", textAlign: "center", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ color: "#666", fontSize: "14px" }}>
+              총 {minioFiles.length}개 파일 {minioContinuationToken ? `(더 보기 가능)` : `(전체 로드 완료)`}
+            </div>
+            {minioContinuationToken && (
               <Button
+                type="primary"
                 onClick={() => fetchMinioFiles(minioPrefix, minioContinuationToken)}
                 loading={minioLoading}
               >
-                더 보기
+                더 보기 ({minioPageSize}개 더 로드)
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>

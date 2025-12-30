@@ -1,4 +1,5 @@
 import { produce } from 'immer';
+import moment from 'moment';
 
 const initState = {
   index_data: [],
@@ -265,10 +266,11 @@ export default (state = initState, { type, payload }) => {
       return produce(state, draft => {
         if (Array.isArray(draft.index_data) && draft.index_data.length > 0) 
         {
+          // console.log("payload.datalist", payload.datalist);
           let new_datalist = [];
           for (const item of payload.datalist) {
             let new_item = {
-              createdAt: item.createdAt,
+              createdAt: moment(item.createdAt).add(9, 'hours').toISOString(),
               fkbrti_1s: item.fkbrti_1s,
               fkbrti_5s: item.fkbrti_5s,
               fkbrti_10s: item.fkbrti_10s,
@@ -290,6 +292,7 @@ export default (state = initState, { type, payload }) => {
               actual_avg: item.actual_avg,
             };
             new_datalist.push(new_item);
+            // console.log("new_item", new_item.createdAt);
           }
 
           new_datalist = new_datalist.filter(item => !draft.index_data.some(existingItem => existingItem.createdAt >= item.createdAt));
@@ -308,7 +311,7 @@ export default (state = initState, { type, payload }) => {
           let new_datalist = [];
           for (const item of payload.datalist) {
             let new_item = {
-              createdAt: item.createdAt,
+              createdAt: moment(item.createdAt).add(9, 'hours').toISOString(),
               fkbrti_1s: item.fkbrti_1s,
               fkbrti_5s: item.fkbrti_5s,
               fkbrti_10s: item.fkbrti_10s,
