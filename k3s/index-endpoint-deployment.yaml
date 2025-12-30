@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: index-endpoint
+  namespace: bonanza-index
+  labels:
+    app: index-endpoint
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: index-endpoint
+  template:
+    metadata:
+      labels:
+        app: index-endpoint
+    spec:
+      containers:
+      - name: index-endpoint
+        image: bonanza-index/index-endpoint:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3009
+          name: http
+        - containerPort: 7757
+          name: zmq-pub-command
+          protocol: TCP
+        env:
+        - name: SERVICE
+          value: "index-calculator"
+        - name: PORT
+          value: "3009"
+        - name: SWAGGER_URL
+          value: "localhost:1200"
+        - name: CORS_ORIGIN
+          value: "*"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: REDIS_HOST
+          value: "10.40.100.21"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_STORE
+          value: "BONANZA-INDEX"
+        - name: QDB_HOST
+          value: "10.40.100.21"
+        - name: QDB_PORT
+          value: "8812"
+        - name: QDB_DB
+          value: "qdb"
+        - name: QDB_USER
+          value: "admin"
+        - name: QDB_PASS
+          value: "quest"
+        - name: QDB_LOG
+          value: "false"
+        - name: QDB_ILP_HOST
+          value: "10.40.100.21"
+        - name: QDB_ILP_PORT
+          value: "9009"
+        - name: DB_DIALECT
+          value: "mysql"
+        - name: DB_HOST
+          value: "10.40.100.21"
+        - name: DB_PORT
+          value: "30306"
+        - name: DB_SCHEME
+          value: "dayfin"
+        - name: DB_USERNAME
+          value: "bonanza"
+        - name: DB_PASSWORD
+          value: "56tyghbn"
+        - name: PUB_QUEUE_SIZE
+          value: "50000"
+        - name: ZMQ_SUB_INDEX_HOST
+          value: "tcp://index-calculator.bonanza-index.svc.cluster.local:6757"
+        - name: ZMQ_PUB_COMMAND_HOST
+          value: "tcp://0.0.0.0:7757"
+        - name: PROCESS_ID
+          value: "2bfe4675-c646-11f0-8e4a-f69081a58ff3,2bfe4675-c646-11f0-8e4a-f69081a58ff4"
+        - name: MINIO_ENDPOINT
+          value: "http://minio-service.bonanza-index.svc.cluster.local:9000"
+        - name: MINIO_ROOT_USER
+          value: "bonanza"
+        - name: MINIO_ROOT_PASSWORD
+          value: "56tyghbn"
+        - name: MINIO_BUCKET
+          value: "bonanza-index"
+        - name: MINIO_REGION
+          value: "us-east-1"
+        - name: TZ
+          value: "Asia/Seoul"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "50m"
+          limits:
+            memory: "1Gi"
+            cpu: "150m"  # 2코어 노드에 맞춰 조정 (총합 2000m 이하)
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3009
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3009
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+

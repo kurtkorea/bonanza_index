@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-console-service
+  namespace: bonanza-index
+  labels:
+    app: minio
+    service: console
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 9001
+    targetPort: 9001
+    protocol: TCP
+    name: console
+  selector:
+    app: minio
+

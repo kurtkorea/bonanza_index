@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegram-log
+  namespace: bonanza-index
+  labels:
+    app: telegram-log
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telegram-log
+  template:
+    metadata:
+      labels:
+        app: telegram-log
+    spec:
+      containers:
+      - name: telegram-log
+        image: bonanza-index/telegram-log:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3109
+          name: http
+        env:
+        - name: PORT
+          value: "3109"
+        - name: DEPTH
+          value: "15"
+        - name: TICK_MS
+          value: "1000"
+        - name: SYMBOL
+          value: "KRW-BTC"
+        - name: CORS_ORIGIN
+          value: "*"
+        - name: ZMQ_PUSH_PORT
+          value: "5557"
+        - name: ZMQ_PUB_PORT
+          value: "6557"
+        - name: PUSH_QUEUE_SIZE
+          value: "100000"
+        - name: PUB_QUEUE_SIZE
+          value: "100000"
+        - name: QDB_HOST
+          value: "10.40.100.21"
+        - name: QDB_PORT
+          value: "8812"
+        - name: QDB_DB
+          value: "qdb"
+        - name: QDB_USER
+          value: "admin"
+        - name: QDB_PASS
+          value: "quest"
+        - name: QDB_LOG
+          value: "false"
+        - name: QDB_ILP_HOST
+          value: "10.40.100.21"
+        - name: QDB_ILP_PORT
+          value: "9009"
+        - name: REDIS_HOST
+          value: "10.40.100.21"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: TELEGRAM_LOG_TOKEN
+          value: "8481868984:AAE23QO_a52zx5I20X3hs7wdadZBoV6UWZI"
+        - name: TELEGRAM_LOG_CHAT_ID
+          value: "-1003463910573"
+        - name: TELEGRAM_LOG_IS_SEND
+          value: "true"
+        - name: TELEGRAM_STATUS_LOG_TOKEN
+          value: "7964420418:AAFdBXKaxraHhGToeIFcZGxDT5Rfh-SHRWU"
+        - name: TELEGRAM_STATUS_LOG_CHAT_ID
+          value: "-1003313524789"
+        - name: TELEGRAM_STATUS_LOG_IS_SEND
+          value: "true"
+        - name: TZ
+          value: "Asia/Seoul"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "10m"
+          limits:
+            memory: "512Mi"
+            cpu: "50m"  # 2코어 노드에 맞춰 조정 (총합 2000m 이하)
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3109
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3109
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+

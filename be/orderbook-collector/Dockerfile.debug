@@ -1,0 +1,39 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# 디버깅을 위한 도구 설치
+RUN apk add --no-cache \
+    curl \
+    wget \
+    vim \
+    netcat-openbsd
+
+# orderbook-collector의 package.json과 package-lock.json 복사
+COPY orderbook-collector/package.json orderbook-collector/package-lock.json* ./
+
+# 모든 의존성 설치 (devDependencies 포함)
+RUN if [ -f package-lock.json ]; then \
+        npm ci; \
+    else \
+        npm install; \
+    fi
+
+# 디버깅 모드에서는 소스 코드를 볼륨으로 마운트하므로 여기서는 복사하지 않음
+# COPY orderbook-collector/src ./src
+# COPY orderbook-collector/env ./env
+
+# 로그가 실시간으로 출력되도록 환경 변수 설정
+ENV NODE_ENV=development
+ENV NODE_OPTIONS="--inspect=0.0.0.0:9229"
+ENV PYTHONUNBUFFERED=1
+
+# 포트 노출
+# 6001: HTTP 서버 포트
+# 9229: Node.js 디버거 포트
+EXPOSE 6001 9229
+
+# 디버깅 모드: nodemon으로 실행하여 코드 변경 시 자동 재시작
+# 소스 코드는 볼륨으로 마운트됨
+CMD ["npx", "nodemon", "--exec", "babel-node", "--inspect=0.0.0.0:9229", "src/app.js"]
+

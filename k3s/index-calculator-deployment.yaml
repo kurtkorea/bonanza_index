@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: index-calculator
+  namespace: bonanza-index
+  labels:
+    app: index-calculator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: index-calculator
+  template:
+    metadata:
+      labels:
+        app: index-calculator
+    spec:
+      containers:
+      - name: index-calculator
+        image: bonanza-index/index-calculator:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 10201
+          name: http
+        - containerPort: 6757
+          name: zmq-pub
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "10201"
+        - name: SWAGGER_URL
+          value: "localhost:1200"
+        - name: REDIS_HOST
+          value: "10.40.100.21"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_STORE
+          value: "SYMBOL"
+        - name: CORS_ORIGIN
+          value: "http://localhost,http://localhost:3000"
+        - name: DEPTH
+          value: "15"
+        - name: TICK_MS
+          value: "1000"
+        - name: SYMBOL
+          value: "KRW-BTC"
+        - name: ZMQ_SUB_DEPTH_HOST
+          value: "tcp://orderbook-storage-worker.bonanza-index.svc.cluster.local:6557"
+        - name: ZMQ_SUB_TICKER_HOST
+          value: "tcp://ticker-storage-worker.bonanza-index.svc.cluster.local:6657"
+        - name: ZMQ_PUB_PORT
+          value: "6757"
+        - name: SUB_QUEUE_SIZE
+          value: "50000"
+        - name: SUB_TOPICS
+          value: "E0010001,E0020001,E0030001,E0050001"
+        - name: STALE_MS
+          value: "30000"
+        - name: PROV_MAX_MS
+          value: "60000"
+        - name: MIN_SOURCES
+          value: "2"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: QDB_HOST
+          value: "10.40.100.21"
+        - name: QDB_PORT
+          value: "8812"
+        - name: QDB_DB
+          value: "qdb"
+        - name: QDB_USER
+          value: "admin"
+        - name: QDB_PASS
+          value: "quest"
+        - name: QDB_LOG
+          value: "false"
+        - name: QDB_ILP_HOST
+          value: "10.40.100.21"
+        - name: QDB_ILP_PORT
+          value: "9009"
+        - name: DB_DIALECT
+          value: "mysql"
+        - name: DB_HOST
+          value: "10.40.100.21"
+        - name: DB_PORT
+          value: "30306"
+        - name: DB_SCHEME
+          value: "dayfin"
+        - name: DB_USERNAME
+          value: "bonanza"
+        - name: DB_PASSWORD
+          value: "56tyghbn"
+        - name: SUMMARY_ENABLED
+          value: "true"
+        - name: SUMMARY_SYMBOLS
+          value: "KRW-BTC"
+        - name: SUMMARY_INTERVAL_MS
+          value: "180000"
+        - name: TZ
+          value: "Asia/Seoul"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"  # 배치 처리 시 메모리 사용량 증가로 인해 1Gi -> 2Gi로 증가
+            cpu: "250m"  # 2코어 노드에 맞춰 조정 (총합 2000m 이하)
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 10201
+          initialDelaySeconds: 120  # 배치 처리 시작 시간 고려하여 증가
+          periodSeconds: 60  # 배치 처리 중에는 체크 간격 증가 (30초 -> 60초)
+          timeoutSeconds: 30  # 타임아웃 증가 (10초 -> 30초)
+          failureThreshold: 5  # 실패 허용 횟수 증가 (기본 3 -> 5)
+          successThreshold: 1
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 10201
+          initialDelaySeconds: 60  # 배치 처리 시작 시간 고려하여 증가
+          periodSeconds: 30  # 체크 간격 증가 (10초 -> 30초)
+          timeoutSeconds: 15  # 타임아웃 증가 (5초 -> 15초)
+          failureThreshold: 3  # 실패 허용 횟수 증가
+          successThreshold: 1
+

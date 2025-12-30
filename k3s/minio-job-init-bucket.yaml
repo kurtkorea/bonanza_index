@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init-bucket
+  namespace: bonanza-index
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: mc
+        image: minio/mc:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "MinIO 초기화 시작..."
+          
+          # MinIO 서버가 준비될 때까지 대기
+          echo "MinIO 서버 연결 대기 중..."
+          until /usr/bin/mc alias set myminio http://minio-service:9000 bonanza 56tyghbn 2>/dev/null; do
+            echo "MinIO 서버 연결 시도 중..."
+            sleep 2
+          done
+          
+          echo "MinIO 서버 연결 완료"
+          
+          # 버킷이 존재하는지 확인하고 없으면 생성
+          if ! /usr/bin/mc ls myminio/bonanza-index > /dev/null 2>&1; then
+            echo "버킷 'bonanza-index' 생성 중..."
+            /usr/bin/mc mb myminio/bonanza-index
+            echo "버킷 'bonanza-index' 생성 완료"
+          else
+            echo "버킷 'bonanza-index' 이미 존재함"
+          fi
+          
+          # 버킷 목록 확인
+          echo "버킷 목록:"
+          /usr/bin/mc ls myminio
+          
+          echo "버킷 초기화 완료"
+

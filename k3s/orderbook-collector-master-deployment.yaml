@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orderbook-collector-master
+  namespace: bonanza-index
+  labels:
+    app: orderbook-collector
+    role: master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orderbook-collector
+      role: master
+  template:
+    metadata:
+      labels:
+        app: orderbook-collector
+        role: master
+    spec:
+      containers:
+      - name: orderbook-collector
+        image: bonanza-index/orderbook-collector:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 6001
+          name: http
+        env:
+        - name: PORT
+          value: "6001"
+        - name: DEPTH
+          value: "15"
+        - name: TICK_MS
+          value: "1000"
+        - name: SYMBOL
+          value: "KRW-BTC"
+        - name: ZMQ_PUSH_HOST
+          value: "tcp://orderbook-storage-worker.bonanza-index.svc.cluster.local:5557"
+        - name: ZMQ_SUB_COMMAND_HOST
+          value: "tcp://index-endpoint.bonanza-index.svc.cluster.local:7757"
+        - name: ZMQ_SEND_TIMEOUT
+          value: "2000"
+        - name: PUSH_QUEUE_SIZE
+          value: "100000"
+        - name: PUB_QUEUE_SIZE
+          value: "100000"
+        - name: IS_RAW_DATA
+          value: "true"
+        - name: QDB_HOST
+          value: "10.40.100.21"
+        - name: QDB_PORT
+          value: "8812"
+        - name: QDB_DB
+          value: "qdb"
+        - name: QDB_USER
+          value: "admin"
+        - name: QDB_PASS
+          value: "quest"
+        - name: QDB_LOG
+          value: "false"
+        - name: QDB_ILP_HOST
+          value: "10.40.100.21"
+        - name: QDB_ILP_PORT
+          value: "9009"
+        - name: DB_DIALECT
+          value: "mysql"
+        - name: DB_HOST
+          value: "10.40.100.21"
+        - name: DB_PORT
+          value: "30306"
+        - name: DB_SCHEME
+          value: "dayfin"
+        - name: DB_USERNAME
+          value: "bonanza"
+        - name: DB_PASSWORD
+          value: "56tyghbn"
+        - name: REDIS_HOST
+          value: "10.40.100.21"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_STORE
+          value: "BONANZA-INDEX"
+        - name: TELEGRAM_SERVICE_URL
+          value: "http://telegram-log.bonanza-index.svc.cluster.local:3109/v1/telegram"
+        - name: WS_QUEUE_MONITOR_INTERVAL
+          value: "600000"
+        - name: COLLECTOR_ROLE
+          value: "primary"
+        - name: PROCESS_ID
+          value: "collector-process-master"
+        - name: ENABLE_LEADER_ELECTION
+          value: "true"
+        - name: LEADER_KEY
+          value: "orderbook-collector:leader"
+        - name: LEADER_LEASE_TIME
+          value: "10"
+        - name: LEADER_RENEW_INTERVAL
+          value: "5000"
+        - name: LEADER_RETRY_INTERVAL
+          value: "2000"
+        - name: CPU_CORES
+          value: "1"
+        - name: WS_QUEUE_PROCESS_INTERVAL
+          value: "10"
+        - name: WS_QUEUE_BATCH_SIZE
+          value: "100"
+        - name: WS_QUEUE_MAX_SIZE
+          value: "10000"
+        - name: TZ
+          value: "Asia/Seoul"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "50m"
+          limits:
+            memory: "1Gi"
+            cpu: "150m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 6001
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 6001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+

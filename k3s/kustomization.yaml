@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: bonanza-index
+
+resources:
+  - namespace.yaml
+  - minio-deployment.yaml
+  - minio-service.yaml
+  - minio-console-service.yaml
+  - minio-job-init-bucket.yaml
+  - index-calculator-deployment.yaml
+  - index-calculator-service.yaml
+  - index-endpoint-deployment.yaml
+  - index-endpoint-service.yaml
+  - orderbook-collector-deployment.yaml
+  - orderbook-collector-service.yaml
+  - orderbook-storage-worker-deployment.yaml
+  - orderbook-storage-worker-service.yaml
+  - ticker-collector-deployment.yaml
+  - ticker-collector-service.yaml
+  - ticker-storage-worker-deployment.yaml
+  - ticker-storage-worker-service.yaml
+  - telegram-log-deployment.yaml
+  - telegram-log-service.yaml
+  - index-calc-fe-deployment.yaml
+  - index-calc-fe-service.yaml
+

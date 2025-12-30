@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ticker-storage-worker
+  namespace: bonanza-index
+  labels:
+    app: ticker-storage-worker
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5657
+    targetPort: 5657
+    protocol: TCP
+    name: zmq-pull
+  - port: 6657
+    targetPort: 6657
+    protocol: TCP
+    name: zmq-pub
+  selector:
+    app: ticker-storage-worker
+

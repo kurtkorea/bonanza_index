@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticker-storage-worker
+  namespace: bonanza-index
+  labels:
+    app: ticker-storage-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ticker-storage-worker
+  template:
+    metadata:
+      labels:
+        app: ticker-storage-worker
+    spec:
+      containers:
+      - name: ticker-storage-worker
+        image: bonanza-index/ticker-storage-worker:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PORT
+          value: "10205"
+        - name: QDB_ILP_HOST
+          value: "10.40.100.21"
+        - name: REDIS_HOST
+          value: "10.40.100.21"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_STORE
+          value: "SYMBOL"
+        - name: CORS_ORIGIN
+          value: "http://localhost,http://localhost:3000"
+        - name: DEPTH
+          value: "15"
+        - name: TICK_MS
+          value: "1000"
+        - name: SYMBOL
+          value: "KRW-BTC"
+        - name: IS_BATCH
+          value: "true"
+        - name: ZMQ_PULL_HOST
+          value: "tcp://0.0.0.0:5657"
+        - name: ZMQ_PUB_HOST
+          value: "tcp://0.0.0.0:6657"
+        - name: IS_SAVE_DB
+          value: "true"
+        - name: QDB_HOST
+          value: "10.40.100.21"
+        - name: QDB_PORT
+          value: "8812"
+        - name: QDB_DB
+          value: "qdb"
+        - name: QDB_USER
+          value: "admin"
+        - name: QDB_PASS
+          value: "quest"
+        - name: QDB_LOG
+          value: "false"
+        - name: QDB_ILP_PORT
+          value: "9009"
+        - name: TZ
+          value: "Asia/Seoul"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "50m"
+          limits:
+            memory: "2Gi"
+            cpu: "200m"  # 2코어 노드에 맞춰 조정 (총합 2000m 이하)
+        ports:
+        - containerPort: 5657
+          name: zmq-pull
+          protocol: TCP
+        - containerPort: 6657
+          name: zmq-pub
+          protocol: TCP
+

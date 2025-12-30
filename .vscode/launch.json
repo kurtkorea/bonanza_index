@@ -1,0 +1,39 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Docker: Attach to Orderbook Collector",
+      "address": "localhost",
+      "port": 9229,
+      "localRoot": "${workspaceFolder}/be/orderbook-collector/src",
+      "remoteRoot": "/app/src",
+      "protocol": "inspector",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "sourceMaps": true
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Local: Orderbook Collector",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--inspect-brk"
+      ],
+      "program": "${workspaceFolder}/be/orderbook-collector/src/app.js",
+      "cwd": "${workspaceFolder}/be/orderbook-collector",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+  ]
+}
+

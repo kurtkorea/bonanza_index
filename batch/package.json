@@ -1,0 +1,24 @@
+{
+  "name": "batch-export",
+  "version": "1.0.0",
+  "description": "tb_fkbrti_1sec 테이블 CSV export 및 MinIO 업로드 스크립트",
+  "main": "batch.js",
+  "scripts": {
+    "start": "node batch.js",
+    "export": "node batch.js"
+  },
+  "keywords": [
+    "questdb",
+    "csv",
+    "minio",
+    "export"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.423.0",
+    "dotenv": "^16.3.1",
+    "minio": "^7.1.3"
+  }
+}
+
