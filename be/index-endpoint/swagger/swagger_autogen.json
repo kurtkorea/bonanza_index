@@ -145,7 +145,7 @@
         "tags": [
           "Index Calculation"
         ],
-        "description": "FKBRTI 통계 조회 (기간별 DIFF 및 RATIO 통계) - 1D, 1W, 1M, 1Y",
+        "description": "FKBRTI 통계 조회 (기간별 DIFF 및 RATIO 통계) - 1D, 1W, 1M, 1Y (tb_fkbrti_summary 테이블에서 조회)",
         "parameters": [
           {
             "name": "symbol",
@@ -309,6 +309,117 @@
             "description": "최대 반환 개수 (기본: 1000)"
           }
         ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          }
+        }
+      }
+    },
+    "/v1/minio_access/download": {
+      "get": {
+        "tags": [
+          "MinIO Access"
+        ],
+        "description": "MinIO 버킷 파일 다운로드",
+        "produces": [
+          null
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "query",
+            "type": "string",
+            "required": true,
+            "description": "다운로드할 파일의 키 (예: orderbook/orderbook_20251126_KRW-BTC.csv.gz)"
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "잘못된 요청"
+          },
+          "404": {
+            "description": "찾을 수 없음"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          },
+          "500": {
+            "description": "내부 서버 오류"
+          }
+        }
+      }
+    },
+    "/v1/csv_export/execute": {
+      "post": {
+        "tags": [
+          "CSV Export"
+        ],
+        "description": "특정 날짜 데이터를 CSV로 변환하여 MinIO에 업로드 (수동 실행, Worker Thread 사용)",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "example": "2025-01-15"
+                },
+                "waitForCompletion": {
+                  "type": "boolean",
+                  "example": false
+                }
+              },
+              "required": [
+                "date",
+                "waitForCompletion"
+              ]
+            },
+            "description": "날짜 (YYYY-MM-DD 또는 YYYYMMDD 형식, 없으면 전날), waitForCompletion (완료까지 대기 여부, 기본값: false)"
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "type": "string",
+            "description": "날짜 (YYYY-MM-DD 또는 YYYYMMDD 형식, 없으면 전날)"
+          },
+          {
+            "name": "waitForCompletion",
+            "in": "query",
+            "type": "boolean",
+            "description": "완료까지 대기할지 여부 (기본값: false, 즉시 응답 반환)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "202": {
+            "description": "허용됨"
+          },
+          "400": {
+            "description": "잘못된 요청"
+          },
+          "440": {
+            "description": "각종 오류 - 상세 내용은 message 참조"
+          },
+          "500": {
+            "description": "내부 서버 오류"
+          }
+        }
+      }
+    },
+    "/v1/csv_export/status": {
+      "get": {
+        "tags": [
+          "CSV Export"
+        ],
+        "description": "CSV 내보내기 스케줄러 상태 조회",
         "responses": {
           "200": {
             "description": "성공"

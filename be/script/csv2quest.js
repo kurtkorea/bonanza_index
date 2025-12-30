@@ -22,7 +22,7 @@ const QDB_ILP_HOST = process.env.QDB_ILP_HOST || '127.0.0.1';
 const QDB_ILP_PORT = parseInt(process.env.QDB_ILP_PORT || '30099', 10);
 const QDB_HTTP_HOST = process.env.QDB_HTTP_HOST || process.env.QDB_HOST || '127.0.0.1';
 const QDB_HTTP_PORT = parseInt(process.env.QDB_HTTP_PORT || process.env.QDB_PORT || '30091', 10);
-const TABLE_NAME = process.env.TABLE_NAME || 'tb_order_book_temp';
+const TABLE_NAME = process.env.TABLE_NAME || 'tb_order_book_units_temp';
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '50000', 10);
 const CSV_INPUT = process.argv[2] || process.env.CSV_FILE || './csv';
 // 시간 차이 (KST -> UTC 변환 시 빼야 할 시간, 기본값: 9시간)

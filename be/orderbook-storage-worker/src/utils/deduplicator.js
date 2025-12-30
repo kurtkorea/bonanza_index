@@ -41,8 +41,8 @@ class DataDeduplicator {
      */
     hashData(data) {
       // 타임스탬프, 거래소, 상품ID, 호가 데이터를 기반으로 해시 생성
-      // orderbook 데이터 구조: exchange_cd, product_id, price_id, marketAt, bid, ask
-      const key = `${data.exchange_cd}_${data.product_id || ''}_${data.price_id || ''}_${data.marketAt}_${JSON.stringify(data.bid || [])}_${JSON.stringify(data.ask || [])}`;
+      // orderbook 데이터 구조: exchange_cd, product_id, price_id, ts, bid, ask
+      const key = `${data.exchange_cd}_${data.product_id || ''}_${data.price_id || ''}_${data.ts}_${JSON.stringify(data.bid || [])}_${JSON.stringify(data.ask || [])}`;
       return require('crypto').createHash('md5').update(key).digest('hex');
     }
   

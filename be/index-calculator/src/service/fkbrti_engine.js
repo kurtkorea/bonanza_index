@@ -12,13 +12,14 @@
  *   If this persists > PROV_MAX_MS → no_publish.
  */
 
-const { latestTickerByExchange, latestTradeByExchange, latestDepthByExchange } = require('../utils/common');
+const { latestTickerByExchange } = require('../utils/common');
 
 const { quest_db, sequelize } = require('../db/quest_db.js');
 const logger = require('../utils/logger.js');
 
 const { send_publisher } = require('../utils/zmq-sender-pub.js');
 const common = require('../utils/common');
+const { createIlpWriter, toILP_Fkbrti1sec } = require('../utils/ilp-writer.js');
 
 const DEPTH        = num("DEPTH", 15);
 const TICK_MS      = num("TICK_MS", 1000);
@@ -105,9 +106,15 @@ class FkbrtiEngine {
     this.booksByEx = Object.create(null);
     this.last = null;
     this._timer = null;
-    this.tran_date = null;
-    this.tran_time = null;
     this.lastProcessedSecond = null; // 마지막으로 처리한 marketAt의 초 단위
+    this.is_batch_mode = opts.is_batch_mode || false; // 배치 모드 플래그
+    
+    // 배치 모드일 때 ILP writer 초기화
+    // 외부에서 전달된 ilpWriter가 있으면 사용하고, 없으면 새로 생성
+    this.ilpWriter = opts.ilpWriter || null;
+    if (this.is_batch_mode && !this.ilpWriter) {
+      this.ilpWriter = createIlpWriter({});
+    }
   }
 
   // 실시간 스냅샷 주입
@@ -116,38 +123,36 @@ class FkbrtiEngine {
       if (!this.symbol) this.symbol = String(snap.symbol || "").trim() || "(UNKNOWN)";
       const ex = String(snap.exchange_cd || "UNKNOWN");
 
-      // console.log("snap=", snap);
-
       const { bids, asks } = normalize(snap);
       
       // 타임스탬프 처리 개선
-      let marketAt = Date.now(); // 기본값
-      if (snap.marketAt) {
-        if (typeof snap.marketAt === 'string') {
-          marketAt = new Date(snap.marketAt).getTime();
-        } else if (snap.marketAt instanceof Date) {
-          marketAt = snap.marketAt.getTime();
-        } else if (typeof snap.marketAt === 'number') {
-          marketAt = snap.marketAt;
+      let ts = Date.now(); // 기본값
+      if (snap.ts) {
+        if (typeof snap.ts === 'string') {
+          ts = new Date(snap.ts).getTime();
+        } else if (snap.ts instanceof Date) {
+          ts = snap.ts.getTime();
+        } else if (typeof snap.ts === 'number') {
+          ts = snap.ts;
         }
       }
 
-      this.tran_date = snap.tran_date;
-      this.tran_time = snap.tran_time;
-
-      this.booksByEx[ex] = { bids, asks, marketAt };
+      this.booksByEx[ex] = { bids, asks, ts };
       
-      // marketAt의 초 단위 확인
-      const currentSecond = Math.floor(marketAt / 1000);
-      
-      // 새로운 초가 시작되면 이전 초의 데이터를 집계
-      if (this.lastProcessedSecond !== null && currentSecond > this.lastProcessedSecond) {
-        // 이전 초의 데이터를 집계하여 저장
-        this._tick(this.lastProcessedSecond * 1000);
-        this.lastProcessedSecond = currentSecond;
-      } else if (this.lastProcessedSecond === null) {
-        // 첫 번째 데이터
-        this.lastProcessedSecond = currentSecond;
+      // 배치 모드가 아닐 때만 자동 _tick 호출
+      if (!this.is_batch_mode) {
+        // marketAt의 초 단위 확인
+        const currentSecond = Math.floor(ts / 1000);
+        
+        // 새로운 초가 시작되면 이전 초의 데이터를 집계
+        if (this.lastProcessedSecond !== null && currentSecond > this.lastProcessedSecond) {
+          // 이전 초의 데이터를 집계하여 저장
+          this._tick(this.lastProcessedSecond * 1000);
+          this.lastProcessedSecond = currentSecond;
+        } else if (this.lastProcessedSecond === null) {
+          // 첫 번째 데이터
+          this.lastProcessedSecond = currentSecond;
+        }
       }
     } catch (error) {
       logger.error({ ex: "FKBRTI", err: String(error), snap }, 'FkbrtiEngine.onSnapshot 에러');
@@ -157,7 +162,7 @@ class FkbrtiEngine {
   start() {
     if (this._timer) return;
     // timer는 최대 지연 시간 체크용으로만 사용 (2초마다 체크)
-    // 실제 집계는 marketAt 기준으로 수행
+    // 실제 집계는 ts 기준으로 수행
     this._timer = setInterval(() => {
       const now = Date.now();
       const currentSecond = Math.floor(now / 1000);
@@ -176,7 +181,8 @@ class FkbrtiEngine {
 
   _tick(targetTime = null) {
     const now = targetTime || Date.now();
-    const cutoff = now - this.staleMs;
+    // 배치 모드에서는 stale 체크를 비활성화 (과거 데이터 처리)
+    const cutoff = this.is_batch_mode ? 0 : (now - this.staleMs);
 
     // 병합: 스테일 & 역전 제외 => 예외상황 제외
     const bids = [], asks = [];
@@ -184,7 +190,8 @@ class FkbrtiEngine {
       const rec = this.booksByEx[ex];
       if (!rec) continue;
 
-      if (rec.marketAt < cutoff) continue;                  // 30s 이상 지연 제외
+      // 배치 모드가 아닐 때만 stale 체크
+      if (!this.is_batch_mode && rec.ts < cutoff) continue;                  // 30s 이상 지연 제외
 
       const book = { bids: rec.bids, asks: rec.asks };
 
@@ -207,29 +214,40 @@ class FkbrtiEngine {
     const expected_status = this.expected.map(ex => {
       const rec = this.booksByEx[ex];
 
-      const trade_key = `${ex}_${this.symbol}`;
-      const trade = latestTickerByExchange.get(trade_key);
-
-      if ( trade == undefined ) {
+      // rec가 없으면 no_data 반환
+      if (!rec) {
         return { exchange: ex, reason: "no_data", price: 0 };
       }
 
-      const trade_price = toNum(trade?.close);
-      if (!rec) return { exchange: ex, reason: "no_data", price: 0 };
-      if (rec.marketAt < cutoff) return { exchange: ex, reason: "stale", price: 0 };
+      const ticker_key = `${ex}_${this.symbol}`;
+      const ticker = latestTickerByExchange.get(ticker_key);
+
+      let ticker_price = toNum(ticker?.close);
+
+      if ( ticker == undefined ) {
+        // ticker 가 없다면 매수1호가, 매도1호가 의 평균값으로 계산
+        let price = 0;
+        if (rec && ((rec.bids?.length ?? 0) > 0) && ((rec.asks?.length ?? 0) > 0)) {
+          // bid1, ask1의 평균값
+          price = (rec.bids[0].price + rec.asks[0].price) / 2;
+          ticker_price = toNum(price);
+        }
+      }
+
+      if (!ticker_price) return { exchange: ex, reason: "no_data", price: 0 };
+      // 배치 모드가 아닐 때만 stale 체크
+      if (!this.is_batch_mode && rec.ts < cutoff) return { exchange: ex, reason: "stale", price: 0 };
 
       const book = { bids: rec.bids, asks: rec.asks };
       if (isCrossed(book)) return { exchange: ex, reason: "crossed", price: 0 };
 
       const ok = (rec.bids?.length || 0) > 0 || (rec.asks?.length || 0) > 0;
-      return { exchange: ex, reason: ok ? "ok" : "empty_book", price: ok ? trade_price : 0 };
+      return { exchange: ex, reason: ok ? "ok" : "empty_book", price: ok ? ticker_price : 0 };
     });
 
     // expected_status 배열 안에 reason이 "ok"인 요소가 하나라도 있는지 확인.
     const anyExpectedOk = expected_status.some(s => s.reason === "ok");
     let shouldProvisional = !anyExpectedOk;
-
-    // logger.debug({ ex: "FKBRTI", expected_status }, "expected_status");
 
     let actual_avg = 0;
     let diff = 0;
@@ -249,26 +267,42 @@ class FkbrtiEngine {
     }
     actual_avg = common.isEmpty( sum / count ) ? 0 : sum / count;
 
-    let colI = expected_status.find(item => item.exchange == "E0010001")?.price;
-    let colF = expected_status.find(item => item.exchange == "E0020001")?.price;
+    let E0010001 = expected_status.find(item => item.exchange == "E0010001")?.price;
+    let E0020001 = expected_status.find(item => item.exchange == "E0020001")?.price;
+    let E0030001 = expected_status.find(item => item.exchange == "E0030001")?.price;
+    let E0050001 = expected_status.find(item => item.exchange == "E0050001")?.price;
 
-    let colI_reason = expected_status.find(item => item.exchange == "E0010001")?.reason;
-    let colF_reason = expected_status.find(item => item.exchange == "E0020001")?.reason;
+    let E0010001_reason = expected_status.find(item => item.exchange == "E0010001")?.reason;
+    let E0020001_reason = expected_status.find(item => item.exchange == "E0020001")?.reason;
+    let E0030001_reason = expected_status.find(item => item.exchange == "E0030001")?.reason;
+    let E0050001_reason = expected_status.find(item => item.exchange == "E0050001")?.reason;
 
     let no_data = false;
 
-    if ( colI_reason == "no_data" && colF_reason == "no_data" ) {
+    if ( E0010001_reason == "no_data" && E0020001_reason == "no_data" 
+      && E0030001_reason == "no_data" && E0050001_reason == "no_data" ) {
       no_data = true;
     }
 
-    if (!colI && colI !== 0) {
-      diff = colF - indexMid;
-    } else {
-      diff = colI - indexMid;
+    if ( E0010001 != 0 )
+    {
+      diff = E0010001 - indexMid;
+    } else if ( E0020001 != 0 ) {
+      diff = E0020001 - indexMid;
+    } else if ( E0030001 != 0 ) {
+      diff = E0030001 - indexMid;
+    } else if ( E0050001 != 0 ) {
+      diff = E0050001 - indexMid;
     }
+
     ratio = Math.abs(diff / indexMid) * 100;
 
     if ( no_data ) {
+      diff = 0;
+      ratio = 0;
+    }
+
+    if ( E0010001 == 0 && E0020001 == 0 && E0030001 == 0 && E0050001 == 0 ) {
       diff = 0;
       ratio = 0;
     }
@@ -282,9 +316,9 @@ class FkbrtiEngine {
         type: "fkbrti",
         t: (() => {
           try {
-            return new Date(now).toISOString();
+            return new Date(now + 9 * 60 * 60 * 1000).toISOString();
           } catch (e) {
-            return new Date().toISOString();
+            return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
           }
         })(),
         symbol: this.symbol || "(UNKNOWN)",
@@ -304,14 +338,6 @@ class FkbrtiEngine {
         actual_avg: actual_avg
       };
 
-      // if (
-      //   (out.vwap_buy == null || out.vwap_buy == 0) &&
-      //   (out.vwap_sell == null || out.vwap_sell == 0) &&
-      //   (out.index_mid == null || out.index_mid == 0)
-      // ) {
-      //   return;
-      // }
-
       this.insertFkbrti1sec(out);
 
       this.last = {
@@ -327,12 +353,12 @@ class FkbrtiEngine {
         const out = {
           type: "fkbrti",
           t: (() => {
-          try {
-            return new Date(now).toISOString();
-          } catch (e) {
-            return new Date().toISOString();
-          }
-        })(),
+            try {
+              return new Date(now + 9 * 60 * 60 * 1000).toISOString();
+            } catch (e) {
+              return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+            }
+          })(),
           symbol: this.symbol || "(UNKNOWN)",
           depth: this.depth,
           stale_ms: this.staleMs,
@@ -349,14 +375,6 @@ class FkbrtiEngine {
           actual_avg: actual_avg,
         };
 
-        // if (
-        //   (out.vwap_buy == null || out.vwap_buy == 0) &&
-        //   (out.vwap_sell == null || out.vwap_sell == 0) &&
-        //   (out.index_mid == null || out.index_mid == 0)
-        // ) {
-        //   return;
-        // }
-        
         this.insertFkbrti1sec(out);
 
       } else {
@@ -364,12 +382,12 @@ class FkbrtiEngine {
         const out = {
           type: "fkbrti",
           t: (() => {
-          try {
-            return new Date(now).toISOString();
-          } catch (e) {
-            return new Date().toISOString();
-          }
-        })(),
+            try {
+              return new Date(now + 9 * 60 * 60 * 1000).toISOString();
+            } catch (e) {
+              return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+            }
+          })(),
           symbol: this.symbol || "(UNKNOWN)",
           depth: this.depth,
           stale_ms: this.staleMs,
@@ -386,81 +404,103 @@ class FkbrtiEngine {
           actual_avg: actual_avg,
         };
 
-        // if (
-        //   (out.vwap_buy == null || out.vwap_buy == 0) &&
-        //   (out.vwap_sell == null || out.vwap_sell == 0) &&
-        //   (out.index_mid == null || out.index_mid == 0)
-        // ) {
-        //   return;
-        // }
-
         this.insertFkbrti1sec(out);
       }
     }
   }
 
-  // tb_fkbrti_1sec에 데이터 삽입하는 함수
   insertFkbrti1sec(item) {
-    quest_db.sequelize.query(
-      `
-      INSERT INTO :table_name (
-          tran_date,
-          tran_time,
-          symbol,
-          vwap_buy,
-          vwap_sell,
-          index_mid,
-          expected_status,
-          no_data,
-          provisional,
-          no_publish,
-          diff,
-          ratio,
-          actual_avg,
-          createdAt
-        ) VALUES (
-          :tran_date,
-          :tran_time,
-          :symbol,
-          :vwap_buy,
-          :vwap_sell,
-          :index_mid,
-          :expected_status,
-          :no_data,
-          :provisional,
-          :no_publish,
-          :diff,
-          :ratio,
-          :actual_avg,
-          :createdAt
-        )
-        `,
-        {
-          replacements: {
-            table_name: this.table_name,
-            tran_date: this.tran_date,
-            tran_time: this.tran_time,
-            symbol: item.symbol,
-            vwap_buy: item.vwap_buy,
-            vwap_sell: item.vwap_sell,
-            index_mid: item.index_mid,
-            expected_status: JSON.stringify(item.expected_status),
-            no_data: item.no_data,
-            provisional: item.provisional,
-            no_publish: item.no_publish,
-            diff: item.diff,
-            ratio: item.ratio,
-            actual_avg: item.actual_avg,
-            createdAt: item.t,
+    // 배치 모드일 때는 ILP로 insert
+    if (this.is_batch_mode && this.ilpWriter) {
+      try {
+        const ilpLine = toILP_Fkbrti1sec({
+          symbol: item.symbol,
+          vwap_buy: item.vwap_buy,
+          vwap_sell: item.vwap_sell,
+          index_mid: item.index_mid,
+          expected_status: item.expected_status,
+          no_data: item.no_data,
+          provisional: item.provisional,
+          no_publish: item.no_publish,
+          diff: item.diff,
+          ratio: item.ratio,
+          actual_avg: item.actual_avg,
+          createdAt: new Date(item.t).toISOString(),
+        }, this.table_name);
+        
+        this.ilpWriter.write(ilpLine);
+        
+      } catch (err) {
+        logger.error({ ex: "FKBRTI", err: String(err), stack: err.stack }, "[ILP] tb_fkbrti_1sec insert 실패");
+      }
+    } else {
+      // 실시간 모드일 때는 SQL로 insert
+      quest_db.sequelize.query(
+        `
+        INSERT INTO :table_name (
+            symbol,
+            vwap_buy,
+            vwap_sell,
+            index_mid,
+            expected_status,
+            no_data,
+            provisional,
+            no_publish,
+            diff,
+            ratio,
+            actual_avg,
+            createdAt
+          ) VALUES (
+            :symbol,
+            :vwap_buy,
+            :vwap_sell,
+            :index_mid,
+            :expected_status,
+            :no_data,
+            :provisional,
+            :no_publish,
+            :diff,
+            :ratio,
+            :actual_avg,
+            :createdAt
+          )
+          `,
+          {
+            replacements: {
+              table_name: this.table_name,
+              symbol: item.symbol,
+              vwap_buy: item.vwap_buy,
+              vwap_sell: item.vwap_sell,
+              index_mid: item.index_mid,
+              expected_status: JSON.stringify(item.expected_status),
+              no_data: item.no_data,
+              provisional: item.provisional,
+              no_publish: item.no_publish,
+              diff: item.diff,
+              ratio: item.ratio,
+              actual_avg: item.actual_avg,
+              createdAt: new Date(item.t).toISOString(),
+            }
           }
-        }
-      )
-      .then(() => {
-        send_publisher("fkbrti", item);
-      })
-      .catch((err) => {
-        logger.error({ ex: "FKBRTI", err: String(err) }, "[DB] tb_fkbrti_1sec insert 실패");
-      });
+        )
+        .then(() => {
+          // console.log("insertFkbrti1sec", item);
+          send_publisher("fkbrti", item);
+        })
+        .catch((err) => {
+          logger.error({ ex: "FKBRTI", err: String(err) }, "[DB] tb_fkbrti_1sec insert 실패");
+        });
+    }
+  }
+
+  /**
+   * ILP writer 종료 (배치 모드 종료 시 호출)
+   */
+  endIlpWriter() {
+    if (this.ilpWriter) {
+      this.ilpWriter.end();
+      this.ilpWriter = null;
+    }
   }
 }
 

@@ -32,7 +32,7 @@ async function sendTelegramMessage(source_name, text, is_send = true) {
   )
   .then(response => {
     if (response.status === 200) {
-      logger.info(`[Telegram] Message sent successfully`);
+      // logger.info(`[Telegram] Message sent successfully`);
     } else {
       v.error(`[Telegram] Failed: ${response.status} ${response.statusText}`);
     }
@@ -72,7 +72,7 @@ async function sendTelegramMessageQueue(source_name, text, is_send = true) {
   )
   .then(response => {
     if (response.status === 200) {
-      logger.info(`[Telegram] Message sent successfully`);
+      // logger.info(`[Telegram] Message sent successfully`);
     } else {
       logger.error(`[Telegram] Failed: ${response.status} ${response.statusText}`);
     }

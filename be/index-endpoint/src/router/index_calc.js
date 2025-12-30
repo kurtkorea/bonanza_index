@@ -8,6 +8,7 @@ const { respMsgStr, respData, respMsg } = require("../utils/common");
 const { verifyData, verifyTypes } = require("../middleware/verify");
 const { prePaging } = require("../middleware/paging");
 const { db, Op } = require("../db/quest_db");
+const db_mysql = require("../model_mysql");
 const common= require("../utils/common");
 
 router.use("/*", (req, resp, next) => {
@@ -125,13 +126,14 @@ router.get("/", prePaging("createdAt", "desc", 100), async (req, resp, next) => 
 });
 
 router.get("/stats", async (req, resp, next) => {
-	// #swagger.description = 'FKBRTI 통계 조회 (기간별 DIFF 및 RATIO 통계) - 1D, 1W, 1M, 1Y'
+	// #swagger.description = 'FKBRTI 통계 조회 (기간별 DIFF 및 RATIO 통계) - 1D, 1W, 1M, 1Y (tb_fkbrti_summary 테이블에서 조회)'
 	// #swagger.responses[200] = { description: '성공 시 통계 데이터 반환' }
 	try {
 
 		const symbol = req.query.symbol || "KRW-BTC";
 
-		const stats = await db.tb_fkbrti_1sec.getStatsSQL( symbol );
+		// tb_fkbrti_summary 테이블에서 통계 데이터 조회
+		const stats = await db_mysql.FkbrtiSummary.getStats(symbol);
 
 		resp.json({
 			result: true,

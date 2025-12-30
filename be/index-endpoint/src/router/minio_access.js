@@ -64,12 +64,30 @@ router.get("/list", async (req, resp, next) => {
 		
 		const response = await s3Client.send(command);
 		
-		const fileList = (response.Contents || []).map(item => ({
+		let fileList = (response.Contents || []).map(item => ({
 			key: item.Key,
 			size: item.Size,
 			lastModified: item.LastModified,
 			etag: item.ETag,
 		}));
+		
+		// 파일명(key) 기준 내림차순 정렬 (최신 파일이 먼저 - 파일명에 날짜가 포함된 경우)
+		// fileList.sort((a, b) => {
+		// 	// 파일명에서 날짜 추출 (예: orderbook_20231126_KRW-BTC.csv.gz)
+		// 	const getDateFromKey = key => {
+		// 		const match = key.match(/(\d{8})/);
+		// 		return match ? match[1] : null;
+		// 	};
+		// 	const dateA = getDateFromKey(a.key);
+		// 	const dateB = getDateFromKey(b.key);
+			
+		// 	// 날짜가 있으면 날짜 기준으로 정렬 (내림차순)
+		// 	if (dateA && dateB) {
+		// 		return dateB.localeCompare(dateA);
+		// 	}
+		// 	// 날짜가 없으면 파일명 전체로 정렬 (내림차순)
+		// 	return b.key.localeCompare(a.key);
+		// });
 		
 		resp.status(200).json({
 			files: fileList,

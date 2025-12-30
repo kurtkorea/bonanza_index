@@ -13,7 +13,7 @@ const {
   RECONNECT_INTERVAL,
   PING_INTERVAL,
 } = require("../utils/common.js");
-const { send_push } = require("../utils/zmq-sender-push.js");
+const { send_push, getZMQStatus } = require("../utils/zmq-sender-push.js");
 // const { send_publisher } = require("../utils/zmq-sender-pub.js");
 const {
   sendTelegramMessage,
@@ -25,23 +25,35 @@ const { quest_db } = require("../db/quest_db.js");
 const { isJsonValue } = require("../utils/common.js");
 const { redisManager } = require("../redis.js");
 
+// 리더십 상태 확인 함수 (leader-status 모듈에서 import)
+const { isLeader: isLeaderFunction } = require("../utils/leader-status.js");
+
 // ===== 설정 =====
 const DEPTH = 15;
 const QUEUE_MAX_SIZE = Number(process.env.WS_QUEUE_MAX_SIZE || 50000);
 const QUEUE_PROCESS_INTERVAL = Number(process.env.WS_QUEUE_PROCESS_INTERVAL || 20);
 const QUEUE_BATCH_SIZE = Number(process.env.WS_QUEUE_BATCH_SIZE || 50);
 const QUEUE_MONITOR_INTERVAL = Number(process.env.WS_QUEUE_MONITOR_INTERVAL || 600000);
-const CPU_CORES = Number(process.env.CPU_CORES || require("os").cpus().length);
+// CPU 코어 수 설정 (환경 변수 우선, 없으면 시스템 값 사용)
+// 주의: Kubernetes 컨테이너에서는 CPU limits를 고려하여 환경 변수로 명시적 설정 권장
+const CPU_CORES = Math.max(
+  0.5, // 최소값: 0.5 CPU (컨테이너 환경 고려)
+  Number(process.env.CPU_CORES || require("os").cpus().length)
+);
+
 const OPTIMAL_BATCH_SIZE = Math.max(
-  10,
-  Math.min(QUEUE_BATCH_SIZE, Math.floor(CPU_CORES * 25))
+  50, // 최소 배치 크기를 50으로 증가 (기존 10)
+  Math.min(QUEUE_BATCH_SIZE, Math.floor(CPU_CORES * 50)) // CPU 코어당 배치 크기 증가 (기존 25 -> 50)
 );
 const OPTIMAL_PROCESS_INTERVAL = Math.max(
-  10,
-  Math.floor((QUEUE_PROCESS_INTERVAL * 2) / Math.max(1, CPU_CORES))
+  5, // 최소 간격을 5ms로 줄임 (기존 10ms)
+  Math.floor((QUEUE_PROCESS_INTERVAL * 2) / Math.max(0.5, CPU_CORES)) // 최소 0.5 CPU 가정
 );
 
 const COLLECTOR_ROLE = process.env.COLLECTOR_ROLE || "primary";
+
+// ZMQ 전송 timeout 설정 (밀리초, 기본값: 2000ms)
+const ZMQ_SEND_TIMEOUT = Number(process.env.ZMQ_SEND_TIMEOUT || 2000);
 
 // 큐 설정 로깅
 function logQueueConfiguration() {
@@ -56,7 +68,7 @@ function logQueueConfiguration() {
   };
   logger.info(
     "Customized queue configuration for CPU cores\n" +
-      JSON.stringify(config, null, 2)
+    JSON.stringify(config, null, 2)
   );
 }
 
@@ -79,7 +91,7 @@ function normalize(bids, asks) {
   return { bids: nb, asks: na };
 }
 
-// ------------------- 거래소별 WS 클라이언트 -------------------
+// ------------------- 거래소 WS 클라이언트 -------------------
 
 class WebSocketBroker {
   constructor(process_info) {
@@ -124,7 +136,7 @@ class WebSocketBroker {
       symbol_item.subscribe_symbol = `${process_info.product_id_cd}-${process_info.price_id_cd}`;
     }
 
-    if ( !this.symbols.has(symbol_item.subscribe_symbol) ) {
+    if (!this.symbols.has(symbol_item.subscribe_symbol)) {
       symbol_item.symbol = `${process_info.price_id_cd}-${process_info.product_id_cd}`;
       symbol_item.price_id_cd = process_info.price_id_cd;
       symbol_item.product_id_cd = process_info.product_id_cd;
@@ -159,13 +171,14 @@ class WebSocketBroker {
 
   enqueue(message) {
     this.queueStats.totalEnqueued++;
-    if (this.queue.length >= this.queueMaxSize) {
+    const wasFull = this.queue.length >= this.queueMaxSize;
+    if (wasFull) {
       this.queue.shift();
       this.queueDropped++;
       this.queueStats.totalDropped++;
       if (this.queueDropped % 100 === 0) {
         logger.warn(
-          { ex: this.exchange_nm, dropped: this.queueDropped },
+          { ex: this.exchange_nm, dropped: this.queueDropped, queueSize: this.queue.length },
           "queue overflow, messages dropped"
         );
       }
@@ -174,17 +187,61 @@ class WebSocketBroker {
     if (this.queue.length > this.queueStats.maxQueueSize) {
       this.queueStats.maxQueueSize = this.queue.length;
     }
+    
+    // 큐가 80% 이상 찰 때 즉시 처리 시도 (드롭 방지)
+    const queueUsagePercent = (this.queue.length / this.queueMaxSize) * 100;
+    if (queueUsagePercent > 80 && !this.queueProcessing) {
+      // 비동기로 처리 (블로킹 방지)
+      setImmediate(() => {
+        this.processQueue().catch((e) => {
+          logger.error(
+            { ex: this.exchange_nm, err: String(e) },
+            "immediate queue process error"
+          );
+        });
+      });
+    }
   }
 
   async processQueue(cb) {
     if (this.queueProcessing || this.queue.length === 0) return;
+    
+    // 리더가 아닌 경우 큐 처리를 건너뛰고 큐에 데이터를 쌓아둠
+    const isCurrentlyLeader = isLeaderFunction && isLeaderFunction();
+    if (!isCurrentlyLeader) {
+      // 팔로워일 때는 큐에 데이터를 쌓아두기만 함 (처리하지 않음)
+      // 큐가 가득 차면 오래된 데이터를 삭제
+      if (this.queue.length >= this.queueMaxSize) {
+        // 주기적으로 로그를 남기지 않도록 빈도 제한
+        if (this.queueDropped % 1000 === 0) {
+          logger.warn({
+            ex: this.exchange_nm,
+            queueSize: this.queue.length,
+            queueMaxSize: this.queueMaxSize,
+            totalDropped: this.queueDropped,
+            isLeaderFunction: !!isLeaderFunction,
+            isLeader: isLeaderFunction ? isLeaderFunction() : false
+          }, '[WebSocketBroker] 팔로워 모드: 큐가 가득 참 (오래된 데이터 삭제됨)');
+        }
+      }
+      return;
+    }
+    
+    // 리더일 때만 큐 처리
     this.queueProcessing = true;
     const batchStartTime = Date.now();
     let processedInBatch = 0;
+    
+    // 큐가 가득 찰 때는 배치 크기를 늘려서 더 빠르게 처리
+    const queueUsagePercent = (this.queue.length / this.queueMaxSize) * 100;
+    const dynamicBatchSize = queueUsagePercent > 80 
+      ? Math.min(OPTIMAL_BATCH_SIZE * 2, Math.floor(this.queue.length * 0.1))
+      : OPTIMAL_BATCH_SIZE;
+    
     try {
       while (
         this.queue.length > 0 &&
-        processedInBatch < OPTIMAL_BATCH_SIZE
+        processedInBatch < dynamicBatchSize
       ) {
         const queueItem = this.queue.shift();
         if (!queueItem) break;
@@ -306,8 +363,8 @@ class WebSocketBroker {
         // orderbook_item이 유효한지 확인
         if (!orderbook_item || !orderbook_item.exchange_cd || !orderbook_item.symbol) {
           logger.warn(
-            { 
-              ex: this.exchange_nm, 
+            {
+              ex: this.exchange_nm,
               orderbook_item: orderbook_item ? {
                 exchange_cd: orderbook_item.exchange_cd,
                 symbol: orderbook_item.symbol,
@@ -322,25 +379,49 @@ class WebSocketBroker {
           return;
         }
 
-        try {
-          await Promise.race([
-            SendToOrderBook_ZMQ(orderbook_item, payload),
-            new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error("SendToOrderBook_ZMQ timeout")),
-                500
-              )
-            ),
-          ]);
-        } catch (timeoutError) {
-          if (timeoutError.message.includes("timeout")) {
-            logger.warn(
-              { ex: this.exchange_nm, err: String(timeoutError) },
-              "ZMQ send timeout (continuing)"
-            );
-          } else {
-            throw timeoutError;
+        // 리더십 확인: 리더일 때만 ZMQ 전송
+        const isCurrentlyLeader = isLeaderFunction && isLeaderFunction();
+        
+        if (isCurrentlyLeader) {
+          try {
+            await Promise.race([
+              SendToOrderBook_ZMQ(orderbook_item, payload),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () => reject(new Error("SendToOrderBook_ZMQ timeout")),
+                  ZMQ_SEND_TIMEOUT
+                )
+              ),
+            ]);
+          } catch (timeoutError) {
+            if (timeoutError.message.includes("timeout")) {
+              // ZMQ 큐 상태 확인
+              const zmqStatus = getZMQStatus();
+              const queueInfo = zmqStatus.queueStatus 
+                ? `큐: ${zmqStatus.queueStatus.queueLength}/${zmqStatus.queueStatus.maxQueueSize} (${zmqStatus.queueStatus.queueUsagePercent}%)`
+                : '큐 상태 확인 불가';
+              
+              logger.warn(
+                { 
+                  ex: this.exchange_nm, 
+                  err: String(timeoutError),
+                  zmqStatus: zmqStatus,
+                  queueInfo: queueInfo,
+                  timeout: ZMQ_SEND_TIMEOUT
+                },
+                `ZMQ send timeout (continuing) - ${queueInfo}`
+              );
+            } else {
+              throw timeoutError;
+            }
           }
+        } else {
+          // 리더가 아닌 경우 ZMQ 전송하지 않음 (데이터는 큐에 계속 저장됨)
+          // 주기적으로 로그를 남기지 않도록 주석 처리
+          // logger.debug(
+          //   { ex: this.exchange_nm, symbol: orderbook_item.symbol },
+          //   "Not leader, skipping ZMQ send (data queued)"
+          // );
         }
 
         if (cb && typeof cb === "function")
@@ -355,57 +436,6 @@ class WebSocketBroker {
     }
   }
 
-  async saveToRedis( item ) {
-    try {
-
-      // 최근 1시간 데이터 저장을 위해 Redis Sorted Set을 사용합니다.
-      // exchange_cd 및 symbol, marketAt(time) 정보를 key/value로 활용\
-
-      return;
-          
-      if (!item || !item.symbol || !item.marketAt) {
-        logger.warn(`[Redis] saveToRedis: missing symbol or marketAt in item: ${this.exchange_cd} ${item.symbol} ${JSON.stringify(item)}`);
-        return;
-      }
-
-      // Redis 키는 거래소별로 관리 (예: orderbook:E0010001:BTC-KRW)
-      const redisKey = `orderbook:${this.exchange_cd}:${item.symbol}`;
-
-      // score는 타임스탬프(밀리초), value는 JSON string으로 저장
-      const score = Number(item.marketAt);
-      const value = JSON.stringify(item);
-
-      // 1) ZADD로 데이터 추가
-      // 2) 1시간(60분) 이전 데이터는 삭제
-      const now = Date.now();
-      const oneHourAgo = now - 60 * 60 * 1000;
-
-      // zadd: score=marketAt, value=item
-      // zremrangebyscore: score < oneHourAgo 삭제
-      if (typeof redisManager.zadd === 'function' && typeof redisManager.zremrangebyscore === 'function') {
-        await redisManager.zadd(redisKey, score, value);
-        await redisManager.zremrangebyscore(redisKey, 0, oneHourAgo);
-      } else {
-        // 호환성 유지: node-redis v4 client 사용중이라면 아래처럼 처리
-        if (redisManager && redisManager.client && redisManager.client.zAdd && redisManager.client.zRemRangeByScore) {
-          await redisManager.client.zAdd(redisKey, [{ score, value }]);
-          await redisManager.client.zRemRangeByScore(redisKey, 0, oneHourAgo);
-        } else {
-          logger.warn('[Redis] zadd/zremrangebyscore 함수가 정의되지 않았습니다.');
-        }
-      }
-      
-      // await redisManager.set(key, value);
-    } catch (error) {
-      logger.error({
-        ex: this.exchange_nm,
-        err: error?.message || String(error),
-        stack: error?.stack,
-        item: item ? { symbol: item.symbol, exchange_cd: item.exchange_cd, marketAt: item.marketAt } : null
-      }, '[Redis] save to redis error:');
-    }
-  }
-
   async _parseOrderbookMessage(msg) {
 
     let typeRaw =
@@ -417,14 +447,12 @@ class WebSocketBroker {
       typeRaw === "SubscribeToOrderBook" ||
       typeRaw === "OrderBookEvent";
 
-    if ( msg?.response_type == "SUBSCRIBED" )
-    {
+    if (msg?.response_type == "SUBSCRIBED") {
       console.log("isOrderbookMsg", this.exchange_nm, msg);
       return null;
     }
 
-    if (!isOrderbookMsg) 
-    {      
+    if (!isOrderbookMsg) {
       // console.log("isOrderbookMsg", this.exchange_nm, msg);
       return null;
     }
@@ -433,12 +461,12 @@ class WebSocketBroker {
       asks = [],
       orderbook_item = {
         symbol: "",
-        subscribe_symbol : "",
+        subscribe_symbol: "",
         exchange_cd: this.exchange_cd,
         exchange_nm: this.exchange_nm,
         bid: [],
         ask: [],
-        marketAt: 0,
+        ts: 0,
         collectorAt: 0,
         diff_ms: 0,
       };
@@ -446,17 +474,15 @@ class WebSocketBroker {
     const now = Date.now();
     // 업비트
     if (this.exchange_cd === "E0010001") {
-      const marketAt = msg.tms;
+      const ts = msg.tms;
       const collectorAt = now;
-      const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
-      const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
       const units = msg?.obu || msg?.orderbook_units || [];
       const symbol = msg?.cd || msg?.code;
       bids = units.slice(0, DEPTH).map((u) => [u.bp ?? u.bid_price, u.bs ?? u.bid_size]);
       asks = units.slice(0, DEPTH).map((u) => [u.ap ?? u.ask_price, u.as ?? u.ask_size]);
 
       const symbol_item = this.symbols.get(symbol);
-      if ( symbol_item != null ) {
+      if (symbol_item != null) {
         orderbook_item = {
           symbol: symbol_item.symbol,
           subscribe_symbol: symbol_item.subscribe_symbol,
@@ -464,15 +490,10 @@ class WebSocketBroker {
           exchange_nm: this.exchange_nm,
           price_id: symbol_item.price_id,
           product_id: symbol_item.product_id,
-          tran_date: tran_date,
-          tran_time: tran_time,
+          ts: ts,
           bid: bids,
           ask: asks,
-          marketAt: marketAt,
-          collectorAt: collectorAt,
-          diff_ms: (collectorAt - marketAt) / 1000,
         };
-        await this.saveToRedis(orderbook_item);
       } else {
         // symbol_item이 null이면 유효한 orderbook_item을 만들 수 없으므로 null 반환
         logger.debug({ ex: this.exchange_nm, symbol }, "symbol_item not found, returning null");
@@ -482,16 +503,14 @@ class WebSocketBroker {
     }
     // 빗썸
     else if (this.exchange_cd === "E0020001") {
-      const marketAt = parseInt(msg.tms / 1000);
+      const ts = parseInt(msg.tms / 1000);
       const collectorAt = now;
-      const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
-      const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
       const units = msg?.obu || msg?.orderbook_units || [];
       const symbol = msg?.cd || msg?.code;
       bids = units.slice(0, DEPTH).map((u) => [u.bp ?? u.bid_price, u.bs ?? u.bid_size]);
       asks = units.slice(0, DEPTH).map((u) => [u.ap ?? u.ask_price, u.as ?? u.ask_size]);
       const symbol_item = this.symbols.get(symbol);
-      if ( symbol_item != null ) {
+      if (symbol_item != null) {
         orderbook_item = {
           symbol: symbol_item.symbol,
           subscribe_symbol: symbol_item.subscribe_symbol,
@@ -499,15 +518,10 @@ class WebSocketBroker {
           exchange_nm: this.exchange_nm,
           price_id: symbol_item.price_id,
           product_id: symbol_item.product_id,
-          tran_date: tran_date,
-          tran_time: tran_time,
+          ts: ts,
           bid: bids,
           ask: asks,
-          marketAt: marketAt,
-          collectorAt: collectorAt,
-          diff_ms: (collectorAt - marketAt) / 1000,
         };
-        await this.saveToRedis(orderbook_item);
         // console.log(this.exchange_cd, this.exchange_nm, orderbook_item);
       } else {
         logger.debug({ ex: this.exchange_nm, symbol }, "symbol_item not found, returning null");
@@ -518,16 +532,14 @@ class WebSocketBroker {
     else if (this.exchange_cd === "E0030001") {
       const d = msg.d || msg.data;
       if (!d) return null;
-      const marketAt = d.t;
-      const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
-      const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
+      const ts = d.t;
       const symbol = `${d.qc}-${d.tc}`;
       const collectorAt = now;
       bids = (d.b || d.bids || []).map((u) => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, DEPTH);
       asks = (d.a || d.asks || []).reverse().map((u) => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, DEPTH);
-      
+
       const symbol_item = this.symbols.get(symbol);
-      if ( symbol_item != null ) {
+      if (symbol_item != null) {
         orderbook_item = {
           symbol: symbol_item.symbol,
           subscribe_symbol: symbol_item.subscribe_symbol,
@@ -535,15 +547,10 @@ class WebSocketBroker {
           exchange_nm: this.exchange_nm,
           price_id: symbol_item.price_id,
           product_id: symbol_item.product_id,
-          tran_date: tran_date,
-          tran_time: tran_time,
+          ts: ts,
           bid: bids,
           ask: asks,
-          marketAt: marketAt,
-          collectorAt: collectorAt,
-          diff_ms: (collectorAt - marketAt) / 1000,
         };
-        await this.saveToRedis(orderbook_item);
         // console.log(this.exchange_cd, this.exchange_nm, orderbook_item);
       } else {
         logger.debug({ ex: this.exchange_nm, symbol }, "symbol_item not found, returning null");
@@ -552,16 +559,14 @@ class WebSocketBroker {
     }
     // 코빗
     else if (this.exchange_cd === "E0050001") {
-      const marketAt = msg.timestamp;
+      const ts = msg.timestamp;
       const collectorAt = now;
-      const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
-      const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
       const symbol = msg.symbol;
       bids = (msg.data?.bids || []).slice(0, DEPTH).map((x) => [Number(x.price), Number(x.qty)]);
       asks = (msg.data?.asks || []).slice(0, DEPTH).map((x) => [Number(x.price), Number(x.qty)]);
       // console.log("symbol !!!!!!!!!!!!!!!!!!!!!", this.symbols, symbol);
       const symbol_item = this.symbols.get(symbol);
-      if ( symbol_item != null ) {
+      if (symbol_item != null) {
         orderbook_item = {
           symbol: symbol_item.symbol,
           subscribe_symbol: symbol_item.subscribe_symbol,
@@ -569,15 +574,10 @@ class WebSocketBroker {
           exchange_nm: this.exchange_nm,
           price_id: symbol_item.price_id,
           product_id: symbol_item.product_id,
-          tran_date: tran_date,
-          tran_time: tran_time,
+          ts: ts,
           bid: bids,
-            ask: asks,
-            marketAt: marketAt,
-            collectorAt: collectorAt,
-            diff_ms: (collectorAt - marketAt) / 1000,
+          ask: asks,
         };
-        await this.saveToRedis(orderbook_item);
         // console.log(this.exchange_cd, this.exchange_nm, orderbook_item);
       } else {
         logger.debug({ ex: this.exchange_nm, symbol }, "symbol_item not found, returning null");
@@ -586,15 +586,13 @@ class WebSocketBroker {
     }
     // 고팍스
     else if (this.exchange_cd === "E0080001") {
-      const marketAt = now;
+      const ts = now;
       const collectorAt = now;
-      const tran_date = new Date(marketAt).toISOString().split("T")[0].replace(/-/g, "");
-      const tran_time = new Date(marketAt).toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
       const symbol = msg.o?.tradingPairName;
       bids = (msg.o?.bid || []).slice(0, DEPTH).map((x) => [Number(x.price), Number(x.volume)]);
       asks = (msg.o?.ask || []).slice(0, DEPTH).map((x) => [Number(x.price), Number(x.volume)]);
       const symbol_item = this.symbols.get(symbol);
-      if ( symbol_item != null ) {
+      if (symbol_item != null) {
         orderbook_item = {
           symbol: symbol_item.symbol,
           subscribe_symbol: symbol_item.subscribe_symbol,
@@ -602,15 +600,10 @@ class WebSocketBroker {
           exchange_nm: this.exchange_nm,
           price_id: symbol_item.price_id,
           product_id: symbol_item.product_id,
-          tran_date: tran_date,
-          tran_time: tran_time,
+          ts: ts,
           bid: bids,
           ask: asks,
-          marketAt: marketAt,
-          collectorAt: collectorAt,
-          diff_ms: (collectorAt - marketAt) / 1000,
         };
-        await this.saveToRedis(orderbook_item);
         // console.log(this.exchange_cd, this.exchange_nm, orderbook_item);
       } else {
         logger.debug({ ex: this.exchange_nm, symbol }, "symbol_item not found, returning null");
@@ -627,9 +620,20 @@ class WebSocketBroker {
     return { bids, asks, orderbook_item };
   }
 
-  start(client) {
-    this.websocket = new WebSocket(this.wss_url);
-    this.websocket.on("open", () => {
+  /**
+   * WebSocket이 열린 후 구독 메시지 전송
+   */
+  _subscribeToOrderbook() {
+    // WebSocket이 OPEN 상태인지 확인
+    if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
+      logger.warn({
+        ex: this.exchange_nm,
+        readyState: this.websocket?.readyState
+      }, "WebSocket이 OPEN 상태가 아닙니다. 구독 메시지를 보낼 수 없습니다.");
+      return;
+    }
+
+    try {
       if (this.exchange_cd === "E0010001") {
         // 업비트 OK 
         let sub_symbols = [];
@@ -641,7 +645,7 @@ class WebSocketBroker {
           { ticket: "bonanza-orderbook" },
           { type: "orderbook", codes: sub_symbols },
           { format: "SIMPLE" },
-        ];  
+        ];
         this.websocket.send(Buffer.from(JSON.stringify(sub), "utf8"));
         logger.info({
           ex: this.exchange_nm,
@@ -655,9 +659,9 @@ class WebSocketBroker {
           sub_symbols.push(symbol_item.subscribe_symbol);
         }
         let sub = [
-            { ticket: "execavg-tw" },
-            { type: "orderbook", codes: sub_symbols },
-            { format: "SIMPLE" },
+          { ticket: "execavg-tw" },
+          { type: "orderbook", codes: sub_symbols },
+          { format: "SIMPLE" },
         ];
         this.websocket.send(Buffer.from(JSON.stringify(sub), "utf8"));
         logger.info({
@@ -700,8 +704,15 @@ class WebSocketBroker {
         ];
         this.websocket.send(JSON.stringify(sub));
         try {
-          this.websocket?.send("PING");
-        } catch {}
+          if (this.websocket.readyState === WebSocket.OPEN) {
+            this.websocket.send("PING");
+          }
+        } catch (error) {
+          logger.debug({
+            ex: this.exchange_nm,
+            err: String(error)
+          }, "PING 전송 실패");
+        }
         logger.info(
           this.exchange_nm + " subscribe\n" + JSON.stringify(sub, null, 2)
         );
@@ -724,10 +735,39 @@ class WebSocketBroker {
           });
         }
       }
+    } catch (error) {
+      logger.error({
+        ex: this.exchange_nm,
+        err: String(error),
+        stack: error.stack
+      }, "구독 메시지 전송 중 오류 발생");
+    }
+  }
+
+  start(client) {
+    this.websocket = new WebSocket(this.wss_url);
+    this.websocket.on("open", () => {
+      // WebSocket이 완전히 열렸는지 확인
+      if (this.websocket.readyState !== WebSocket.OPEN) {
+        logger.warn({
+          ex: this.exchange_nm,
+          readyState: this.websocket.readyState
+        }, "WebSocket이 아직 열리지 않았습니다. 잠시 후 재시도합니다.");
+        
+        // 잠시 후 재시도
+        setTimeout(() => {
+          if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            this._subscribeToOrderbook();
+          }
+        }, 100);
+        return;
+      }
+      
+      this._subscribeToOrderbook();
+      
       sendTelegramMessage(
         this.exchange_nm,
-        `${this.exchange_nm} OrderBook-Collector WebSocket ${
-          this._reconnecting ? "reopened (reconnected)" : "opened (initial connect)."
+        `${this.exchange_nm} OrderBook-Collector WebSocket ${this._reconnecting ? "reopened (reconnected)" : "opened (initial connect)."
         }`,
         !this._reconnecting
       );
@@ -735,13 +775,20 @@ class WebSocketBroker {
       this._closeNotified = false;
       this.pingInterval = setInterval(() => {
         try {
-          if (this.exchange_cd === "E0010001" || this.exchange_cd === "E0020001" 
-            || this.exchange_cd === "E0050001" || this.exchange_cd === "E0080001") {
-            this.websocket?.send("PING");
-          } else if (this.exchange_cd === "E0030001") {
-            this.websocket?.send(JSON.stringify({ request_type: "PING" }));
+          if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            if (this.exchange_cd === "E0010001" || this.exchange_cd === "E0020001"
+              || this.exchange_cd === "E0050001" || this.exchange_cd === "E0080001") {
+              this.websocket.send("PING");
+            } else if (this.exchange_cd === "E0030001") {
+              this.websocket.send(JSON.stringify({ request_type: "PING" }));
+            }
           }
-        } catch {}
+        } catch (error) {
+          logger.debug({
+            ex: this.exchange_nm,
+            err: String(error)
+          }, "PING 전송 실패");
+        }
       }, PING_INTERVAL);
     });
 
@@ -819,49 +866,123 @@ const IndexProcessInfo = require('../models/index_process_info.js');
 // 순환 참조 방지를 위해 동적 import 사용
 
 async function refresh_websocket_clients() {
+  try {
+    logger.info("Refresh start");
 
-  logger.info("Refresh start");
+    // 기존 클라이언트 정리
+    if (clients && clients.size > 0) {
+      logger.info(`기존 클라이언트 ${clients.size}개 정리 중...`);
+      clients.forEach((client) => {
+        try {
+          if (client.websocket) {
+            client.websocket.close();
+          }
+        } catch (err) {
+          logger.warn({ err: String(err) }, "기존 클라이언트 종료 중 오류 (무시)");
+        }
+      });
+    }
+    clients.clear();
+    clients = new Map();
+    logger.info("Clients cleared");
 
-  clients.forEach((client) => {
-    client.websocket.close();
-  });
-  clients.clear();
-  clients = new Map();
-  logger.info("Clients cleared");
-
-  const process_info = await IndexProcessInfo.getProcessInfo(global.process_id);
-  if (process_info) {	
-    const process_info_json = JSON.parse(process_info.process_info);
-    logger.info("Process info found:\n" + JSON.stringify(process_info_json, null, 2));
-    
-    // 병렬적으로 모든 상세 정보를 fetch하고 결과를 모아서 initializeWebsocketClients 실행
-    const process_info_detail_list = [];
-    for (let idx = 0; idx < process_info_json.length; idx++) {
-      const item = process_info_json[idx];
-      logger.info(`Process info [${idx}]: ${JSON.stringify(item)}`);
-
-      const process_info_detail = await IndexProcessInfo.getProcessInfoDetail(item.exchange_cd, item.price_id, item.product_id);
-      logger.info(`Process info detail: ${JSON.stringify(process_info_detail, null, 2)}`);
-      if ( process_info_detail.length > 0 ) {
-        process_info_detail_list.push(process_info_detail[0]);
-      }
+    // process_id 확인
+    if (!global.process_id) {
+      logger.error("global.process_id가 설정되지 않았습니다.");
+      throw new Error("process_id가 설정되지 않았습니다. PROCESS_ID 환경변수를 확인하세요.");
     }
 
-    initializeWebsocketClients(process_info_detail_list);
-    logger.info('WebSocket clients initialized successfully');
+    logger.info({ process_id: global.process_id }, "[WebSocketBroker] Process info 조회 시작...");
+    
+    let process_info;
+    try {
+      process_info = await IndexProcessInfo.getProcessInfo(global.process_id);
+      logger.info("[WebSocketBroker] Process info 조회 완료");
+    } catch (error) {
+      logger.error({
+        err: String(error),
+        stack: error.stack,
+        process_id: global.process_id
+      }, "[WebSocketBroker] Process info 조회 실패");
+      throw error;
+    }
+    
+    if (process_info) {
+      logger.info("[WebSocketBroker] Process info 파싱 시작...");
+      let process_info_json;
+      try {
+        process_info_json = JSON.parse(process_info.process_info);
+        logger.info("Process info found:\n" + JSON.stringify(process_info_json, null, 2));
+      } catch (parseError) {
+        logger.error({
+          err: String(parseError),
+          process_info: process_info
+        }, "[WebSocketBroker] Process info JSON 파싱 실패");
+        throw parseError;
+      }
 
-    // 순환 참조 방지를 위해 동적 import
-    const { init_zmq_command_subscriber } = require('../utils/zmq-data-sub.js');
-    await init_zmq_command_subscriber(global.process_id);
-    logger.info("[ZMQ] Command subscriber initialized successfully.");
-  } else {
-    logger.error({ process_id: global.process_id }, "process_info not found. Please check the process_id.");
-    process.exit(1);
+      // 병렬적으로 모든 상세 정보를 fetch하고 결과를 모아서 initializeWebsocketClients 실행
+      logger.info(`[WebSocketBroker] Process info detail 조회 시작 (총 ${process_info_json.length}개)...`);
+      const process_info_detail_list = [];
+      for (let idx = 0; idx < process_info_json.length; idx++) {
+        const item = process_info_json[idx];
+        logger.info(`[WebSocketBroker] Process info [${idx}/${process_info_json.length}]: ${JSON.stringify(item)}`);
+
+        try {
+          const process_info_detail = await IndexProcessInfo.getProcessInfoDetail(item.exchange_cd, item.price_id, item.product_id);
+          logger.info(`[WebSocketBroker] Process info detail [${idx}]: ${JSON.stringify(process_info_detail, null, 2)}`);
+          if (process_info_detail.length > 0) {
+            process_info_detail_list.push(process_info_detail[0]);
+          }
+        } catch (detailError) {
+          logger.error({
+            err: String(detailError),
+            stack: detailError.stack,
+            item: item
+          }, `[WebSocketBroker] Process info detail [${idx}] 조회 실패`);
+          // 개별 실패는 계속 진행
+        }
+      }
+
+      logger.info(`[WebSocketBroker] 총 ${process_info_detail_list.length}개 detail 수집 완료. WebSocket 클라이언트 초기화 시작...`);
+      initializeWebsocketClients(process_info_detail_list);
+      logger.info('[WebSocketBroker] WebSocket clients initialized successfully');
+
+      // 순환 참조 방지를 위해 동적 import
+      // ZMQ command subscriber는 백그라운드에서 무한 루프로 실행되므로 await하지 않고 Promise로 실행
+      logger.info("[WebSocketBroker] ZMQ command subscriber 초기화 시작 (백그라운드 실행)...");
+      const { init_zmq_command_subscriber } = require('../utils/zmq-data-sub.js');
+      
+      // 백그라운드에서 실행 (무한 루프이므로 await하지 않음)
+      init_zmq_command_subscriber(global.process_id)
+        .then(() => {
+          logger.info("[WebSocketBroker] ZMQ Command subscriber가 예상치 못하게 종료되었습니다.");
+        })
+        .catch((zmqError) => {
+          logger.error({
+            err: String(zmqError),
+            stack: zmqError.stack
+          }, "[WebSocketBroker] ZMQ command subscriber 실행 중 오류 발생");
+          // 에러가 발생해도 앱이 계속 실행되도록 함 (선택사항)
+        });
+      
+      logger.info("[WebSocketBroker] ZMQ Command subscriber 백그라운드 실행 시작됨 (무한 루프)");
+    } else {
+      logger.error({ process_id: global.process_id }, "process_info not found. Please check the process_id.");
+      throw new Error(`process_info not found for process_id: ${global.process_id}`);
+    }
+  } catch (error) {
+    logger.error({
+      err: String(error),
+      stack: error.stack,
+      process_id: global.process_id
+    }, "[WebSocketBroker] refresh_websocket_clients 오류 발생");
+    throw error; // 에러를 상위로 전파
   }
 }
 
 function initializeWebsocketClients(process_info_detail_list) {
-  if (clients.length > 0) {
+  if (clients.size > 0) {
     logger.info("WebSocket clients already initialized");
     return;
   }
@@ -873,7 +994,7 @@ function initializeWebsocketClients(process_info_detail_list) {
     logQueueConfiguration();
 
     process_info_detail_list.forEach((item) => {
-      if ( !clients.has(item.exchange_cd) ) {
+      if (!clients.has(item.exchange_cd)) {
         clients.set(item.exchange_cd, new WebSocketBroker(item));
         clients.get(item.exchange_cd).addSymbol(item);
       } else {
@@ -881,7 +1002,7 @@ function initializeWebsocketClients(process_info_detail_list) {
       }
     });
 
-    logger.info(`Created ${clients.length} clients`);
+    logger.info(`Created ${clients.size} clients`);
     clients.forEach((client) => {
       try {
         client.start(client);
@@ -912,14 +1033,14 @@ let statsInterval = null;
 let monitorInterval = null;
 
 function startIntervals() {
-  if (statsInterval || clients.length === 0) {
+  if (statsInterval || clients.size === 0) {
     logger.warn("startIntervals: Already started or no clients available");
     return;
   }
   logger.info("Starting intervals (stats, monitor, tick)");
   try {
     statsInterval = setInterval(() => {
-      if (clients.length === 0) return;
+      if (clients.size === 0) return;
       clients.forEach((client) => {
         const now = Date.now();
         const timeSinceLastSecond = now - client.queueStats.lastSecondTime;
@@ -960,7 +1081,7 @@ function startIntervals() {
     }, 1000);
 
     monitorInterval = setInterval(() => {
-      if (clients.length === 0) return;
+      if (clients.size === 0) return;
       try {
         const report = generateQueueReport(clients, COLLECTOR_ROLE);
         sendTelegramMessageQueue("QueueMonitor", report, true);
@@ -1022,7 +1143,7 @@ function scheduleDailyReport() {
           exchanges: dailyStats,
           collectorRole: COLLECTOR_ROLE,
         });
-        
+
         await quest_db.sequelize.query(
           `INSERT INTO tb_report (title, content, createdAt) VALUES (:title, :content, NOW())`,
           {
@@ -1032,7 +1153,7 @@ function scheduleDailyReport() {
             },
           }
         );
-        
+
         logger.info({ ex: "REPORT", title: "orderbook-collector", exchanges: dailyStats.length }, "[tb_report] Successfully inserted daily report");
       } else {
         logger.warn("[tb_report] Unable to insert report: missing sequelize instance.");
@@ -1051,7 +1172,95 @@ function scheduleDailyReport() {
   }, msUntilMidnight);
 }
 
+/**
+ * WebSocket 클라이언트 종료
+ */
+function stop_websocket_clients() {
+  logger.info('[WebSocketBroker] WebSocket 클라이언트 종료 시작');
+  
+  try {
+    if (clients && clients.size > 0) {
+      clients.forEach((client) => {
+        try {
+          if (client.websocket) {
+            client.websocket.close();
+            logger.info({
+              exchange: client.exchange_nm
+            }, '[WebSocketBroker] WebSocket 연결 종료');
+          }
+        } catch (err) {
+          logger.error({
+            err: String(err),
+            exchange: client.exchange_nm
+          }, '[WebSocketBroker] WebSocket 종료 중 오류 발생');
+        }
+      });
+    }
+    
+    // 인터벌 정리
+    if (statsInterval) {
+      clearInterval(statsInterval);
+      statsInterval = null;
+    }
+    
+    if (monitorInterval) {
+      clearInterval(monitorInterval);
+      monitorInterval = null;
+    }
+    
+    // 클라이언트 맵 초기화
+    clients.clear();
+    clients = new Map();
+    
+    logger.info('[WebSocketBroker] 모든 WebSocket 클라이언트 종료 완료');
+  } catch (error) {
+    logger.error({
+      err: String(error),
+      stack: error.stack
+    }, '[WebSocketBroker] WebSocket 클라이언트 종료 중 오류 발생');
+  }
+}
+
+/**
+ * 모든 WebSocket 클라이언트의 큐 정보 가져오기
+ * @returns {Array} 각 클라이언트의 큐 정보 배열
+ */
+function getAllQueueStats() {
+  const queueStats = [];
+  if (clients && clients.size > 0) {
+    clients.forEach((client, exchangeCd) => {
+      const stats = client.getQueueStats();
+      queueStats.push({
+        exchange: exchangeCd,
+        queueSize: stats.queueSize,
+        queueMaxSize: stats.queueMaxSize,
+        queueUsagePercent: stats.queueUsagePercent,
+        totalEnqueued: stats.totalEnqueued,
+        totalProcessed: stats.totalProcessed
+      });
+    });
+  }
+  return queueStats;
+}
+
+/**
+ * 모든 WebSocket 클라이언트의 총 큐 크기 가져오기
+ * @returns {number} 총 큐 크기
+ */
+function getTotalQueueSize() {
+  let totalSize = 0;
+  if (clients && clients.size > 0) {
+    clients.forEach((client) => {
+      totalSize += client.queue.length;
+    });
+  }
+  return totalSize;
+}
+
 module.exports = {
   initializeWebsocketClients,
   refresh_websocket_clients,
+  stop_websocket_clients,
+  getAllQueueStats,
+  getTotalQueueSize,
 };

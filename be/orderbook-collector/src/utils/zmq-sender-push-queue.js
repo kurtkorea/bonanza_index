@@ -66,6 +66,24 @@ class ZmqSendQueuePush {
     }
     this.sending = false;
   }
+
+  // 큐 길이 반환
+  getQueueLength() {
+    return this.q.length;
+  }
+
+  // 큐 상태 정보 반환
+  getQueueStatus() {
+    return {
+      queueLength: this.q.length,
+      maxQueueSize: this.maxQueueSize,
+      queueUsagePercent: this.maxQueueSize > 0 
+        ? Math.round((this.q.length / this.maxQueueSize) * 100) 
+        : 0,
+      sending: this.sending,
+      dropOldestOnFull: this.dropOldestOnFull
+    };
+  }
 }
 
 module.exports = { ZmqSendQueuePush };

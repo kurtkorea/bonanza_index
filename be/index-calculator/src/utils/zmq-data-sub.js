@@ -34,7 +34,7 @@ async function init_zmq_depth_subscriber(subscribe_exchange) {
             
             for (const topic of subscribe_exchange) {
               sub_depth.subscribe(topic.EXCHANGE_CD);
-              logger.info({ ex: "ZMQ", topic: topic.EXCHANGE_CD }, 'Subscribed Depth Topic');
+            //   logger.info({ ex: "ZMQ", topic: topic.EXCHANGE_CD }, 'Subscribed Depth Topic');
             }
             
             // 구독 후 추가 지연 (PUB/SUB 연결 안정화)
@@ -116,7 +116,7 @@ async function init_zmq_ticker_subscriber(subscribe_exchange) {
             
             for (const topic of subscribe_exchange) {
               sub_ticker.subscribe(topic.EXCHANGE_CD);
-              logger.info({ ex: "ZMQ", topic: topic.EXCHANGE_CD }, 'Subscribed Trade Topic');
+            //   logger.info({ ex: "ZMQ", topic: topic.EXCHANGE_CD }, 'Subscribed Trade Topic');
             }
             
             // 구독 후 추가 지연 (PUB/SUB 연결 안정화)
@@ -139,9 +139,7 @@ async function init_zmq_ticker_subscriber(subscribe_exchange) {
                             if (feed_item.hasOwnProperty('raw')) {
                                 delete feed_item.raw;
                             }
-
-                            // console.log("Trade=", feed_item);
-
+                            
                             const last_key = feed_item.exchange_cd + "_" + feed_item.symbol;
                             if ( feed_item.type == 'trade') {
                                 if (feed_item.hasOwnProperty('raw')) {

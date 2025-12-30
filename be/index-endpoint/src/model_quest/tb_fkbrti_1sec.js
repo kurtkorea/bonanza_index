@@ -138,7 +138,7 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 		// JSON 필드 파싱
 		const datalist = pagedResults.map(item => ({
 			...item,
-			createdAt: new Date(item.createdAt.getTime() + 18 * 60 * 60 * 1000).toISOString(),
+			createdAt: new Date(item.createdAt.getTime() + 9 * 60 * 60 * 1000).toISOString(),
 			expected_status: this.parseJSON(item.expected_status)
 		}));
 

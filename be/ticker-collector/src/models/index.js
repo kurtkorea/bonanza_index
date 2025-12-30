@@ -21,6 +21,7 @@ const sequelize = new Sequelize(process.env.DB_SCHEME, process.env.DB_USERNAME, 
 	port: process.env.DB_PORT,
 	dialect: process.env.DB_DIALECT,
 	logging: process.env.DB_LOG === "true" ? console.log : false,
+	timezone: '+09:00',  // KST (한국 표준시) 설정
   pool: {
     acquire: 10000,  // 연결 시도 최대 대기 시간 (기본 10000ms)
     max: 5,
@@ -28,7 +29,8 @@ const sequelize = new Sequelize(process.env.DB_SCHEME, process.env.DB_USERNAME, 
     idle: 10000
   },
   dialectOptions: {
-    connectTimeout: 10000  // MySQL에만 적용
+    connectTimeout: 10000,  // MySQL에만 적용
+    timezone: '+09:00'  // MySQL 연결 시 KST 사용
   }	
 });
 

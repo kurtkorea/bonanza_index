@@ -116,13 +116,15 @@ function isZMQConnected() {
 
 // ZMQ 연결 상태 상세 정보
 function getZMQStatus() {
+  const queueStatus = q ? q.getQueueStatus() : null;
   return {
     pushSocket: push !== null,
     queue: q !== null,
     connected: isZMQConnected(),
     port: process.env.ZMQ_PUSH_PORT || 'undefined',
     reconnectAttempts: reconnectAttempts,
-    maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS
+    maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS,
+    queueStatus: queueStatus
   };
 }
 

@@ -14,6 +14,9 @@ const { generateQueueReport } = require("../utils/report.js");
 const logger = require("../utils/logger.js");
 const { redisManager } = require("../redis.js");
 
+// 리더십 상태 확인 함수 (leader-status 모듈에서 import)
+const { isLeader: isLeaderFunction } = require("../utils/leader-status.js");
+
 // ===== 설정 =====
 // 큐 설정 (2 vCPU 환경 최적화)
 // - 4개 거래소 클라이언트가 동시에 처리하므로 CPU 부하 분산 고려
@@ -162,7 +165,23 @@ class WebSocketBroker {
     if (this.queueProcessing || this.queue.length === 0) {
       return;
     }
-
+    
+    // 리더가 아닌 경우 큐 처리를 건너뛰고 큐에 데이터를 쌓아둠
+    const isCurrentlyLeader = isLeaderFunction && isLeaderFunction();
+    if (!isCurrentlyLeader) {
+      // 팔로워일 때는 큐에 데이터를 쌓아두기만 함 (처리하지 않음)
+      // 큐가 가득 차면 오래된 데이터를 삭제
+      if (this.queue.length >= this.queueMaxSize) {
+        logger.debug({
+          ex: this.exchange_nm,
+          queueSize: this.queue.length,
+          queueMaxSize: this.queueMaxSize
+        }, '[WebSocketBroker] 팔로워 모드: 큐가 가득 참 (오래된 데이터 삭제됨)');
+      }
+      return;
+    }
+    
+    // 리더일 때만 큐 처리
     this.queueProcessing = true;
     const batchStartTime = Date.now();
     let processedInBatch = 0;
@@ -587,54 +606,63 @@ class WebSocketBroker {
         const trade = msg.o;
       }
     }
+    // 리더십 확인: 리더일 때만 ZMQ 전송
+    const isCurrentlyLeader = isLeaderFunction && isLeaderFunction();
+    
     if ( isTradeMsg ) {
       for ( const trade_item of trade_items ) {
-        try {
-          // console.log("trade_item", trade_item);
-          await Promise.race([
-            SendToTrade_ZMQ(trade_item, msg),
-            new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error("SendToTrade_ZMQ timeout")),
-                500
-              )
-            ),
-          ]);
-        } catch (timeoutError) {
-          if (timeoutError.message.includes("timeout")) {
-            logger.warn(
-              { ex: this.exchange_nm, err: String(timeoutError) },
-              "ZMQ send timeout (continuing)"
-            );
-          } else {
-            throw timeoutError;
+        if (isCurrentlyLeader) {
+          try {
+            // console.log("trade_item", trade_item);
+            await Promise.race([
+              SendToTrade_ZMQ(trade_item, msg),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () => reject(new Error("SendToTrade_ZMQ timeout")),
+                  500
+                )
+              ),
+            ]);
+          } catch (timeoutError) {
+            if (timeoutError.message.includes("timeout")) {
+              logger.warn(
+                { ex: this.exchange_nm, err: String(timeoutError) },
+                "ZMQ send timeout (continuing)"
+              );
+            } else {
+              throw timeoutError;
+            }
           }
         }
+        // 리더가 아닌 경우 ZMQ 전송하지 않음 (데이터는 큐에 계속 저장됨)
       }
     }
 
     if ( isTickerMsg ) {
       for ( const ticker_item of ticker_items ) {
-        try {
-          await Promise.race([
-            SendToTicker_ZMQ(ticker_item, msg),
-            new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error("SendToTicker_ZMQ timeout")),
-                500
-              )
-            ),
-          ]);
-        } catch (timeoutError) {
-          if (timeoutError.message.includes("timeout")) {
-            logger.warn(
-              { ex: this.exchange_nm, err: String(timeoutError) },
-              "ZMQ send timeout (continuing)"
-            );
-          } else {
-            throw timeoutError;
+        if (isCurrentlyLeader) {
+          try {
+            await Promise.race([
+              SendToTicker_ZMQ(ticker_item, msg),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () => reject(new Error("SendToTicker_ZMQ timeout")),
+                  500
+                )
+              ),
+            ]);
+          } catch (timeoutError) {
+            if (timeoutError.message.includes("timeout")) {
+              logger.warn(
+                { ex: this.exchange_nm, err: String(timeoutError) },
+                "ZMQ send timeout (continuing)"
+              );
+            } else {
+              throw timeoutError;
+            }
           }
         }
+        // 리더가 아닌 경우 ZMQ 전송하지 않음 (데이터는 큐에 계속 저장됨)
       }
     }
   }
@@ -871,39 +899,133 @@ const IndexProcessInfo = require('../models/index_process_info.js');
 // 순환 참조 방지를 위해 동적 import 사용
 
 async function refresh_websocket_clients() {
-  const process_info = await IndexProcessInfo.getProcessInfo(global.process_id);
-  if (process_info) {	
-    const process_info_json = JSON.parse(process_info.process_info);
-    logger.info("Process info found:\n" + JSON.stringify(process_info_json, null, 2));
-    
-    // 병렬적으로 모든 상세 정보를 fetch하고 결과를 모아서 initializeWebsocketClients 실행
-    const process_info_detail_list = [];
-    for (let idx = 0; idx < process_info_json.length; idx++) {
-      const item = process_info_json[idx];
-      logger.info(`Process info [${idx}]: ${JSON.stringify(item)}`);
+  try {
+    logger.info("Refresh start");
 
-      const process_info_detail = await IndexProcessInfo.getProcessInfoDetail(item.exchange_cd, item.price_id, item.product_id);
-      logger.info(`Process info detail: ${JSON.stringify(process_info_detail, null, 2)}`);
-      if ( process_info_detail.length > 0 ) {
-        process_info_detail_list.push(process_info_detail[0]);
-      }
+    // 기존 클라이언트 정리
+    if (clients && clients.size > 0) {
+      logger.info(`기존 클라이언트 ${clients.size}개 정리 중...`);
+      clients.forEach((client) => {
+        try {
+          if (client.websocket) {
+            client.websocket.close();
+          }
+        } catch (err) {
+          logger.warn({ err: String(err) }, "기존 클라이언트 종료 중 오류 (무시)");
+        }
+      });
+    }
+    clients.clear();
+    clients = new Map();
+    logger.info("Clients cleared");
+
+    // process_id 확인
+    if (!global.process_id) {
+      logger.error("global.process_id가 설정되지 않았습니다.");
+      throw new Error("process_id가 설정되지 않았습니다. PROCESS_ID 환경변수를 확인하세요.");
     }
 
-    initializeWebsocketClients(process_info_detail_list);
-    logger.info('WebSocket clients initialized successfully');
+    logger.info({ process_id: global.process_id }, "[WebSocketBroker] Process info 조회 시작...");
+    
+    let process_info;
+    try {
+      process_info = await IndexProcessInfo.getProcessInfo(global.process_id);
+      
+      if (process_info) {
+        logger.info("[WebSocketBroker] Process info 조회 완료");
+      } else {
+        // 사용 가능한 process_id 목록 조회
+        try {
+          const allProcessIds = await IndexProcessInfo.findAll({
+            attributes: ['process_id'],
+            limit: 10
+          });
+          const availableIds = allProcessIds.map(p => p.process_id);
+          logger.error({
+            process_id: global.process_id,
+            available_process_ids: availableIds,
+            total_available: allProcessIds.length
+          }, "[WebSocketBroker] process_info not found. Available process_ids in database:");
+        } catch (listError) {
+          logger.warn({
+            err: String(listError)
+          }, "[WebSocketBroker] Failed to list available process_ids");
+        }
+      }
+    } catch (error) {
+      logger.error({
+        err: String(error),
+        stack: error.stack,
+        process_id: global.process_id
+      }, "[WebSocketBroker] Process info 조회 실패");
+      throw error;
+    }
+    
+    if (process_info) {
+      logger.info("[WebSocketBroker] Process info 파싱 시작...");
+      let process_info_json;
+      try {
+        process_info_json = JSON.parse(process_info.process_info);
+        logger.info("Process info found:\n" + JSON.stringify(process_info_json, null, 2));
+      } catch (parseError) {
+        logger.error({
+          err: String(parseError),
+          process_info: process_info
+        }, "[WebSocketBroker] Process info JSON 파싱 실패");
+        throw parseError;
+      }
 
-    // 순환 참조 방지를 위해 동적 import
-    const { init_zmq_command_subscriber } = require('../utils/zmq-data-sub.js');
-    await init_zmq_command_subscriber(global.process_id);
-    logger.info("[ZMQ] Command subscriber initialized successfully.");
-  } else {
-    logger.error({ process_id: global.process_id }, "process_info not found. Please check the process_id.");
-    process.exit(1);
+      // 병렬적으로 모든 상세 정보를 fetch하고 결과를 모아서 initializeWebsocketClients 실행
+      logger.info(`[WebSocketBroker] Process info detail 조회 시작 (총 ${process_info_json.length}개)...`);
+      const process_info_detail_list = [];
+      for (let idx = 0; idx < process_info_json.length; idx++) {
+        const item = process_info_json[idx];
+        logger.info(`[WebSocketBroker] Process info [${idx}/${process_info_json.length}]: ${JSON.stringify(item)}`);
+
+        try {
+          const process_info_detail = await IndexProcessInfo.getProcessInfoDetail(item.exchange_cd, item.price_id, item.product_id);
+          logger.info(`[WebSocketBroker] Process info detail [${idx}]: ${JSON.stringify(process_info_detail, null, 2)}`);
+          if (process_info_detail.length > 0) {
+            process_info_detail_list.push(process_info_detail[0]);
+          }
+        } catch (detailError) {
+          logger.error({
+            err: String(detailError),
+            stack: detailError.stack,
+            item: item
+          }, `[WebSocketBroker] Process info detail [${idx}] 조회 실패`);
+          // 개별 실패는 계속 진행
+        }
+      }
+
+      logger.info(`[WebSocketBroker] 총 ${process_info_detail_list.length}개 detail 수집 완료. WebSocket 클라이언트 초기화 시작...`);
+      
+      if (process_info_detail_list.length === 0) {
+        logger.warn("[WebSocketBroker] Process info detail이 없습니다. WebSocket 클라이언트를 초기화할 수 없습니다.");
+        throw new Error("Process info detail이 없습니다.");
+      }
+
+      initializeWebsocketClients(process_info_detail_list);
+      logger.info('[WebSocketBroker] WebSocket clients initialized successfully');
+    } else {
+      logger.error({ 
+        process_id: global.process_id 
+      }, "[WebSocketBroker] process_info not found. Please check the process_id.");
+      throw new Error(`process_info not found for process_id: ${global.process_id}`);
+    }
+  } catch (error) {
+    logger.error({
+      ex: "WebSocketBroker",
+      err: String(error),
+      stack: error.stack,
+      process_id: global.process_id
+    }, "[WebSocketBroker] refresh_websocket_clients 오류 발생");
+    throw error;
   }
 }
 
 function initializeWebsocketClients(process_info_detail_list) {
-  if (clients.length > 0) {
+  if (clients && clients.size > 0) {
     logger.info("WebSocket clients already initialized");
     return;
   }
@@ -987,8 +1109,46 @@ setInterval(() => {
   }
 }, QUEUE_MONITOR_INTERVAL);
 
+/**
+ * 모든 WebSocket 클라이언트의 큐 정보 가져오기
+ * @returns {Array} 각 클라이언트의 큐 정보 배열
+ */
+function getAllQueueStats() {
+  const queueStats = [];
+  if (clients && clients.size > 0) {
+    clients.forEach((client, exchangeCd) => {
+      const stats = client.getQueueStats();
+      queueStats.push({
+        exchange: exchangeCd,
+        queueSize: stats.queueSize,
+        queueMaxSize: stats.queueMaxSize,
+        queueUsagePercent: stats.queueUsagePercent,
+        totalEnqueued: stats.totalEnqueued,
+        totalProcessed: stats.totalProcessed
+      });
+    });
+  }
+  return queueStats;
+}
+
+/**
+ * 모든 WebSocket 클라이언트의 총 큐 크기 가져오기
+ * @returns {number} 총 큐 크기
+ */
+function getTotalQueueSize() {
+  let totalSize = 0;
+  if (clients && clients.size > 0) {
+    clients.forEach((client) => {
+      totalSize += client.queue.length;
+    });
+  }
+  return totalSize;
+}
+
 // Export the client classes
 module.exports = {
   initializeWebsocketClients,
   refresh_websocket_clients,
+  getAllQueueStats,
+  getTotalQueueSize,
 };

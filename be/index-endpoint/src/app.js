@@ -34,6 +34,11 @@ if (process.env.NODE_ENV === "production") {
 } else {
 	dotenv.config({ path: path.join(__dirname, "../env/dev.env") });
 }
+
+// Timezone 설정 (로컬 개발 환경과 프로덕션 환경 모두 KST로 통일)
+if (!process.env.TZ) {
+	process.env.TZ = 'Asia/Seoul';
+}
 const express = require("express");
 const app = express();
 const server = require("http").createServer(app);
@@ -128,7 +133,7 @@ app.use((err, req, res, next) => {
 	respMsg(res, "server_error");
 });
 
-const { db_mysql } = require("./model_mysql");
+const db_mysql = require("./model_mysql");
 const IndexProcessInfo = require("./model_mysql/index_process_info.js");
 
 async function initializeApp() {

@@ -90,39 +90,45 @@ function createIlpWriter({ host = process.env.QDB_ILP_HOST || "127.0.0.1", port 
 }
 
 /** =========================
- *  ILP 라인 포맷터 (tb_order_book)
+ *  ILP 라인 포맷터 (tb_order_book_units)
  *  ========================= */
 
-// 안전 ns 변환기: 문자열/숫자/Date/BigInt 모두 처리, 실패 시 폴백 사용
+// KST 오프셋 (9시간 = 9 * 60 * 60 * 1000 밀리초)
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000; // 32400000
+
+// 안전 ns 변환기: 문자열/숫자/Date/BigInt 모두 처리, 실패 시 폴백 사용 (UTC → KST 변환)
 function toNs(anyTs, fallbackMs = Date.now()) {
-    // 이미 BigInt(ns)면 그대로
-    if (typeof anyTs === "bigint") return anyTs;
-  
-    // 숫자면: 초/밀리초 추정
-    if (typeof anyTs === "number" && Number.isFinite(anyTs)) {
-      const ms = anyTs < 1e12 ? Math.floor(anyTs * 1000) : Math.floor(anyTs);
+    // 이미 BigInt(ns)면 그대로 (KST 오프셋 적용)
+    if (typeof anyTs === "bigint") {
+      const ms = Number(anyTs / 1_000_000n) + KST_OFFSET_MS;
       return BigInt(ms) * 1_000_000n;
     }
   
-    // Date
-    if (anyTs instanceof Date && !isNaN(anyTs.getTime())) {
-      return BigInt(anyTs.getTime()) * 1_000_000n;
+    // 숫자면: 초/밀리초 추정 (KST 오프셋 추가)
+    if (typeof anyTs === "number" && Number.isFinite(anyTs)) {
+      const ms = (anyTs < 1e12 ? Math.floor(anyTs * 1000) : Math.floor(anyTs)) + KST_OFFSET_MS;
+      return BigInt(ms) * 1_000_000n;
     }
   
-    // 문자열(ISO 등)
+    // Date (KST 오프셋 추가)
+    if (anyTs instanceof Date && !isNaN(anyTs.getTime())) {
+      return BigInt(anyTs.getTime() + KST_OFFSET_MS) * 1_000_000n;
+    }
+  
+    // 문자열(ISO 등) (KST 오프셋 추가)
     if (typeof anyTs === "string" && anyTs.length) {
       const ms = Date.parse(anyTs);
-      if (!isNaN(ms)) return BigInt(ms) * 1_000_000n;
+      if (!isNaN(ms)) return BigInt(ms + KST_OFFSET_MS) * 1_000_000n;
     }
   
-    // 폴백
-    const fb = Math.floor(Number(fallbackMs) || Date.now());
+    // 폴백 (KST 오프셋 추가)
+    const fb = Math.floor(Number(fallbackMs) || Date.now()) + KST_OFFSET_MS;
     return BigInt(fb) * 1_000_000n;
   }
 
   const num = (v) => (typeof v === "number" ? v : Number(v));
 
-  // μs 변환 + 't'
+  // μs 변환 + 't' (UTC → KST 변환)
   function tsFieldMicros(v) {
     // v: Date | number(ms|s) | string(ISO)
     let ms;
@@ -130,6 +136,8 @@ function toNs(anyTs, fallbackMs = Date.now()) {
     else if (typeof v === "number" && Number.isFinite(v)) ms = v < 1e12 ? v * 1000 : v; // s→ms
     else ms = Date.parse(String(v));
     if (!Number.isFinite(ms)) ms = Date.now();
+    // KST 오프셋 추가 (9시간)
+    ms = ms + KST_OFFSET_MS;
     const micros = Math.trunc(ms * 1000);
     return `${micros}t`;
   }
@@ -148,24 +156,15 @@ function toNs(anyTs, fallbackMs = Date.now()) {
  * @returns string  ILP 라인 (끝에 \n)
  */
  function toILP(topic, eventTs, data) {
-     const ns = toNs(data.marketAt ?? eventTs);
      const tags = `exchange_cd=${escTag(data.exchange_cd)},order_tp=${escTag(data.order_tp)}`
      const fields = [];
-
-     if (data.tran_date != null)        fields.push(`tran_date="${escTag(data.tran_date)}"`);
-     if (data.tran_time != null)        fields.push(`tran_time="${escTag(data.tran_time)}"`);
+     if (data.ts != null)               fields.push(`ts=${tsFieldMicros(data.ts)}`);
      if (data.price_id != null)         fields.push(`price_id=${intField(data.price_id)}`);
      if (data.product_id != null)       fields.push(`product_id=${intField(data.product_id)}`);
      if (data.price != null)            fields.push(`price=${floatField(data.price)}`);
      if (data.size != null)             fields.push(`size=${floatField(data.size)}`);
-     if (data.marketAt)                 fields.push(`marketAt=${tsFieldMicros(data.marketAt)}`); // ★ TIMESTAMP → μs + t
-     if (data.collectorAt)             fields.push(`collectorAt=${tsFieldMicros(data.collectorAt)}`); // ★ TIMESTAMP → μs + t
-     if (data.dbAt)                     fields.push(`dbAt=${tsFieldMicros(data.dbAt)}`); // ★ TIMESTAMP → μs + t
-     if (data.diff_ms != null && data.diff_ms !== undefined) fields.push(`diff_ms=${floatField(data.diff_ms)}`);
-     if (data.diff_ms_db != null && data.diff_ms_db !== undefined) fields.push(`diff_ms_db=${floatField(data.diff_ms_db)}`);
-
-    //  if (!fields.length) fields.push("dummy=1");
-     const line = `tb_order_book,${tags} ${fields.join(",")} ${ns}\n`;
+     const ns = toNs(eventTs, data.ts);
+     const line = `tb_order_book_units,${tags} ${fields.join(",")} ${ns}\n`;
      return line;
  }
 
@@ -284,7 +283,7 @@ async function startPullQueue() {
 
   // 3) 1초 단위 호가 버퍼 (IS_SECOND === "true"일 때 사용)
   if (!global.__orderbookBuffer) {
-    global.__orderbookBuffer = new Map(); // key: "exchange_cd:product_id:marketAtSecond" (marketAt 기준 초 단위), value: { bid: Map<price, size>, ask: Map<price, size>, ... }
+    global.__orderbookBuffer = new Map(); // key: "exchange_cd:product_id:tsSecond" (ts 기준 초 단위), value: { bid: Map<price, size>, ask: Map<price, size>, ... }
   }
   
   // flush된 버퍼 추적 (중복 flush 방지)
@@ -297,19 +296,19 @@ async function startPullQueue() {
     global.__lastFlushedBuffer = new Map(); // key: "exchange_cd:product_id", value: { bid: Map, ask: Map, ... }
   }
 
-  // marketAt 기준으로 1초가 지난 버퍼를 flush하는 함수
+  // ts 기준으로 1초가 지난 버퍼를 flush하는 함수
   function flushReadyBuffers() {
     const now = Date.now();
     const currentSecond = Math.floor(now / 1000);
     const targetSecond = currentSecond - 1; // 1초 전 초를 flush 대상으로
     
-    // marketAt 기준으로 1초 이상 지난 버퍼 항목들을 flush
+    // ts 기준으로 1초 이상 지난 버퍼 항목들을 flush
     const keysToFlush = [];
     
     for (const [key, buffer] of global.__orderbookBuffer.entries()) {
-      // marketAt 기준으로 1초(1000ms) 이상 지난 항목만 flush
+      // ts 기준으로 1초(1000ms) 이상 지난 항목만 flush
       // 이미 flush된 버퍼는 제외
-      if (buffer.marketAt && (now - buffer.marketAt >= 1000) && !global.__flushedBuffers.has(key)) {
+      if (buffer.ts && (now - buffer.ts >= 1000) && !global.__flushedBuffers.has(key)) {
         keysToFlush.push(key);
       }
     }
@@ -328,19 +327,11 @@ async function startPullQueue() {
           exchange_cd: lastBuffer.exchange_cd,
           price_id: lastBuffer.price_id,
           product_id: lastBuffer.product_id,
-          tran_date: lastBuffer.tran_date,
-          tran_time: lastBuffer.tran_time,
-          marketAt: targetSecond * 1000, // 현재 초의 시작 시간
-          collectorAt: lastBuffer.collectorAt,
+          ts: targetSecond * 1000,
           diff_ms: lastBuffer.diff_ms,
           bid: new Map(lastBuffer.bid), // Map 복사
           ask: new Map(lastBuffer.ask), // Map 복사
         };
-        
-        // tran_date, tran_time 업데이트
-        const targetDate = new Date(targetSecond * 1000);
-        clonedBuffer.tran_date = targetDate.toISOString().split("T")[0].replace(/-/g, "");
-        clonedBuffer.tran_time = targetDate.toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
         
         global.__orderbookBuffer.set(targetBufferKey, clonedBuffer);
         keysToFlush.push(targetBufferKey);
@@ -372,51 +363,54 @@ async function startPullQueue() {
         .sort((a, b) => a[0] - b[0]) // 가격 오름차순
         .slice(0, 15);
 
-      const dbAt = new Date().getTime();
-      const diff_ms_db = (dbAt - buffer.marketAt) / 1000;
-
       // bid 저장
       for (const [price, size] of sortedBids) {
         const row = {
-          tran_date: buffer.tran_date,
-          tran_time: buffer.tran_time,
+          ts: buffer.ts,
           exchange_cd: buffer.exchange_cd,
           price_id: buffer.price_id,
           product_id: buffer.product_id,
           order_tp: "B",
           price,
           size,
-          marketAt: buffer.marketAt,
-          collectorAt: buffer.collectorAt,
-          dbAt: dbAt,
-          diff_ms: buffer.diff_ms,
-          diff_ms_db: diff_ms_db,
         };
-        lines.push(toILP(buffer.topic, buffer.marketAt, row));
+        lines.push(toILP(buffer.topic, buffer.ts, row));
       }
 
       // ask 저장
       for (const [price, size] of sortedAsks) {
         const row = {
-          tran_date: buffer.tran_date,
-          tran_time: buffer.tran_time,
+          ts: buffer.ts,
           exchange_cd: buffer.exchange_cd,
           price_id: buffer.price_id,
           product_id: buffer.product_id,
           order_tp: "A",
           price,
           size,
-          marketAt: buffer.marketAt,
-          collectorAt: buffer.collectorAt,
-          dbAt: dbAt,
-          diff_ms: buffer.diff_ms,
-          diff_ms_db: diff_ms_db,
         };
-        lines.push(toILP(buffer.topic, buffer.marketAt, row));
+        lines.push(toILP(buffer.topic, buffer.ts, row));
       }
 
       if (lines.length > 0 && process.env.IS_SAVE_DB === "true") {
+        // logger.info({ 
+        //   ex: "FLUSH", 
+        //   bufferKey: key, 
+        //   linesCount: lines.length, 
+        //   bidCount: sortedBids.length, 
+        //   askCount: sortedAsks.length,
+        //   exchange_cd: buffer.exchange_cd,
+        //   product_id: buffer.product_id
+        // }, "[FLUSH] Writing to ILP");
         ilp.write(lines);
+      } else {
+        // logger.warn({ 
+        //   ex: "FLUSH", 
+        //   bufferKey: key, 
+        //   linesCount: lines.length,
+        //   bidCount: sortedBids.length,
+        //   askCount: sortedAsks.length,
+        //   isSaveDb: process.env.IS_SAVE_DB
+        // }, "[FLUSH] Skipping write (lines empty or IS_SAVE_DB not true)");
       }
 
       // 마지막 flush된 버퍼로 저장 (다음 초에 데이터가 없을 때 사용)
@@ -426,11 +420,7 @@ async function startPullQueue() {
         exchange_cd: buffer.exchange_cd,
         price_id: buffer.price_id,
         product_id: buffer.product_id,
-        tran_date: buffer.tran_date,
-        tran_time: buffer.tran_time,
-        marketAt: buffer.marketAt,
-        collectorAt: buffer.collectorAt,
-        diff_ms: buffer.diff_ms,
+        ts: buffer.ts,
         bid: new Map(buffer.bid), // Map 복사
         ask: new Map(buffer.ask), // Map 복사
       });
@@ -447,7 +437,7 @@ async function startPullQueue() {
     }
   }
 
-  // marketAt 기준으로 1초가 지난 버퍼를 flush하는 타이머
+  // ts 기준으로 1초가 지난 버퍼를 flush하는 타이머
   let flushTimer = null;
   if (process.env.IS_SECOND === "true") {
     // 즉시 한 번 실행하여 오래된 데이터 처리
@@ -480,9 +470,9 @@ async function startPullQueue() {
         }
 
         // 중복 데이터 체크 및 스킵
-        if (d.marketAt) {
+        if (d.ts) {
           totalProcessedCount++;
-          if (deduplicator.isDuplicate(d, d.marketAt)) {
+          if (deduplicator.isDuplicate(d, d.ts)) {
             duplicateCount++;
             // 중복 데이터는 스킵
             if (duplicateCount % 100 === 0) {
@@ -497,27 +487,19 @@ async function startPullQueue() {
           }
         }
 
-        const dbAt = new Date().getTime();
-        const diff_ms_db = (dbAt - d.marketAt) / 1000;
         let seq = 0;
         if (Array.isArray(d.bid)) {
           for (const [price, size] of d.bid) {
             const row = {
-              tran_date: d.tran_date,
-              tran_time: d.tran_time,
-              exchange_cd: d.exchange_cd,
+              ts: d.ts,
+              exchange_cd: d.exchange_cd, 
               price_id: d.price_id,
               product_id: d.product_id,
               order_tp: "B",
               price,
               size,
-              marketAt: d.marketAt,
-              collectorAt: d.collectorAt,
-              dbAt: dbAt,
-              diff_ms: d.diff_ms,
-              diff_ms_db: diff_ms_db,
             };
-            lines.push(toILP(topic, d.marketAt ?? ts, row));
+            lines.push(toILP(topic, d.ts ?? ts, row));
             seq++;
             bid_count++;
             total_count++;
@@ -525,21 +507,15 @@ async function startPullQueue() {
           seq = 0;
           for (const [price, size] of d.ask) {
             const row = {
-              tran_date: d.tran_date,
-              tran_time: d.tran_time,
+              ts: d.ts,
               exchange_cd: d.exchange_cd,
               price_id: d.price_id,
               product_id: d.product_id,
               order_tp: "A",
               price,
               size,
-              marketAt: d.marketAt,
-              collectorAt: d.collectorAt,
-              dbAt: dbAt,
-              diff_ms: d.diff_ms,
-              diff_ms_db: diff_ms_db,
             };
-            lines.push(toILP(topic, d.marketAt ?? ts, row));
+            lines.push(toILP(topic, d.ts ?? ts, row));
             seq++;
             ask_count++;
             total_count++;
@@ -549,7 +525,14 @@ async function startPullQueue() {
       
       if (lines.length) {
         if (process.env.IS_SAVE_DB === "true") {
+          logger.debug({ 
+            ex: "BATCH", 
+            linesCount: lines.length,
+            batchSize: batch.length
+          }, "[BATCH] Writing to ILP");
           ilp.write(lines); // backpressure/재연결은 내부에서 처리
+        } else {
+          logger.warn({ ex: "BATCH", linesCount: lines.length, isSaveDb: process.env.IS_SAVE_DB }, "[BATCH] Skipping write (IS_SAVE_DB not true)");
         }
       }
     },
@@ -557,7 +540,12 @@ async function startPullQueue() {
 
   // 4) 수신 루프: 배치 경로 사용
   (async () => {
+    let messageCount = 0;
     for await (const msg of pull) {
+      messageCount++;
+      if (messageCount % 100 === 0) {
+        logger.info({ ex: "PULL", messageCount }, "[PULL] Received messages");
+      }
       if (msg.length === 3) {
         const [topicBuf, tsBuf, payloadBuf] = msg;
 
@@ -585,22 +573,28 @@ async function startPullQueue() {
         };
 
         if (process.env.IS_SECOND === "true") {
-          // marketAt 기준 1초 단위로 호가를 버퍼에 merge
+          // ts 기준 1초 단위로 호가를 버퍼에 merge
           const d = item.data;
           
-          if (!d.marketAt) {
+          if (!d.ts) {
+            logger.debug({ ex: "PULL", topic: item.topic }, "[PULL] Skipping message without ts");
+            continue;
+          }
+          
+          if (!d.exchange_cd || !d.product_id) {
+            logger.warn({ ex: "PULL", topic: item.topic, data: d }, "[PULL] Skipping message without exchange_cd or product_id");
             continue;
           }
           
           // 재기동 시 첫 번째 데이터 스킵 (오래된 데이터 방지)
           if (isFirstData) {
-            // 첫 번째 데이터의 marketAt이 프로세스 시작 시간보다 오래된 경우 스킵
-            if (d.marketAt < processStartTime) {
+            // 첫 번째 데이터의 ts이 프로세스 시작 시간보다 오래된 경우 스킵
+              if (d.ts < processStartTime) {
               logger.info({ 
                 ex: "PULL", 
-                marketAt: d.marketAt, 
+                ts: d.ts, 
                 processStartTime: processStartTime,
-                diff: processStartTime - d.marketAt 
+                diff: processStartTime - d.ts 
               }, "[PULL] Skipping first old data after restart");
               isFirstData = false;
               continue;
@@ -610,7 +604,7 @@ async function startPullQueue() {
 
           // 중복 데이터 체크 및 스킵 (IS_SECOND 경로에서도 적용)
           totalProcessedCount++;
-          if (deduplicator.isDuplicate(d, d.marketAt)) {
+          if (deduplicator.isDuplicate(d, d.ts)) {
             duplicateCount++;
             // 중복 데이터는 스킵
             if (duplicateCount % 100 === 0) {
@@ -624,16 +618,11 @@ async function startPullQueue() {
             continue;
           }
           
-          // marketAt을 초 단위로 변환 (밀리초를 초로 변환)
-          const marketAtSecond = Math.floor(d.marketAt / 1000);
+          // ts를 초 단위로 변환 (밀리초를 초로 변환)
+          const tsSecond = Math.floor(d.ts / 1000);
           
-          // tran_date, tran_time은 marketAt에서 추출
-          const marketDate = new Date(d.marketAt);
-          const tran_date = marketDate.toISOString().split("T")[0].replace(/-/g, "");
-          const tran_time = marketDate.toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
-          
-          // 버퍼 키: exchange_cd:product_id:marketAtSecond (marketAt 기준 초 단위)
-          const bufferKey = `${d.exchange_cd}:${d.product_id}:${marketAtSecond}`;
+          // 버퍼 키: exchange_cd:product_id:tsSecond (ts 기준 초 단위)
+          const bufferKey = `${d.exchange_cd}:${d.product_id}:${tsSecond}`;
           
           // 이미 flush된 버퍼면 스킵 (중복 방지)
           if (global.__flushedBuffers.has(bufferKey)) {
@@ -646,11 +635,7 @@ async function startPullQueue() {
               exchange_cd: d.exchange_cd,
               price_id: d.price_id,
               product_id: d.product_id,
-              tran_date: tran_date,
-              tran_time: tran_time,
-              marketAt: d.marketAt, // 첫 번째 marketAt 저장
-              collectorAt: d.collectorAt,
-              diff_ms: d.diff_ms,
+              ts: d.ts,
               bid: new Map(),
               ask: new Map(),
             });
@@ -684,19 +669,18 @@ async function startPullQueue() {
             }
           }
           
-          if (d.marketAt && (!buffer.marketAt || d.marketAt > buffer.marketAt)) {
-            buffer.marketAt = d.marketAt;
-            buffer.collectorAt = d.collectorAt;
-            buffer.diff_ms = d.diff_ms;
-            // tran_date, tran_time도 최신 값으로 업데이트
-            const latestDate = new Date(d.marketAt);
-            buffer.tran_date = latestDate.toISOString().split("T")[0].replace(/-/g, "");
-            buffer.tran_time = latestDate.toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
+          if (d.ts && (!buffer.ts || d.ts > buffer.ts)) {
+            buffer.ts = d.ts;
+          }
+          
+          // ts 업데이트 (최신 값으로)
+          if (d.ts && (!buffer.ts || d.ts > buffer.ts)) {
+            buffer.ts = d.ts;
           }
           
           // 데이터 추가 후 즉시 flush 조건 확인 (프로세스 시작 시 오래된 데이터 즉시 처리)
           const now = Date.now();
-          if (buffer.marketAt && (now - buffer.marketAt >= 1000) && !global.__flushedBuffers.has(bufferKey)) {
+          if (buffer.ts && (now - buffer.ts >= 1000) && !global.__flushedBuffers.has(bufferKey)) {
             // 즉시 flush (비동기로 실행하여 메인 루프 블로킹 방지)
             setImmediate(() => {
               flushReadyBuffers();
@@ -777,45 +761,30 @@ async function startPullQueue() {
             .sort((a, b) => a[0] - b[0])
             .slice(0, 15);
 
-          const dbAt = new Date().getTime();
-          const diff_ms_db = (dbAt - buffer.marketAt) / 1000;
-
           for (const [price, size] of sortedBids) {
             const row = {
-              tran_date: buffer.tran_date,
-              tran_time: buffer.tran_time,
+              ts: buffer.ts,
               exchange_cd: buffer.exchange_cd,
               price_id: buffer.price_id,
               product_id: buffer.product_id,
               order_tp: "B",
               price,
               size,
-              marketAt: buffer.marketAt,
-              collectorAt: buffer.collectorAt,
-              dbAt: dbAt,
-              diff_ms: buffer.diff_ms,
-              diff_ms_db: diff_ms_db,
-            };
-            lines.push(toILP(buffer.topic, buffer.marketAt, row));
+            };  
+            lines.push(toILP(buffer.topic, buffer.ts, row));
           }
 
           for (const [price, size] of sortedAsks) {
             const row = {
-              tran_date: buffer.tran_date,
-              tran_time: buffer.tran_time,
+              ts: buffer.ts,
               exchange_cd: buffer.exchange_cd,
               price_id: buffer.price_id,
               product_id: buffer.product_id,
               order_tp: "A",
               price,
               size,
-              marketAt: buffer.marketAt,
-              collectorAt: buffer.collectorAt,
-              dbAt: dbAt,
-              diff_ms: buffer.diff_ms,
-              diff_ms_db: diff_ms_db,
             };
-            lines.push(toILP(buffer.topic, buffer.marketAt, row));
+            lines.push(toILP(buffer.topic, buffer.ts, row));
           }
         }
         

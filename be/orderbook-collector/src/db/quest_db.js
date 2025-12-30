@@ -51,8 +51,7 @@ async function connect_quest_db() {
 		quest_db.Sequelize = Sequelize;
 
 		await sequelize.authenticate();
-
-		logger.info("[QuestDB] Database connection has been established successfully.");	
+	
 	} catch (error) {
 		logger.error({ ex: "DB", err: String(error) }, "[QuestDB] Unable to connect to the database:");
 		process.exit(1);

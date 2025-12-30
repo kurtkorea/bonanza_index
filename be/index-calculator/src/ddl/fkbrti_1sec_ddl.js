@@ -4,9 +4,7 @@ const logger = require('../utils/logger.js');
 async function fkbrti_1sec_schema(quest_db) {
     try {
         const fkbrti_1sec = `
-        CREATE TABLE IF NOT EXISTS tb_fkbrti_1sec (
-            tran_date       SYMBOL,
-            tran_time       SYMBOL,        
+        CREATE TABLE IF NOT EXISTS tb_fkbrti_1sec (   
             symbol          SYMBOL CAPACITY 128,
             vwap_buy      DOUBLE,
             vwap_sell     DOUBLE,

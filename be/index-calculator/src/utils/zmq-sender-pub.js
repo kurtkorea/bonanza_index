@@ -86,44 +86,83 @@ async function send_publisher(topic, payload) {
       logger.error({ ex: "ZMQ" }, "ZMQ socket is not properly initialized");
       return Promise.resolve();
     }
+
+    const query_1s = `SELECT *
+                      FROM (
+                        SELECT
+                            createdAt,
+                            vwap_buy,
+                            vwap_sell,
+                            index_mid AS fkbrti_1s,
+                            avg(index_mid) OVER (
+                                ORDER BY createdAt
+                                ROWS BETWEEN 4 PRECEDING AND CURRENT ROW
+                            ) AS fkbrti_5s,
+                            avg(index_mid) OVER (
+                                ORDER BY createdAt
+                                ROWS BETWEEN 9 PRECEDING AND CURRENT ROW
+                            ) AS fkbrti_10s,
+                            actual_avg,
+                            diff,
+                            ratio,
+                            expected_status,
+                            provisional,
+                            no_publish
+                        FROM (
+                            SELECT *
+                            FROM tb_fkbrti_1sec
+                            WHERE symbol = :symbol
+                              AND index_mid IS NOT NULL
+                              AND createdAt >= dateadd('m', -1, now())   -- 최근 1분(원하는 범위로 조절)
+                            ORDER BY createdAt ASC
+                        )
+                      )
+                      ORDER BY createdAt DESC
+                      LIMIT 10;`;
+
+    // 쿼리 실행 시 타임아웃 및 재시도 로직 추가
+    let results;
+    const maxRetries = 3;
+    let retryCount = 0;
     
-    const query_1s = `SELECT
-                      createdAt,
-                      vwap_buy,
-                      vwap_sell,
-                      index_mid AS fkbrti_1s,
-                      avg(index_mid) OVER (
-                                      ORDER BY createdAt
-                                      ROWS BETWEEN 4 PRECEDING AND CURRENT ROW
-                      ) AS fkbrti_5s,
-                      avg(index_mid) OVER (
-                                      ORDER BY createdAt
-                                      ROWS BETWEEN 9 PRECEDING AND CURRENT ROW
-                      ) AS fkbrti_10s,
-
-                      actual_avg,
-                      diff,
-                      ratio,
-
-                      expected_status,
-                      provisional,
-                      no_publish
-
-                    FROM tb_fkbrti_1sec 
-                    WHERE index_mid IS NOT NULL AND symbol = :symbol
-                    ORDER BY createdAT DESC
-                    LIMIT 10`;
-
-
-    const results = await quest_db.sequelize.query(query_1s, {
-      replacements: { symbol: payload.symbol },
-      type: QueryTypes.SELECT,
-      raw: true,
-    });    
+    while (retryCount < maxRetries) {
+      try {
+        results = await quest_db.sequelize.query(query_1s, {
+          replacements: { symbol: payload.symbol },
+          type: QueryTypes.SELECT,
+          raw: true,
+          timeout: 30000, // 쿼리 실행 타임아웃 30초
+        });
+        break; // 성공 시 루프 종료
+      } catch (error) {
+        retryCount++;
+        const isConnectionError = error.name === 'SequelizeConnectionAcquireTimeoutError' || 
+                                  error.name === 'SequelizeConnectionError' ||
+                                  error.message.includes('timeout') ||
+                                  error.message.includes('Connection');
+        
+        if (isConnectionError && retryCount < maxRetries) {
+          const delay = Math.min(1000 * retryCount, 5000); // 지수 백오프 (최대 5초)
+          logger.warn({ 
+            ex: "ZMQ", 
+            err: String(error), 
+            retryCount, 
+            maxRetries,
+            delay 
+          }, `QuestDB 쿼리 재시도 중... (${retryCount}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        } else {
+          // 재시도 실패 또는 연결 에러가 아닌 경우 에러 throw
+          throw error;
+        }
+      }
+    }    
+    
 
     const datalist = results.map(item => ({
 			...item,
-			createdAt: new Date(item.createdAt.getTime() + 18 * 60 * 60 * 1000).toISOString(),
+			createdAt: new Date(item.createdAt.getTime() + 9 * 60 * 60 * 1000).toISOString(),  // UTC -> KST 변환 (+9시간)
 			expected_status: parseJSON(item.expected_status)
 		}));
 
@@ -131,6 +170,7 @@ async function send_publisher(topic, payload) {
 
     topic = topic + "/" + payload.symbol;
     return await q.send([topic, JSON.stringify(datalist)]);
+    
     
   } catch (error) {
     logger.error({ ex: "ZMQ", err: String(error), stack: error.stack }, "send_pub error");
