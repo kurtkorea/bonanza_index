@@ -85,9 +85,9 @@ spec:
         - name: COLLECTOR_ROLE
           value: "secondary"
         - name: PROCESS_ID
-          value: "collector-process-slave"
+          value: "collector-process"
         - name: ENABLE_LEADER_ELECTION
-          value: "false"
+          value: "true"
         - name: LEADER_KEY
           value: "ticker-collector:leader"
         - name: LEADER_LEASE_TIME

@@ -65,13 +65,17 @@ const DEFAULT_MINIO_FOLDER = 'fkbrti';
 const OUTPUT_DIR = path.join(__dirname, './exports');
 
 /**
- * 어제 날짜를 YYYY-MM-DD 형식으로 반환
+ * 어제 날짜를 YYYY-MM-DD 형식으로 반환 (로컬 시간대 기준)
  * @returns {string} 어제 날짜 (YYYY-MM-DD)
  */
 function getYesterdayDate() {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    return yesterday.toISOString().split('T')[0];
+    // 로컬 시간대 기준으로 날짜 포맷팅 (toISOString()은 UTC 기준이므로 사용하지 않음)
+    const year = yesterday.getFullYear();
+    const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const day = String(yesterday.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 // 테이블별 타임스탬프 컬럼 매핑
@@ -456,6 +460,11 @@ async function main() {
             endDate = yesterday;
             tableName = args[0];
             minioFolder = args[1];
+            
+            // 디버그: 날짜 설정 확인
+            if (process.env.DEBUG === 'true') {
+                console.log('[DEBUG] 어제 날짜 설정:', { startDate, endDate, tableName, minioFolder });
+            }
         }
     } else if (args.length === 1) {
         // 1개: 날짜인지 테이블명인지 확인
@@ -483,8 +492,10 @@ async function main() {
     }
 
     // 날짜 형식 검증
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+    if (!startDate || !endDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
         log('red', '❌ 날짜 형식이 올바르지 않습니다. YYYY-MM-DD 형식을 사용하세요.');
+        log('red', `   startDate: ${startDate || '(undefined)'}`);
+        log('red', `   endDate: ${endDate || '(undefined)'}`);
         log('yellow', '사용법:');
         log('yellow', '  - node batch.js (인자 없음: 어제 날짜, 기본 테이블명, 기본 폴더명)');
         log('yellow', '  - node batch.js [테이블명] (어제 날짜, 지정한 테이블명, 기본 폴더명)');

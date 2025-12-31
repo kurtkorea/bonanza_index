@@ -339,14 +339,14 @@ class BatchProcessor {
     let engine = null;
     try {
       engine = new FkbrtiEngine({
-        symbol: this.symbol,
-        depth: this.depth,
-        staleMs: this.staleMs,
-        expectedExchanges: this.expectedExchanges,
-        table_name: this.tableName,
-        is_batch_mode: true, // 배치 모드 활성화
-        ilpWriter: ilpWriter, // 공유된 ILP writer 전달
-      });
+      symbol: this.symbol,
+      depth: this.depth,
+      staleMs: this.staleMs,
+      expectedExchanges: this.expectedExchanges,
+      table_name: this.tableName,
+      is_batch_mode: true, // 배치 모드 활성화
+      ilpWriter: ilpWriter, // 공유된 ILP writer 전달
+    });
     } catch (engineError) {
       logger.error({
         err: String(engineError),

@@ -85,7 +85,7 @@ spec:
         - name: COLLECTOR_ROLE
           value: "primary"
         - name: PROCESS_ID
-          value: "collector-process-master"
+          value: "collector-process"
         - name: ENABLE_LEADER_ELECTION
           value: "true"
         - name: LEADER_KEY

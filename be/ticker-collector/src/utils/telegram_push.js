@@ -56,9 +56,9 @@ async function sendTelegramMessageQueue(source_name, text, is_send = true) {
 
   // 비동기 전송 (fire-and-forget)
   try {
-    console.log(`[Telegram] Sending: ${ JSON.stringify(payload) }`);
+    // console.log(`[Telegram] Sending: ${ JSON.stringify(payload) }`);
     const response = await axios.post(
-      process.env.TELEGRAM_SERVICE_URL || 'http://127.0.0.1:3109/v1/telegram/queue',
+      process.env.TELEGRAM_SERVICE_URL + '/queue' || 'http://127.0.0.1:3109/v1/telegram/queue',
       payload,
       {
         headers: {

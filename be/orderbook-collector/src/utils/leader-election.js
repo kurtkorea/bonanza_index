@@ -71,18 +71,18 @@ class LeaderElection {
 
       // 현재 리더 확인 (디버깅용)
       const currentLeaderBefore = await redisManager.client.get(this.leaderKey);
-      // logger.debug({
-      //   instanceId: this.instanceId,
-      //   currentLeaderBefore: currentLeaderBefore,
-      //   leaderKey: this.leaderKey
-      // }, '[LeaderElection] 현재 리더 확인 (SET 전)');
+      logger.debug({
+        instanceId: this.instanceId,
+        currentLeaderBefore: currentLeaderBefore,
+        leaderKey: this.leaderKey
+      }, '[LeaderElection] 현재 리더 확인 (SET 전)');
       
       // SET key value NX EX ttl - 키가 없을 때만 설정하고 TTL 설정
-      // logger.debug({
-      //   instanceId: this.instanceId,
-      //   leaderKey: this.leaderKey,
-      //   leaseTime: this.leaseTime
-      // }, '[LeaderElection] Redis SET 명령 실행 중...');
+      logger.debug({
+        instanceId: this.instanceId,
+        leaderKey: this.leaderKey,
+        leaseTime: this.leaseTime
+      }, '[LeaderElection] Redis SET 명령 실행 중...');
       
       // node-redis v4 방식: client.set(key, value, { NX: true, EX: seconds })
       const result = await redisManager.client.set(
@@ -94,14 +94,14 @@ class LeaderElection {
         }
       );
 
-      // logger.info({
-      //   instanceId: this.instanceId,
-      //   result: result,
-      //   resultType: typeof result,
-      //   isOK: result === 'OK',
-      //   isNull: result === null,
-      //   leaderKey: this.leaderKey
-      // }, '[LeaderElection] Redis SET 명령 결과');
+      logger.debug({
+        instanceId: this.instanceId,
+        result: result,
+        resultType: typeof result,
+        isOK: result === 'OK',
+        isNull: result === null,
+        leaderKey: this.leaderKey
+      }, '[LeaderElection] Redis SET 명령 결과');
 
       // node-redis v4에서는 성공 시 'OK', 실패 시 null 반환
       // 하지만 일부 버전에서는 다른 값이 반환될 수 있으므로 명시적으로 체크
@@ -127,14 +127,14 @@ class LeaderElection {
         const currentLeader = await redisManager.client.get(this.leaderKey);
         const ttl = await redisManager.client.ttl(this.leaderKey);
         
-        // logger.info({
-        //   instanceId: this.instanceId,
-        //   currentLeader: currentLeader,
-        //   result: result,
-        //   resultType: typeof result,
-        //   ttl: ttl,
-        //   isCurrentLeader: currentLeader === this.instanceId
-        // }, '[LeaderElection] ❌ 리더십 획득 실패');
+        logger.debug({
+          instanceId: this.instanceId,
+          currentLeader: currentLeader,
+          result: result,
+          resultType: typeof result,
+          ttl: ttl,
+          isCurrentLeader: currentLeader === this.instanceId
+        }, '[LeaderElection] ❌ 리더십 획득 실패');
         
         // 만약 현재 리더가 자신인데 result가 null이면, 이미 리더인 상태
         // (이전에 획득했지만 상태가 동기화되지 않은 경우)
