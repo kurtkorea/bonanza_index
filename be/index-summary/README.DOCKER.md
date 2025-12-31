@@ -13,7 +13,8 @@
 
 ```bash
 # 프로젝트 루트 디렉토리에서
-docker-compose up -d index-summary
+# index-summary 전용 docker-compose 파일 사용
+docker-compose -f docker-compose.index-summary.yml up -d index-summary
 ```
 
 ### 2. 배포 스크립트 사용 (권장)
@@ -47,10 +48,10 @@ docker-compose up -d index-summary
 
 ```bash
 # 실시간 로그
-docker-compose logs -f index-summary
+docker-compose -f docker-compose.index-summary.yml logs -f index-summary
 
 # 최근 100줄 로그
-docker-compose logs --tail=100 index-summary
+docker-compose -f docker-compose.index-summary.yml logs --tail=100 index-summary
 ```
 
 ### 로그 파일 확인
@@ -61,7 +62,7 @@ docker-compose logs --tail=100 index-summary
 
 ```bash
 # 컨테이너 상태 확인
-docker-compose ps index-summary
+docker-compose -f docker-compose.index-summary.yml ps index-summary
 
 # 컨테이너 리소스 사용량 확인
 docker stats index-summary
@@ -73,7 +74,7 @@ docker stats index-summary
 
 1. 로그 확인:
    ```bash
-   docker-compose logs index-summary
+   docker-compose -f docker-compose.index-summary.yml logs index-summary
    ```
 
 2. 환경 변수 확인:
@@ -82,8 +83,8 @@ docker stats index-summary
 
 3. 이미지 재빌드:
    ```bash
-   docker-compose build --no-cache index-summary
-   docker-compose up -d index-summary
+   docker-compose -f docker-compose.index-summary.yml build --no-cache index-summary
+   docker-compose -f docker-compose.index-summary.yml up -d index-summary
    ```
 
 ### Health Check 실패

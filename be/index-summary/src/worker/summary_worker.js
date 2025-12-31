@@ -31,6 +31,9 @@ async function ensureDbConnection() {
  * 1일 간격 통계 쿼리
  */
 async function query1Day(symbol, startTime, endTime) {
+
+  console.log("query1Day", symbol, startTime, endTime);
+
   const query = `
     SELECT
       symbol,
@@ -112,21 +115,31 @@ async function query1Day(symbol, startTime, endTime) {
  * 1주일 간격 통계 쿼리
  */
 async function query1Week(symbol, startTime, endTime) {
+
+  console.log("query1Week", symbol, startTime, endTime);
+
   const query = `
     SELECT
       symbol,
       '1w' as interval,
       '1s' AS second,
-      round(min(diff),  4) AS diff_min,
-      round(max(diff),  4) AS diff_max,
-      round(avg(diff),  4) AS diff_avg,
-      round(min(ratio), 4) AS ratio_min,
-      round(max(ratio), 4) AS ratio_max,
-      round(avg(ratio), 4) AS ratio_avg
-    FROM tb_fkbrti_1sec
-    WHERE createdAt >= :startTime 
-      AND createdAt <= :endTime
-      AND symbol = :symbol
+      round(min(diff_avg),  4) AS diff_min,
+      round(max(diff_avg),  4) AS diff_max,
+      round(avg(diff_avg),  4) AS diff_avg,
+      round(min(ratio_avg), 4) AS ratio_min,
+      round(max(ratio_avg), 4) AS ratio_max,
+      round(avg(ratio_avg), 4) AS ratio_avg
+    FROM (
+      SELECT
+        symbol,
+        avg(diff)  AS diff_avg,
+        avg(ratio) AS ratio_avg
+      FROM tb_fkbrti_1sec
+      WHERE createdAt >= :startTime 
+        AND createdAt <= :endTime
+        AND symbol = :symbol
+      SAMPLE BY 1m ALIGN TO CALENDAR
+    )
 
     UNION ALL
 
@@ -193,6 +206,9 @@ async function query1Week(symbol, startTime, endTime) {
  * 1개월 간격 통계 쿼리
  */
 async function query1Month(symbol, startTime, endTime) {
+
+  console.log("query1Month", symbol, startTime, endTime);
+
   const query = `
     SELECT
       symbol,
@@ -281,6 +297,9 @@ async function query1Month(symbol, startTime, endTime) {
  * 1년 간격 통계 쿼리
  */
 async function query1Year(symbol, startTime, endTime) {
+
+  console.log("query1Year", symbol, startTime, endTime);
+
   const query = `
     SELECT
       symbol,

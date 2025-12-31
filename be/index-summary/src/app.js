@@ -31,6 +31,9 @@ async function initializeApp() {
 	try {
 		logger.info('애플리케이션 초기화 시작...');
 
+		await connect_quest_db();
+		logger.info('QuestDB 연결 완료');
+
 		// DB 연결 (재시도 로직 포함)
 		logger.info('DB 연결 중...');
 		let dbConnected = false;
@@ -58,8 +61,6 @@ async function initializeApp() {
 			}
 		}
 
-		await connect_quest_db();
-		logger.info('QuestDB 연결 완료');
 
 		const summarySymbols = process.env.SUMMARY_SYMBOLS 
 			? process.env.SUMMARY_SYMBOLS.split(',').map(s => s.trim())

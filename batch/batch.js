@@ -14,8 +14,14 @@
  *   - node batch.js (어제 날짜 사용)
  *   - node /home/dayfin/batch/batch.js tb_fkbrti_1sec fkbrti (어제 날짜, 지정한 테이블/폴더)
  *   - node /home/dayfin/batch/batch.js 2025-11-01 2025-11-30 tb_fkbrti_1sec fkbrti
- *   - 1 0 * * * node /home/dayfin/batch/batch.js tb_fkbrti_1sec fkbrti >> /home/dayfin/batch/logs/dailly_fkbrti.log 2>&1
- *   - 5 0 * * * node /home/dayfin/batch/batch.js tb_order_book_units orderbook >> /home/dayfin/batch/logs/dailly_orderbook.log 2>&1
+ * Crontab 설정 예시:
+ *   - Wrapper 스크립트 사용 (권장):
+ *     1 0 * * * /home/dayfin/batch/run_batch.sh tb_fkbrti_1sec fkbrti
+ *     5 0 * * * /home/dayfin/batch/run_batch.sh tb_order_book_units orderbook
+ *   - 직접 node 명령어 사용:
+ *     1 0 * * * cd /home/dayfin/batch && /usr/bin/node batch.js tb_fkbrti_1sec fkbrti >> /home/dayfin/batch/logs/daily_fkbrti_$(date +\%Y\%m\%d).log 2>&1
+ *     5 0 * * * cd /home/dayfin/batch && /usr/bin/node batch.js tb_order_book_units orderbook >> /home/dayfin/batch/logs/daily_orderbook_$(date +\%Y\%m\%d).log 2>&1
+ *   주의: crontab에서 % 문자는 \%로 이스케이프해야 합니다
 */
 
 const https = require('https');
