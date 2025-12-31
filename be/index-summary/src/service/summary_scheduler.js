@@ -60,8 +60,9 @@ class SummaryScheduler {
       }, '[SummaryScheduler] Summary 계산 시작');
 
       for (const symbol of this.symbols) {
+        let calculator = null;
         try {
-          const calculator = new SummaryCalculator({ symbol });
+          calculator = new SummaryCalculator({ symbol });
           const result = await calculator.calculateAndSave(symbol);
           
           logger.info({
@@ -75,6 +76,18 @@ class SummaryScheduler {
             err: String(error),
             stack: error.stack
           }, '[SummaryScheduler] 심볼별 Summary 계산 중 오류');
+        } finally {
+          // Calculator 정리 (Worker Thread 종료)
+          if (calculator) {
+            try {
+              calculator.close();
+            } catch (closeError) {
+              logger.warn({
+                symbol,
+                err: String(closeError)
+              }, '[SummaryScheduler] Calculator 정리 중 오류 (무시)');
+            }
+          }
         }
       }
 

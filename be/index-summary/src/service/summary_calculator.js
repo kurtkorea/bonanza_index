@@ -1,69 +1,21 @@
 /**
  * FKBRTI Summary 계산 서비스
  * tb_fkbrti_1sec 데이터를 기반으로 통계를 계산하여 tb_fkbrti_summary에 저장합니다.
- * Worker Thread를 사용하여 QuestDB 쿼리를 별도 스레드에서 실행합니다.
  */
-const { Worker } = require('worker_threads');
-const path = require('path');
 const db_mysql = require('../models/index.js');
+const { quest_db } = require('../db/quest_db.js');
 const logger = require('../utils/logger.js');
 
 class SummaryCalculator {
   constructor(opts = {}) {
     this.symbol = opts.symbol || 'KRW-BTC';
-    this.worker = null;
-    this.workerReady = false;
-  }
-
-  /**
-   * Worker Thread를 생성합니다.
-   */
-  _createWorker() {
-    if (this.worker) {
-      return this.worker;
-    }
-
-    const workerPath = path.join(__dirname, '../worker/summary_worker.js');
-    this.worker = new Worker(workerPath);
-
-    this.worker.on('error', (error) => {
-      logger.error({
-        err: String(error),
-        stack: error.stack
-      }, '[SummaryCalculator] Worker Thread 오류');
-    });
-
-    this.worker.on('exit', (code) => {
-      if (code !== 0) {
-        logger.warn({ code }, '[SummaryCalculator] Worker Thread 종료');
-      }
-      this.worker = null;
-      this.workerReady = false;
-    });
-
-    return this.worker;
-  }
-
-  /**
-   * Worker Thread를 종료합니다.
-   */
-  _terminateWorker() {
-    if (this.worker) {
-      this.worker.postMessage({ type: 'shutdown' });
-      this.worker.terminate().catch((error) => {
-        logger.error({
-          err: String(error)
-        }, '[SummaryCalculator] Worker Thread 종료 중 오류');
-      });
-      this.worker = null;
-    }
   }
 
   /**
    * 리소스를 정리합니다.
    */
   close() {
-    this._terminateWorker();
+    // Worker Thread 제거로 인해 정리할 리소스 없음
   }
 
   /**
@@ -118,8 +70,361 @@ class SummaryCalculator {
   }
 
   /**
-   * Summary 통계를 계산합니다 (Worker Thread 사용).
-   * QuestDB 쿼리를 별도 스레드에서 실행하여 메인 스레드의 블로킹을 방지합니다.
+   * 1일 간격 통계 쿼리
+   */
+  async query1Day(symbol, startTime, endTime) {
+    logger.debug({ symbol, startTime, endTime }, '[SummaryCalculator] query1Day 실행');
+
+    const query = `
+      SELECT
+        symbol,
+        '1d' as interval,
+        '1s' AS second,
+        round(min(diff),  4) AS diff_min,
+        round(max(diff),  4) AS diff_max,
+        round(avg(diff),  4) AS diff_avg,
+        round(min(ratio), 4) AS ratio_min,
+        round(max(ratio), 4) AS ratio_max,
+        round(avg(ratio), 4) AS ratio_avg
+      FROM tb_fkbrti_1sec
+      WHERE createdAt >= :startTime 
+        AND createdAt <= :endTime
+        AND symbol = :symbol
+
+      UNION ALL
+
+      SELECT
+        symbol,
+        '1d' as interval,
+        '5s' AS second,
+        round(min(diff_avg),  4) AS diff_min,
+        round(max(diff_avg),  4) AS diff_max,
+        round(avg(diff_avg),  4) AS diff_avg,
+        round(min(ratio_avg), 4) AS ratio_min,
+        round(max(ratio_avg), 4) AS ratio_max,
+        round(avg(ratio_avg), 4) AS ratio_avg
+      FROM (
+        SELECT
+          symbol,
+          avg(diff)  AS diff_avg,
+          avg(ratio) AS ratio_avg
+        FROM tb_fkbrti_1sec
+        WHERE createdAt >= :startTime 
+          AND createdAt <= :endTime
+          AND symbol = :symbol
+        SAMPLE BY 5s ALIGN TO CALENDAR
+      )
+
+      UNION ALL 
+
+      SELECT
+        symbol,
+        '1d' as interval,
+        '10s' AS second,
+        round(min(diff_avg),  4) AS diff_min,
+        round(max(diff_avg),  4) AS diff_max,
+        round(avg(diff_avg),  4) AS diff_avg,
+        round(min(ratio_avg), 4) AS ratio_min,
+        round(max(ratio_avg), 4) AS ratio_max,
+        round(avg(ratio_avg), 4) AS ratio_avg
+      FROM (
+        SELECT
+          symbol,
+          avg(diff)  AS diff_avg,
+          avg(ratio) AS ratio_avg
+        FROM tb_fkbrti_1sec
+        WHERE createdAt >= :startTime 
+          AND createdAt <= :endTime
+          AND symbol = :symbol
+        SAMPLE BY 10s ALIGN TO CALENDAR
+      )
+    `;
+
+    const results = await quest_db.sequelize.query(query, {
+      replacements: {
+        symbol: symbol,
+        startTime: startTime,
+        endTime: endTime
+      },
+      type: quest_db.Sequelize.QueryTypes.SELECT
+    });
+
+    return results;
+  }
+
+  /**
+   * 1주일 간격 통계 쿼리
+   */
+  async query1Week(symbol, startTime, endTime) {
+    logger.debug({ symbol, startTime, endTime }, '[SummaryCalculator] query1Week 실행');
+
+    const query = `
+      SELECT
+        symbol,
+        '1w' as interval,
+        '1s' AS second,
+        round(min(diff_avg),  4) AS diff_min,
+        round(max(diff_avg),  4) AS diff_max,
+        round(avg(diff_avg),  4) AS diff_avg,
+        round(min(ratio_avg), 4) AS ratio_min,
+        round(max(ratio_avg), 4) AS ratio_max,
+        round(avg(ratio_avg), 4) AS ratio_avg
+      FROM (
+        SELECT
+          symbol,
+          avg(diff)  AS diff_avg,
+          avg(ratio) AS ratio_avg
+        FROM tb_fkbrti_1sec
+        WHERE createdAt >= :startTime 
+          AND createdAt <= :endTime
+          AND symbol = :symbol
+        SAMPLE BY 1m ALIGN TO CALENDAR
+      )
+
+      UNION ALL
+
+      SELECT
+        symbol,
+        '1w' as interval,
+        '5s' AS second,
+        round(min(diff_avg),  4) AS diff_min,
+        round(max(diff_avg),  4) AS diff_max,
+        round(avg(diff_avg),  4) AS diff_avg,
+        round(min(ratio_avg), 4) AS ratio_min,
+        round(max(ratio_avg), 4) AS ratio_max,
+        round(avg(ratio_avg), 4) AS ratio_avg
+      FROM (
+        SELECT
+          symbol,
+          avg(diff)  AS diff_avg,
+          avg(ratio) AS ratio_avg
+        FROM tb_fkbrti_1sec
+        WHERE createdAt >= :startTime 
+          AND createdAt <= :endTime
+          AND symbol = :symbol
+        SAMPLE BY 5m ALIGN TO CALENDAR
+      )
+
+      UNION ALL 
+
+      SELECT
+        symbol,
+        '1w' as interval,
+        '10s' AS second,
+        round(min(diff_avg),  4) AS diff_min,
+        round(max(diff_avg),  4) AS diff_max,
+        round(avg(diff_avg),  4) AS diff_avg,
+        round(min(ratio_avg), 4) AS ratio_min,
+        round(max(ratio_avg), 4) AS ratio_max,
+        round(avg(ratio_avg), 4) AS ratio_avg
+      FROM (
+        SELECT
+          symbol,
+          avg(diff)  AS diff_avg,
+          avg(ratio) AS ratio_avg
+        FROM tb_fkbrti_1sec
+        WHERE createdAt >= :startTime 
+          AND createdAt <= :endTime
+          AND symbol = :symbol
+        SAMPLE BY 10m ALIGN TO CALENDAR
+      )
+    `;
+
+    const results = await quest_db.sequelize.query(query, {
+      replacements: {
+        symbol: symbol,
+        startTime: startTime,
+        endTime: endTime
+      },
+      type: quest_db.Sequelize.QueryTypes.SELECT
+    });
+
+    return results;
+  }
+
+  /**
+   * 1개월 간격 통계 쿼리
+   */
+  async query1Month(symbol, startTime, endTime) {
+    logger.debug({ symbol, startTime, endTime }, '[SummaryCalculator] query1Month 실행');
+
+    const query = `
+      SELECT
+        symbol,
+        '1m' as interval,
+        '1s' AS second,
+        round(min(diff_avg),  4) AS diff_min,
+        round(max(diff_avg),  4) AS diff_max,
+        round(avg(diff_avg),  4) AS diff_avg,
+        round(min(ratio_avg), 4) AS ratio_min,
+        round(max(ratio_avg), 4) AS ratio_max,
+        round(avg(ratio_avg), 4) AS ratio_avg
+      FROM (
+        SELECT
+          symbol,
+          avg(diff)  AS diff_avg,
+          avg(ratio) AS ratio_avg
+        FROM tb_fkbrti_1sec
+        WHERE createdAt >= :startTime 
+          AND createdAt <= :endTime
+          AND symbol = :symbol
+        SAMPLE BY 1m ALIGN TO CALENDAR
+      )
+
+      UNION ALL 
+
+      SELECT
+        symbol,
+        '1m' as interval,
+        '5s' AS second,
+        round(min(diff_avg),  4) AS diff_min,
+        round(max(diff_avg),  4) AS diff_max,
+        round(avg(diff_avg),  4) AS diff_avg,
+        round(min(ratio_avg), 4) AS ratio_min,
+        round(max(ratio_avg), 4) AS ratio_max,
+        round(avg(ratio_avg), 4) AS ratio_avg
+      FROM (
+        SELECT
+          symbol,
+          avg(diff)  AS diff_avg,
+          avg(ratio) AS ratio_avg
+        FROM tb_fkbrti_1sec
+        WHERE createdAt >= :startTime 
+          AND createdAt <= :endTime
+          AND symbol = :symbol
+        SAMPLE BY 5m ALIGN TO CALENDAR
+      )
+
+      UNION ALL 
+
+      SELECT
+        symbol,
+        '1m' as interval,
+        '10s' AS second,
+        round(min(diff_avg),  4) AS diff_min,
+        round(max(diff_avg),  4) AS diff_max,
+        round(avg(diff_avg),  4) AS diff_avg,
+        round(min(ratio_avg), 4) AS ratio_min,
+        round(max(ratio_avg), 4) AS ratio_max,
+        round(avg(ratio_avg), 4) AS ratio_avg
+      FROM (
+        SELECT
+          symbol,
+          avg(diff)  AS diff_avg,
+          avg(ratio) AS ratio_avg
+        FROM tb_fkbrti_1sec
+        WHERE createdAt >= :startTime 
+          AND createdAt <= :endTime
+          AND symbol = :symbol
+        SAMPLE BY 10m ALIGN TO CALENDAR
+      )
+    `;
+
+    const results = await quest_db.sequelize.query(query, {
+      replacements: {
+        symbol: symbol,
+        startTime: startTime,
+        endTime: endTime
+      },
+      type: quest_db.Sequelize.QueryTypes.SELECT
+    });
+
+    return results;
+  }
+
+  /**
+   * 1년 간격 통계 쿼리
+   */
+  async query1Year(symbol, startTime, endTime) {
+    logger.debug({ symbol, startTime, endTime }, '[SummaryCalculator] query1Year 실행');
+
+    const query = `
+      SELECT
+        symbol,
+        '1y' as interval,
+        '1s' AS second,
+        round(min(diff_avg),  4) AS diff_min,
+        round(max(diff_avg),  4) AS diff_max,
+        round(avg(diff_avg),  4) AS diff_avg,
+        round(min(ratio_avg), 4) AS ratio_min,
+        round(max(ratio_avg), 4) AS ratio_max,
+        round(avg(ratio_avg), 4) AS ratio_avg
+      FROM (
+        SELECT
+          symbol,
+          avg(diff)  AS diff_avg,
+          avg(ratio) AS ratio_avg
+        FROM tb_fkbrti_1sec
+        WHERE createdAt >= :startTime 
+          AND createdAt <= :endTime
+          AND symbol = :symbol
+        SAMPLE BY 1m ALIGN TO CALENDAR
+      )
+
+      UNION ALL 
+
+      SELECT
+        symbol,
+        '1y' as interval,
+        '5s' AS second,
+        round(min(diff_avg),  4) AS diff_min,
+        round(max(diff_avg),  4) AS diff_max,
+        round(avg(diff_avg),  4) AS diff_avg,
+        round(min(ratio_avg), 4) AS ratio_min,
+        round(max(ratio_avg), 4) AS ratio_max,
+        round(avg(ratio_avg), 4) AS ratio_avg
+      FROM (
+        SELECT
+          symbol,
+          avg(diff)  AS diff_avg,
+          avg(ratio) AS ratio_avg
+        FROM tb_fkbrti_1sec
+        WHERE createdAt >= :startTime 
+          AND createdAt <= :endTime
+          AND symbol = :symbol
+        SAMPLE BY 5m ALIGN TO CALENDAR
+      )
+
+      UNION ALL 
+
+      SELECT
+        symbol,
+        '1y' as interval,
+        '10s' AS second,
+        round(min(diff_avg),  4) AS diff_min,
+        round(max(diff_avg),  4) AS diff_max,
+        round(avg(diff_avg),  4) AS diff_avg,
+        round(min(ratio_avg), 4) AS ratio_min,
+        round(max(ratio_avg), 4) AS ratio_max,
+        round(avg(ratio_avg), 4) AS ratio_avg
+      FROM (
+        SELECT
+          symbol,
+          avg(diff)  AS diff_avg,
+          avg(ratio) AS ratio_avg
+        FROM tb_fkbrti_1sec
+        WHERE createdAt >= :startTime 
+          AND createdAt <= :endTime
+          AND symbol = :symbol
+        SAMPLE BY 10m ALIGN TO CALENDAR
+      )
+    `;
+
+    const results = await quest_db.sequelize.query(query, {
+      replacements: {
+        symbol: symbol,
+        startTime: startTime,
+        endTime: endTime
+      },
+      type: quest_db.Sequelize.QueryTypes.SELECT
+    });
+
+    return results;
+  }
+
+  /**
+   * Summary 통계를 계산합니다.
+   * QuestDB 쿼리를 직접 실행합니다.
    * @param {string} symbol - 심볼
    * @returns {Promise<Array>} 계산된 통계 데이터
    */
@@ -131,85 +436,35 @@ class SummaryCalculator {
     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000 + KST_OFFSET);
     const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000 + KST_OFFSET);
 
-    return new Promise((resolve, reject) => {
-      const worker = this._createWorker();
-      let resolved = false;
+    try {
+      logger.debug({ symbol }, '[SummaryCalculator] Summary 계산 시작 (직접 쿼리 실행)');
 
-      // 타임아웃을 5분으로 증가 (1년치 데이터 조회는 시간이 걸릴 수 있음)
-      const timeout = setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          worker.removeListener('message', messageHandler);
-          logger.error({ symbol }, '[SummaryCalculator] Summary 계산 타임아웃 (5분)');
-          reject(new Error('Summary 계산 타임아웃 (5분)'));
-        }
-      }, 5 * 60 * 1000); // 5분 타임아웃
+      // 각 interval별로 병렬 실행하여 성능 향상
+      const queries = [
+        this.query1Day(symbol, oneDayAgo.toISOString(), now.toISOString()),
+        this.query1Week(symbol, oneWeekAgo.toISOString(), now.toISOString()),
+        this.query1Month(symbol, oneMonthAgo.toISOString(), now.toISOString()),
+        this.query1Year(symbol, oneYearAgo.toISOString(), now.toISOString())
+      ];
 
-      const messageHandler = (message) => {
-        if (resolved) return;
+      // 병렬 실행
+      const results = await Promise.all(queries);
+      
+      // 결과 합치기
+      const summaryData = results.flat();
 
-        if (message.type === 'result') {
-          clearTimeout(timeout);
-          resolved = true;
-          worker.removeListener('message', messageHandler);
-          logger.debug({ symbol, count: message.data?.length }, '[SummaryCalculator] Worker Thread에서 결과 수신');
-          resolve(message.data);
-        } else if (message.type === 'error') {
-          clearTimeout(timeout);
-          resolved = true;
-          worker.removeListener('message', messageHandler);
-          logger.error({ symbol, error: message.error }, '[SummaryCalculator] Worker Thread에서 에러 수신');
-          reject(new Error(message.error.message));
-        }
-      };
+      logger.debug({ symbol, count: summaryData.length }, '[SummaryCalculator] Summary 계산 완료');
 
-      worker.on('message', messageHandler);
-
-      // Worker가 이미 준비되어 있으면 즉시 요청 전송, 아니면 준비될 때까지 대기
-      const sendRequest = () => {
-        if (!resolved) {
-          logger.debug({ symbol }, '[SummaryCalculator] Worker에 계산 요청 전송');
-          worker.postMessage({
-            type: 'calculate',
-            data: {
-              symbol,
-              oneDayAgo: oneDayAgo.toISOString(),
-              oneWeekAgo: oneWeekAgo.toISOString(),
-              oneMonthAgo: oneMonthAgo.toISOString(),
-              oneYearAgo: oneYearAgo.toISOString(),
-              now: now.toISOString()
-            }
-          });
-        }
-      };
-
-      if (this.workerReady) {
-        // Worker가 이미 준비되어 있으면 즉시 요청 전송
-        sendRequest();
-      } else {
-        // Worker가 준비될 때까지 대기
-        const readyHandler = (message) => {
-          if (message.type === 'ready') {
-            this.workerReady = true;
-            worker.removeListener('message', readyHandler);
-            sendRequest();
-          }
-        };
-        worker.on('message', readyHandler);
-        
-        // 최대 5초 대기 후에도 ready가 오지 않으면 강제로 요청 전송
-        setTimeout(() => {
-          if (!this.workerReady && !resolved) {
-            logger.warn({ symbol }, '[SummaryCalculator] Worker ready 대기 시간 초과, 요청 전송');
-            this.workerReady = true;
-            worker.removeListener('message', readyHandler);
-            sendRequest();
-          }
-        }, 5000);
-      }
-    });
+      return summaryData;
+    } catch (error) {
+      logger.error({
+        err: String(error),
+        stack: error.stack,
+        symbol
+      }, '[SummaryCalculator] Summary 계산 중 오류 발생');
+      throw error;
+    }
   }
-
 
   /**
    * 계산된 Summary 데이터를 저장합니다 (최근 1건만 유지, MySQL).
@@ -289,4 +544,3 @@ class SummaryCalculator {
 }
 
 module.exports = { SummaryCalculator };
-
