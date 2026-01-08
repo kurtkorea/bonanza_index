@@ -52,14 +52,14 @@ function normalize(snapshot) {
     const bids = (snapshot.bid || [])
       .filter(item => Array.isArray(item) && item.length >= 2)
       .map(([p, q]) => ({ price: toNum(p), qty: toNum(q) }))
-      .filter(item => item.price > 0 && item.qty > 0)
+      // .filter(item => item.price > 0 )
       .sort((a, b) => b.price - a.price)
       .slice(0, DEPTH);
 
     const asks = (snapshot.ask || [])
       .filter(item => Array.isArray(item) && item.length >= 2)
       .map(([p, q]) => ({ price: toNum(p), qty: toNum(q) }))
-      .filter(item => item.price > 0 && item.qty > 0)
+      // .filter(item => item.price > 0)
       .sort((a, b) => a.price - b.price)
       .slice(0, DEPTH);
 
@@ -122,6 +122,8 @@ class FkbrtiEngine {
     try {
       if (!this.symbol) this.symbol = String(snap.symbol || "").trim() || "(UNKNOWN)";
       const ex = String(snap.exchange_cd || "UNKNOWN");
+
+      // console.log("ex=", ex, "snap.bid.count=", snap.bid.length, "snap.ask.count=", snap.ask.length);
 
       const { bids, asks } = normalize(snap);
       
@@ -186,6 +188,8 @@ class FkbrtiEngine {
 
     // 병합: 스테일 & 역전 제외 => 예외상황 제외
     const bids = [], asks = [];
+    // console.log("this.booksByEx", this.booksByEx);
+
     for (const ex of Object.keys(this.booksByEx)) {
       const rec = this.booksByEx[ex];
       if (!rec) continue;
@@ -195,7 +199,10 @@ class FkbrtiEngine {
 
       const book = { bids: rec.bids, asks: rec.asks };
 
-      if (isCrossed(book)) continue;                  // 역전 제외
+      if (isCrossed(book))
+      {
+        continue;
+      }          // 역전 제외
       if (rec.bids?.length) bids.push(...rec.bids);
       if (rec.asks?.length) asks.push(...rec.asks);
     }
@@ -203,11 +210,9 @@ class FkbrtiEngine {
     bids.sort((a,b)=>b.price-a.price);
     asks.sort((a,b)=>a.price-b.price);
 
-    const mergedBids = bids.slice(0, this.depth);
-    const mergedAsks = asks.slice(0, this.depth);
+    let buyVWAP  = vwap(asks);
+    let sellVWAP = vwap(bids);
 
-    let buyVWAP  = vwap(mergedAsks);
-    let sellVWAP = vwap(mergedBids);
     let indexMid = (buyVWAP + sellVWAP) / 2;
 
     // 기대 거래소 상태 평가(스테일/역전/결측을 모두 무효 처리)

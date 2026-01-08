@@ -37,12 +37,13 @@ router.use("/*", (req, resp, next) => {
 });
 
 router.get("/list", async (req, resp, next) => {
-	// #swagger.description = 'MinIO 버킷 파일 리스트 조회'
+	// #swagger.description = 'MinIO 버킷 파일 리스트 조회 (폴더 구조 지원)'
 	// #swagger.parameters['prefix'] = {in:"query",type:"string", description:"파일 경로 prefix (예: orderbook/)"}
 	// #swagger.parameters['maxKeys'] = {in:"query",type:"integer", description:"최대 반환 개수 (기본: 1000)"}
 	// #swagger.parameters['continuationToken'] = {in:"query",type:"string", description:"페이징용 continuation token"}
+	// #swagger.parameters['delimiter'] = {in:"query",type:"string", description:"폴더 구분자 (기본: /)"}
 	try {
-		const { prefix, maxKeys, continuationToken } = req.query;
+		const { prefix, maxKeys, continuationToken, delimiter } = req.query;
 		const bucket = process.env.MINIO_BUCKET || 'bonanza-index';
 		
 		const s3Client = getS3Client();
@@ -59,38 +60,40 @@ router.get("/list", async (req, resp, next) => {
 			Bucket: bucket,
 			Prefix: prefix || '',
 			MaxKeys: maxKeys ? parseInt(maxKeys, 10) : 1000,
+			Delimiter: delimiter || '/', // 폴더 구분자
 			...(validContinuationToken && { ContinuationToken: validContinuationToken }),
 		});
 		
 		const response = await s3Client.send(command);
 		
+		// 파일 리스트
 		let fileList = (response.Contents || []).map(item => ({
 			key: item.Key,
 			size: item.Size,
 			lastModified: item.LastModified,
 			etag: item.ETag,
+			type: 'file',
 		}));
 		
-		// 파일명(key) 기준 내림차순 정렬 (최신 파일이 먼저 - 파일명에 날짜가 포함된 경우)
-		// fileList.sort((a, b) => {
-		// 	// 파일명에서 날짜 추출 (예: orderbook_20231126_KRW-BTC.csv.gz)
-		// 	const getDateFromKey = key => {
-		// 		const match = key.match(/(\d{8})/);
-		// 		return match ? match[1] : null;
-		// 	};
-		// 	const dateA = getDateFromKey(a.key);
-		// 	const dateB = getDateFromKey(b.key);
-			
-		// 	// 날짜가 있으면 날짜 기준으로 정렬 (내림차순)
-		// 	if (dateA && dateB) {
-		// 		return dateB.localeCompare(dateA);
-		// 	}
-		// 	// 날짜가 없으면 파일명 전체로 정렬 (내림차순)
-		// 	return b.key.localeCompare(a.key);
-		// });
+		// 폴더 리스트 (CommonPrefixes)
+		let folderList = (response.CommonPrefixes || []).map(item => ({
+			key: item.Prefix,
+			type: 'folder',
+		}));
+		
+		// 파일과 폴더를 합쳐서 정렬 (폴더가 먼저, 그 다음 파일)
+		const allItems = [...folderList, ...fileList].sort((a, b) => {
+			// 폴더가 파일보다 먼저
+			if (a.type !== b.type) {
+				return a.type === 'folder' ? -1 : 1;
+			}
+			// 같은 타입이면 키 기준 내림차순 정렬
+			return b.key.localeCompare(a.key);
+		});
 		
 		resp.status(200).json({
-			files: fileList,
+			files: allItems,
+			folders: folderList,
 			isTruncated: response.IsTruncated || false,
 			nextContinuationToken: response.NextContinuationToken || null,
 			keyCount: response.KeyCount || 0,

@@ -536,13 +536,15 @@ class BatchProcessor {
         size
       FROM tb_order_book_units
       WHERE ts >= :startTime 
-        AND ts <= :endTime
+        AND ts < :endTime
     `;
     
     const replacements = {
       startTime: chunkStart.toISOString(),
       endTime: chunkEnd.toISOString()
     };
+
+    console.log("replacements=", replacements);
 
     // product_id 필터링 (있는 경우)
     if (productIds && productIds.length > 0) {
@@ -747,11 +749,6 @@ class BatchProcessor {
       const price = Number(row.price);
       const size = Number(row.size);
       
-      if (isNaN(price) || isNaN(size) || price <= 0 || size <= 0) {
-        // 유효하지 않은 데이터는 스킵
-        continue;
-      }
-
       const level = [price, size];
 
       // order_tp 값 확인 (대소문자 구분 없이)

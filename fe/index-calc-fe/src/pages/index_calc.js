@@ -231,8 +231,10 @@ const IndexCalcTable = () => {
   
   // MinIO 다운로드 탭 관련 상태
   const [minioFiles, setMinioFiles] = useState([]);
+  const [minioFolders, setMinioFolders] = useState([]);
   const [minioLoading, setMinioLoading] = useState(false);
   const [minioPrefix, setMinioPrefix] = useState('orderbook');
+  const [minioCurrentPath, setMinioCurrentPath] = useState(''); // 현재 경로 (예: 'orderbook/2025-11')
   const [minioPage, setMinioPage] = useState(1);
   const [minioPageSize] = useState(365);
   const [minioTotal, setMinioTotal] = useState(0);
@@ -526,14 +528,31 @@ const IndexCalcTable = () => {
     setTabIdx(parseInt(currentTarget.getAttribute("data")));
   };
 
-  // MinIO 파일 리스트 조회 함수
-  const fetchMinioFiles = useCallback(async (prefix, continuationToken = null) => {
+  // MinIO 파일 리스트 조회 함수 (폴더 구조 지원)
+  const fetchMinioFiles = useCallback(async (prefix, currentPath = '', continuationToken = null) => {
     setMinioLoading(true);
     try {
-      const prefixPath = prefix ? `${prefix}/` : '';
+      // 전체 경로 구성: prefix + currentPath
+      // currentPath는 상대 경로 (예: "2025-11" 또는 "2025-11/2025-12")
+      let fullPath;
+      if (currentPath && currentPath.trim() !== '') {
+        // currentPath가 있으면 prefix와 결합
+        fullPath = `${prefix}/${currentPath}`.replace(/\/+/g, '/'); // 중복 슬래시 제거
+        // 끝에 슬래시가 없으면 추가 (MinIO prefix는 폴더를 의미)
+        if (!fullPath.endsWith('/')) {
+          fullPath += '/';
+        }
+      } else {
+        // currentPath가 없으면 prefix만 사용
+        fullPath = `${prefix}/`;
+      }
+      
+      console.log("fetchMinioFiles - prefix:", prefix, "currentPath:", currentPath, "fullPath:", fullPath);
+      
       const params = new URLSearchParams({
-        prefix: prefixPath,
+        prefix: fullPath,
         maxKeys: minioPageSize.toString(),
+        delimiter: '/', // 폴더 구분자
       });
       
       if (continuationToken) {
@@ -542,37 +561,44 @@ const IndexCalcTable = () => {
       
       const response = await axios.get(`${getServiceUrl()}/v1/minio_access/list?${params.toString()}`);
 
-      console.log("response.data.files", response.data.files);
+      console.log("response.data", response.data);
+      console.log("response.data.folders", response.data.folders);
       
-      // 백엔드에서 이미 파일명 기준으로 정렬되어 있음
-      // 추가로 파일명 기준 정렬 (백엔드 정렬이 누락된 경우 대비)
-      // const newFiles = (response.data.files || []).sort((a, b) => {
-      //   // 파일명에서 날짜 추출 (예: orderbook_20231126_KRW-BTC.csv.gz)
-      //   const getDateFromKey = key => {
-      //     const match = key.match(/(\d{8})/);
-      //     return match ? match[1] : null;
-      //   };
-      //   const dateA = getDateFromKey(a.key);
-      //   const dateB = getDateFromKey(b.key);
+      const newFiles = (response.data.files || []).filter(item => item.type === 'file');
+      const newFolders = (response.data.folders || []).map(folder => {
+        // folder.key는 전체 경로 (예: "fkbrti/2025-11/")
+        // fullPath는 현재 조회 경로 (예: "fkbrti/")
+        // 폴더명만 추출 (예: "2025-11")
+        let folderName = folder.key;
+        if (folderName.startsWith(fullPath)) {
+          folderName = folderName.substring(fullPath.length);
+        }
+        folderName = folderName.replace(/\/$/, ''); // 끝의 슬래시 제거
         
-      //   // 날짜가 있으면 날짜 기준으로 정렬 (내림차순)
-      //   if (dateA && dateB) {
-      //     return dateB.localeCompare(dateA);
-      //   }
-      //   // 날짜가 없으면 파일명 전체로 정렬 (내림차순)
-      //   return b.key.localeCompare(a.key);
-      // });
+        console.log("folder.key:", folder.key, "fullPath:", fullPath, "folderName:", folderName);
+        
+        return {
+          ...folder,
+          name: folderName,
+        };
+      });
       
-      const newFiles = response.data.files;
+      console.log("newFolders:", newFolders);
+      console.log("newFiles:", newFiles);
 
       if (continuationToken) {
         // 더 보기 버튼으로 추가 로드
         setMinioFiles(prev => [...prev, ...newFiles]);
+        setMinioFolders(prev => {
+          const existingKeys = new Set(prev.map(f => f.key));
+          return [...prev, ...newFolders.filter(f => !existingKeys.has(f.key))];
+        });
         // 현재까지 로드된 파일 개수 업데이트
         setMinioTotal(prev => prev + (response.data.keyCount || 0));
       } else {
         // 새로 조회
         setMinioFiles(newFiles);
+        setMinioFolders(newFolders);
         // 현재 페이지의 파일 개수로 초기화
         setMinioTotal(newFiles.length);
       }
@@ -590,9 +616,40 @@ const IndexCalcTable = () => {
   // 다운로드 탭이 열릴 때 자동으로 파일 리스트 조회
   useEffect(() => {
     if (tab_idx === 4) {
-      fetchMinioFiles(minioPrefix);
+      setMinioCurrentPath('');
+      fetchMinioFiles(minioPrefix, '');
     }
   }, [tab_idx, minioPrefix, fetchMinioFiles]);
+  
+  // 폴더 클릭 핸들러
+  const handleFolderClick = useCallback((folderPath) => {
+    console.log("handleFolderClick - folderPath:", folderPath, "minioPrefix:", minioPrefix);
+    // folderPath는 폴더명만 (예: "2025-11")
+    // 현재 경로가 있으면 추가, 없으면 그대로 사용
+    const newPath = minioCurrentPath 
+      ? `${minioCurrentPath}/${folderPath}`.replace(/\/+/g, '/')
+      : folderPath;
+    console.log("handleFolderClick - newPath:", newPath);
+    setMinioCurrentPath(newPath);
+    setMinioContinuationToken(null);
+    setMinioFiles([]);
+    setMinioFolders([]);
+    setMinioTotal(0);
+    fetchMinioFiles(minioPrefix, newPath);
+  }, [minioPrefix, minioCurrentPath, fetchMinioFiles]);
+  
+  // 상위 폴더로 이동
+  const handleGoUp = useCallback(() => {
+    const pathParts = minioCurrentPath.split('/').filter(p => p);
+    pathParts.pop();
+    const newPath = pathParts.join('/');
+    setMinioCurrentPath(newPath);
+    setMinioContinuationToken(null);
+    setMinioFiles([]);
+    setMinioFolders([]);
+    setMinioTotal(0);
+    fetchMinioFiles(minioPrefix, newPath);
+  }, [minioCurrentPath, minioPrefix, fetchMinioFiles]);
 
 	const handleFileDownload = useCallback(() => {
 		if (!range?.[0] || !range?.[1]) {
@@ -1090,37 +1147,74 @@ const IndexCalcTable = () => {
       )}
       {tab_idx === 4 && (
         <div className="thbit-trade-table-container" style={{ height: "100%", marginTop: "10px", padding: "20px" }}>
-          <div style={{ marginBottom: "20px", display: "flex", gap: "10px", alignItems: "center" }}>
+          <div style={{ marginBottom: "20px", display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
             <Select
               value={minioPrefix}
               onChange={(value) => {
                 setMinioPrefix(value);
+                setMinioCurrentPath('');
                 setMinioPage(1);
                 setMinioContinuationToken(null);
                 setMinioFiles([]);
+                setMinioFolders([]);
                 setMinioTotal(0);
               }}
               style={{ width: 200 }}
             >
               <Select.Option value="orderbook">Orderbook</Select.Option>
-              {/* <Select.Option value="trade">Trade</Select.Option> */}
-              <Select.Option value="fkbrti_1sec">FKBRTI 1sec</Select.Option>
+              <Select.Option value="fkbrti_1sec">FKBRTI</Select.Option>
             </Select>
             <Button
               type="primary"
               onClick={() => {
+                setMinioCurrentPath('');
                 setMinioPage(1);
                 setMinioContinuationToken(null);
                 setMinioFiles([]);
+                setMinioFolders([]);
                 setMinioTotal(0);
-                fetchMinioFiles(minioPrefix);
+                fetchMinioFiles(minioPrefix, '');
               }}
               loading={minioLoading}
             >
               조회
             </Button>
+            {minioCurrentPath && (
+              <>
+                <Button
+                  onClick={handleGoUp}
+                  style={{ marginLeft: "10px" }}
+                >
+                  ↑ 상위 폴더
+                </Button>
+                <span style={{ color: "#666", fontSize: "14px" }}>
+                  현재 경로: {minioPrefix}/{minioCurrentPath}
+                </span>
+              </>
+            )}
           </div>
           
+          {/* 폴더 목록 */}
+          {minioFolders.length > 0 && (
+            <div style={{ marginBottom: "20px" }}>
+              <div style={{ fontWeight: "bold", marginBottom: "10px" }}>폴더</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                {minioFolders.map((folder) => (
+                  <Button
+                    key={folder.key}
+                    type="default"
+                    icon={<span>📁</span>}
+                    onClick={() => handleFolderClick(folder.name)}
+                    style={{ marginBottom: "5px" }}
+                  >
+                    {folder.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* 파일 목록 */}
           <Table
             columns={[
               {
@@ -1192,7 +1286,7 @@ const IndexCalcTable = () => {
             {minioContinuationToken && (
               <Button
                 type="primary"
-                onClick={() => fetchMinioFiles(minioPrefix, minioContinuationToken)}
+                onClick={() => fetchMinioFiles(minioPrefix, minioCurrentPath, minioContinuationToken)}
                 loading={minioLoading}
               >
                 더 보기 ({minioPageSize}개 더 로드)

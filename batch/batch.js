@@ -125,7 +125,7 @@ async function downloadCSV(startDate, endDate, tableName, outputFile) {
         const timestampColumn = getTimestampColumn(tableName);
         const query = `SELECT * FROM ${tableName} WHERE ${timestampColumn} >= '${startDate} 00:00:00' AND ${timestampColumn} < '${endDate} 23:59:59' ORDER BY ${timestampColumn} ASC`;
         const queryEncoded = encodeURIComponent(query);
-        const url = `http://${QDB_HOST}:${QDB_PORT}/exec?query=${queryEncoded}`;
+        const url = `http://${QDB_HOST}:${QDB_PORT}/exp?query=${queryEncoded}`;
 
         log('cyan', 'QuestDB에서 데이터 다운로드 중...');
         log('white', 'URL: ' + url);
@@ -233,9 +233,30 @@ async function compressCSV(inputFile, outputPath) {
 }
 
 /**
- * MinIO에 파일 업로드 (minio 라이브러리 우선 사용)
+ * 날짜에서 년-월 추출 (YYYY-MM 형식)
+ * @param {string} dateStr - YYYY-MM-DD 형식의 날짜 문자열
+ * @returns {string} YYYY-MM 형식의 년-월 문자열
  */
-async function uploadToMinIO(filePath, objectName, minioFolder) {
+function getYearMonth(dateStr) {
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        // 날짜 형식이 올바르지 않으면 현재 날짜의 년-월 사용
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        return `${year}-${month}`;
+    }
+    // YYYY-MM-DD에서 YYYY-MM 추출
+    return dateStr.substring(0, 7);
+}
+
+/**
+ * MinIO에 파일 업로드 (minio 라이브러리 우선 사용)
+ * @param {string} filePath - 업로드할 파일 경로
+ * @param {string} objectName - MinIO 객체명
+ * @param {string} minioFolder - MinIO 폴더명
+ * @param {string} dateStr - 날짜 문자열 (YYYY-MM-DD) - 월 폴더 생성용
+ */
+async function uploadToMinIO(filePath, objectName, minioFolder, dateStr) {
     return new Promise((resolve, reject) => {
         // minio 라이브러리를 먼저 시도 (Node.js 버전 호환성 문제로 인해)
         try {
@@ -251,7 +272,9 @@ async function uploadToMinIO(filePath, objectName, minioFolder) {
             });
 
             const fileName = path.basename(filePath);
-            const objectPath = minioFolder + '/' + (objectName || fileName);
+            // 월 폴더 생성: minioFolder/YYYY-MM/파일명
+            const yearMonth = getYearMonth(dateStr);
+            const objectPath = minioFolder + '/' + yearMonth + '/' + (objectName || fileName);
 
             log('cyan', 'MinIO에 업로드 중: ' + objectPath + '...');
 
@@ -276,7 +299,7 @@ async function uploadToMinIO(filePath, objectName, minioFolder) {
             // minio 라이브러리가 없거나 오류가 발생하면 @aws-sdk/client-s3 시도
             if (err.code === 'MODULE_NOT_FOUND') {
                 log('yellow', '⚠️  minio 라이브러리가 없습니다. @aws-sdk/client-s3를 시도합니다...');
-                uploadToMinIOWithS3SDK(filePath, objectName, minioFolder)
+                uploadToMinIOWithS3SDK(filePath, objectName, minioFolder, dateStr)
                     .then(resolve)
                     .catch(reject);
             } else {
@@ -288,8 +311,12 @@ async function uploadToMinIO(filePath, objectName, minioFolder) {
 
 /**
  * AWS S3 SDK를 사용한 MinIO 업로드 (Node.js 14+ 필요)
+ * @param {string} filePath - 업로드할 파일 경로
+ * @param {string} objectName - MinIO 객체명
+ * @param {string} minioFolder - MinIO 폴더명
+ * @param {string} dateStr - 날짜 문자열 (YYYY-MM-DD) - 월 폴더 생성용
  */
-async function uploadToMinIOWithS3SDK(filePath, objectName, minioFolder) {
+async function uploadToMinIOWithS3SDK(filePath, objectName, minioFolder, dateStr) {
     return new Promise((resolve, reject) => {
         try {
             const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
@@ -306,7 +333,9 @@ async function uploadToMinIOWithS3SDK(filePath, objectName, minioFolder) {
 
             const fileContent = fs.readFileSync(filePath);
             const fileName = path.basename(filePath);
-            const objectPath = minioFolder + '/' + (objectName || fileName);
+            // 월 폴더 생성: minioFolder/YYYY-MM/파일명
+            const yearMonth = getYearMonth(dateStr);
+            const objectPath = minioFolder + '/' + yearMonth + '/' + (objectName || fileName);
 
             log('cyan', 'MinIO에 업로드 중: ' + objectPath + '...');
 
@@ -378,9 +407,10 @@ async function processDateRange(startDate, endDate, tableName, minioFolder) {
             // gzip 압축 (스트림 방식)
             await compressCSV(csvFile, gzFile);
 
-            // MinIO 업로드
+            // MinIO 업로드 (월 폴더 자동 생성)
             const objectName = tableName + '_' + dateString + '.csv.gz';
-            await uploadToMinIO(gzFile, objectName, minioFolder);
+            const yearMonth = getYearMonth(currentDateStr);
+            const uploadedPath = await uploadToMinIO(gzFile, objectName, minioFolder, currentDateStr);
 
             // 원본 CSV 파일 삭제
             if (fs.existsSync(csvFile)) {
@@ -397,7 +427,7 @@ async function processDateRange(startDate, endDate, tableName, minioFolder) {
             results.success++;
             results.files.push({
                 date: currentDateStr,
-                object: minioFolder + '/' + objectName
+                object: uploadedPath
             });
 
             log('green', '✅ ' + currentDateStr + ' 처리 완료');
@@ -559,5 +589,5 @@ if (require.main === module) {
     });
 }
 
-module.exports = { processDateRange, downloadCSV, compressCSV, uploadToMinIO, DEFAULT_TABLE_NAME, DEFAULT_MINIO_FOLDER };
+module.exports = { processDateRange, downloadCSV, compressCSV, uploadToMinIO, getYearMonth, DEFAULT_TABLE_NAME, DEFAULT_MINIO_FOLDER };
 
