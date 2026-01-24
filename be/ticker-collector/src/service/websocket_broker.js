@@ -1059,8 +1059,6 @@ function initializeWebsocketClients(process_info_detail_list) {
       }
     });
 
-    // startIntervals();
-    // scheduleDailyReport();
     logger.info("All clients initialized and started");
   } catch (error) {
     logger.error(

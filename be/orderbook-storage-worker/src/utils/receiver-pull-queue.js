@@ -323,6 +323,9 @@ async function startPullQueue() {
       if (!global.__orderbookBuffer.has(targetBufferKey) && !global.__flushedBuffers.has(targetBufferKey)) {
         // 이전 버퍼를 복사하여 새 버퍼 생성
         const clonedBuffer = {
+          symbol: lastBuffer.symbol,
+          subscribe_symbol: lastBuffer.subscribe_symbol,
+          exchange_nm: lastBuffer.exchange_nm,
           topic: lastBuffer.topic,
           exchange_cd: lastBuffer.exchange_cd,
           price_id: lastBuffer.price_id,
@@ -332,7 +335,7 @@ async function startPullQueue() {
           bid: new Map(lastBuffer.bid), // Map 복사
           ask: new Map(lastBuffer.ask), // Map 복사
         };
-        
+
         global.__orderbookBuffer.set(targetBufferKey, clonedBuffer);
         keysToFlush.push(targetBufferKey);
       }
@@ -413,9 +416,29 @@ async function startPullQueue() {
         // }, "[FLUSH] Skipping write (lines empty or IS_SAVE_DB not true)");
       }
 
+      ///////////////
+      const build_data = {
+        exchange_cd: buffer.exchange_cd,
+        exchange_nm: buffer.exchange_nm,
+        symbol: buffer.symbol,
+        subscribe_symbol: buffer.subscribe_symbol,
+        price_id: buffer.price_id,
+        product_id: buffer.product_id,
+        ts: buffer.ts,
+        bid: sortedBids,
+        ask: sortedAsks
+      }
+
+      send_publisher(build_data.exchange_cd, build_data).catch(err => {
+        logger.error({ ex: "PUB", err: String(err) }, "[PUB] send error:");
+      });
+
       // 마지막 flush된 버퍼로 저장 (다음 초에 데이터가 없을 때 사용)
       const exchangeProductKey = `${buffer.exchange_cd}:${buffer.product_id}`;
       global.__lastFlushedBuffer.set(exchangeProductKey, {
+        symbol: buffer.symbol,
+        subscribe_symbol: buffer.subscribe_symbol,
+        exchange_nm: buffer.exchange_nm,
         topic: buffer.topic,
         exchange_cd: buffer.exchange_cd,
         price_id: buffer.price_id,
@@ -424,6 +447,7 @@ async function startPullQueue() {
         bid: new Map(buffer.bid), // Map 복사
         ask: new Map(buffer.ask), // Map 복사
       });
+      
 
       // 버퍼 삭제
       global.__orderbookBuffer.delete(key);
@@ -542,24 +566,14 @@ async function startPullQueue() {
   (async () => {
     let messageCount = 0;
     for await (const msg of pull) {
+
       messageCount++;
+
       if (messageCount % 100 === 0) {
         logger.info({ ex: "PULL", messageCount }, "[PULL] Received messages");
       }
       if (msg.length === 3) {
         const [topicBuf, tsBuf, payloadBuf] = msg;
-
-        // ZMQ PUB로 전송 (비동기, await 없이 실행)
-        const topic_str = topicBuf.toString();
-        let payload_parsed;
-        try { 
-          payload_parsed = JSON.parse(payloadBuf); 
-        } catch { 
-          payload_parsed = String(payloadBuf); 
-        }
-        send_publisher(topic_str, payload_parsed).catch(err => {
-          logger.error({ ex: "PUB", err: String(err) }, "[PUB] send error:");
-        });
         
         // 기존 처리 로직
         let parsed;
@@ -635,6 +649,9 @@ async function startPullQueue() {
               exchange_cd: d.exchange_cd,
               price_id: d.price_id,
               product_id: d.product_id,
+              subscribe_symbol: d.subscribe_symbol,
+              exchange_nm: d.exchange_nm,
+              symbol: d.symbol,
               ts: d.ts,
               bid: new Map(),
               ask: new Map(),
@@ -653,6 +670,7 @@ async function startPullQueue() {
               } else {
                 buffer.bid.set(numPrice, numSize);
               }
+              buffer.bid.set(numPrice, numSize);
             }
           }
           
@@ -666,6 +684,7 @@ async function startPullQueue() {
               } else {
                 buffer.ask.set(numPrice, numSize);
               }
+              buffer.ask.set(numPrice, numSize);
             }
           }
           
@@ -677,6 +696,34 @@ async function startPullQueue() {
           if (d.ts && (!buffer.ts || d.ts > buffer.ts)) {
             buffer.ts = d.ts;
           }
+
+          // const sortedBids = Array.from(buffer.bid.entries())
+          // .sort((a, b) => b[0] - a[0]) // 가격 내림차순
+          // .slice(0, 15);
+        
+          // // ask 상위 15개 선택 (가격 오름차순)
+          // const sortedAsks = Array.from(buffer.ask.entries())
+          //   .sort((a, b) => a[0] - b[0]) // 가격 오름차순
+          //   .slice(0, 15);
+
+          // const build_data = {
+          //   exchange_cd: buffer.exchange_cd,
+          //   exchange_nm: buffer.exchange_nm,
+          //   symbol: buffer.symbol,
+          //   subscribe_symbol: buffer.subscribe_symbol,
+          //   price_id: buffer.price_id,
+          //   product_id: buffer.product_id,
+          //   ts: buffer.ts,
+          //   bid: sortedBids,
+          //   ask: sortedAsks
+          // }
+
+          // // ts를 초단위로 변환하여 출력
+          // console.log("buffer.ts (sec)", buffer.exchange_cd, buffer.ts ? Math.floor(buffer.ts / 1000) : buffer.ts);
+    
+          // send_publisher(build_data.exchange_cd, build_data).catch(err => {
+          //   logger.error({ ex: "PUB", err: String(err) }, "[PUB] send error:");
+          // });
           
           // 데이터 추가 후 즉시 flush 조건 확인 (프로세스 시작 시 오래된 데이터 즉시 처리)
           const now = Date.now();
@@ -691,7 +738,6 @@ async function startPullQueue() {
             batcher.push(item);
           }
         }
-
 
       } else {
         // 형식이 다르면 개별 처리로 우회

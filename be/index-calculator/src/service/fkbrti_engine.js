@@ -23,7 +23,7 @@ const { createIlpWriter, toILP_Fkbrti1sec } = require('../utils/ilp-writer.js');
 
 const DEPTH        = num("DEPTH", 15);
 const TICK_MS      = num("TICK_MS", 1000);
-const DECIMALS     = num("DECIMALS", 2);
+const DECIMALS     = num("DECIMALS", 8);
 const STALE_MS     = num("STALE_MS", 30_000);
 const PROV_MAX_MS  = num("PROV_MAX_MS", 60_000);
 const EXPECTED_EXCHANGES = (process.env.SUB_TOPICS || "E0010001,E0020001,E0030001,E0050001").split(",").map(s => s.trim()).filter(Boolean);
@@ -52,14 +52,14 @@ function normalize(snapshot) {
     const bids = (snapshot.bid || [])
       .filter(item => Array.isArray(item) && item.length >= 2)
       .map(([p, q]) => ({ price: toNum(p), qty: toNum(q) }))
-      // .filter(item => item.price > 0 )
+      .filter(({ price, qty }) => price > 0 && qty > 0)  // price > 0, qty > 0 필터링
       .sort((a, b) => b.price - a.price)
       .slice(0, DEPTH);
 
     const asks = (snapshot.ask || [])
       .filter(item => Array.isArray(item) && item.length >= 2)
       .map(([p, q]) => ({ price: toNum(p), qty: toNum(q) }))
-      // .filter(item => item.price > 0)
+      .filter(({ price, qty }) => price > 0 && qty > 0)  // price > 0, qty > 0 필터링
       .sort((a, b) => a.price - b.price)
       .slice(0, DEPTH);
 
@@ -76,9 +76,10 @@ function isCrossed(book) {
 }
 
 // VWAP = Σ(P*Q)/ΣQ
-// VWAP 공식에서 price가 0인 경우는 무시되어야 한다.
-// 즉, price > 0 인 레벨만 대상으로 함
-function vwap(levels) {
+// VWAP 공식에서 price가 0이거나 qty가 0인 경우는 무시되어야 한다.
+// 즉, price > 0 && qty > 0 인 레벨만 대상으로 함
+// 반환값: {vwap, price_sum, qty_sum}
+function vwap(levels, targetSecond) {
   let pq = 0, q = 0;
   for (const { price, qty } of levels) {
     if (price > 0 && qty > 0) {
@@ -86,7 +87,12 @@ function vwap(levels) {
       q += qty;
     }
   }
-  return q > 0 ? pq / q : 0;
+  return {
+    vwap: q > 0 ? pq / q : 0,
+    price_sum: pq,
+    qty_sum: q,
+    targetSecond: targetSecond ? new Date(targetSecond * 1000).toISOString() : null,
+  };
 }
 
 class FkbrtiEngine {
@@ -117,14 +123,31 @@ class FkbrtiEngine {
     }
   }
 
+  start() {
+    if (this._timer) return;
+    // timer는 최대 지연 시간 체크용으로만 사용 (2초마다 체크)
+    // 실제 집계는 ts 기준으로 수행
+    this._timer = setInterval(() => {
+      // const now = Date.now();
+      // const currentSecond = Math.floor(now / 1000);
+      
+      // // 마지막 처리한 초가 2초 이상 지났으면 강제로 처리
+      // if (this.lastProcessedSecond !== null && currentSecond > this.lastProcessedSecond + 1) {
+      //   // 지연된 초들을 처리
+      //   for (let sec = this.lastProcessedSecond + 1; sec < currentSecond; sec++) {
+      //     this._tick(sec * 1000);
+      //   }
+      //   this.lastProcessedSecond = currentSecond - 1;
+      // }
+    }, 2000); // 2초마다 체크
+  }
+  stop() { if (this._timer) clearInterval(this._timer); this._timer = null; }
+
   // 실시간 스냅샷 주입
   onSnapshotOrderBook(snap) {
     try {
       if (!this.symbol) this.symbol = String(snap.symbol || "").trim() || "(UNKNOWN)";
       const ex = String(snap.exchange_cd || "UNKNOWN");
-
-      // console.log("ex=", ex, "snap.bid.count=", snap.bid.length, "snap.ask.count=", snap.ask.length);
-
       const { bids, asks } = normalize(snap);
       
       // 타임스탬프 처리 개선
@@ -139,13 +162,11 @@ class FkbrtiEngine {
         }
       }
 
-      this.booksByEx[ex] = { bids, asks, ts };
-      
+      const currentSecond = Math.floor(ts / 1000);
+
       // 배치 모드가 아닐 때만 자동 _tick 호출
       if (!this.is_batch_mode) {
         // marketAt의 초 단위 확인
-        const currentSecond = Math.floor(ts / 1000);
-        
         // 새로운 초가 시작되면 이전 초의 데이터를 집계
         if (this.lastProcessedSecond !== null && currentSecond > this.lastProcessedSecond) {
           // 이전 초의 데이터를 집계하여 저장
@@ -156,68 +177,66 @@ class FkbrtiEngine {
           this.lastProcessedSecond = currentSecond;
         }
       }
+
+      const key = `${ex}_${currentSecond}`;
+      this.booksByEx[key] = { bids, asks, ts, second: currentSecond };
+
+
     } catch (error) {
       logger.error({ ex: "FKBRTI", err: String(error), snap }, 'FkbrtiEngine.onSnapshot 에러');
     }
   }
 
-  start() {
-    if (this._timer) return;
-    // timer는 최대 지연 시간 체크용으로만 사용 (2초마다 체크)
-    // 실제 집계는 ts 기준으로 수행
-    this._timer = setInterval(() => {
-      const now = Date.now();
-      const currentSecond = Math.floor(now / 1000);
-      
-      // 마지막 처리한 초가 2초 이상 지났으면 강제로 처리
-      if (this.lastProcessedSecond !== null && currentSecond > this.lastProcessedSecond + 1) {
-        // 지연된 초들을 처리
-        for (let sec = this.lastProcessedSecond + 1; sec < currentSecond; sec++) {
-          this._tick(sec * 1000);
-        }
-        this.lastProcessedSecond = currentSecond - 1;
-      }
-    }, 2000); // 2초마다 체크
-  }
-  stop() { if (this._timer) clearInterval(this._timer); this._timer = null; }
-
   _tick(targetTime = null) {
     const now = targetTime || Date.now();
     // 배치 모드에서는 stale 체크를 비활성화 (과거 데이터 처리)
     const cutoff = this.is_batch_mode ? 0 : (now - this.staleMs);
-
     // 병합: 스테일 & 역전 제외 => 예외상황 제외
     const bids = [], asks = [];
-    // console.log("this.booksByEx", this.booksByEx);
 
+    if ( this.booksByEx == null || this.booksByEx == undefined || this.booksByEx.length == 0 ) {
+      return;
+    }
+
+    const targetSecond = Math.floor(targetTime / 1000);
+    const lastSecond = targetSecond + 1;
+    
     for (const ex of Object.keys(this.booksByEx)) {
       const rec = this.booksByEx[ex];
-      if (!rec) continue;
+      if (!rec) continue;    
+      if ( rec.second !== targetSecond ) 
+      {
+        continue;
+      }
 
       // 배치 모드가 아닐 때만 stale 체크
       if (!this.is_batch_mode && rec.ts < cutoff) continue;                  // 30s 이상 지연 제외
 
-      const book = { bids: rec.bids, asks: rec.asks };
-
+      // 역전 제외
+      const book = { bids: rec.bids, asks: rec.asks, second: rec.second };
       if (isCrossed(book))
       {
         continue;
-      }          // 역전 제외
+      }          
       if (rec.bids?.length) bids.push(...rec.bids);
       if (rec.asks?.length) asks.push(...rec.asks);
     }
+  
 
-    bids.sort((a,b)=>b.price-a.price);
-    asks.sort((a,b)=>a.price-b.price);
-
-    let buyVWAP  = vwap(asks);
-    let sellVWAP = vwap(bids);
+    //VWAP은 전체 거래소의 호가를 대상으로 계산하니까 정렬은 필요없고 호가 제한도 필요없다.
+    const buyVWAPResult = vwap(asks, targetSecond);
+    const sellVWAPResult = vwap(bids, targetSecond);
+    
+    const buyVWAP = buyVWAPResult.vwap;
+    const sellVWAP = sellVWAPResult.vwap;
 
     let indexMid = (buyVWAP + sellVWAP) / 2;
 
     // 기대 거래소 상태 평가(스테일/역전/결측을 모두 무효 처리)
     const expected_status = this.expected.map(ex => {
-      const rec = this.booksByEx[ex];
+
+      const key = `${ex}_${targetSecond}`;
+      const rec = this.booksByEx[key];
 
       // rec가 없으면 no_data 반환
       if (!rec) {
@@ -247,7 +266,11 @@ class FkbrtiEngine {
       if (isCrossed(book)) return { exchange: ex, reason: "crossed", price: 0 };
 
       const ok = (rec.bids?.length || 0) > 0 || (rec.asks?.length || 0) > 0;
-      return { exchange: ex, reason: ok ? "ok" : "empty_book", price: ok ? ticker_price : 0 };
+      return { 
+        exchange: ex, 
+        reason: ok ? "ok" : "empty_book", 
+        price: ok ? ticker_price : 0,
+      };
     });
 
     // expected_status 배열 안에 reason이 "ok"인 요소가 하나라도 있는지 확인.
@@ -331,7 +354,7 @@ class FkbrtiEngine {
         stale_ms: this.staleMs,
         vwap_buy:  roundN(buyVWAP,  this.decimals),
         vwap_sell: roundN(sellVWAP, this.decimals),
-        index_mid: roundN(indexMid, this.decimals),   
+        index_mid: roundN(indexMid, this.decimals),
         no_data: no_data,
         expected_status,
         // provisional: 산출값이 잠정치(이전값을 임시사용)인지 여부. false면 이번 계산값이 정상 산출된 것임.
@@ -410,6 +433,15 @@ class FkbrtiEngine {
         };
 
         this.insertFkbrti1sec(out);
+      }
+    }
+
+    //전체 처리후 처리된 데이터 삭제
+    for (const ex of Object.keys(this.booksByEx)) {
+      const rec = this.booksByEx[ex];
+      if ( rec.second < lastSecond ) 
+      {
+        delete this.booksByEx[ex];
       }
     }
   }

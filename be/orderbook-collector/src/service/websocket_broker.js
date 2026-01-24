@@ -475,11 +475,15 @@ class WebSocketBroker {
     // 업비트
     if (this.exchange_cd === "E0010001") {
       const ts = msg.tms;
-      const collectorAt = now;
       const units = msg?.obu || msg?.orderbook_units || [];
       const symbol = msg?.cd || msg?.code;
-      bids = units.slice(0, DEPTH).map((u) => [u.bp ?? u.bid_price, u.bs ?? u.bid_size]);
-      asks = units.slice(0, DEPTH).map((u) => [u.ap ?? u.ask_price, u.as ?? u.ask_size]);
+      
+      bids = units.slice(0, DEPTH)
+        .map((u) => [toNum(u.bp ?? u.bid_price), toNum(u.bs ?? u.bid_size)])
+        .filter(([price, qty]) => qty > 0 && price > 0);
+      asks = units.slice(0, DEPTH)
+        .map((u) => [toNum(u.ap ?? u.ask_price), toNum(u.as ?? u.ask_size)])
+        .filter(([price, qty]) => qty > 0 && price > 0);
 
       const symbol_item = this.symbols.get(symbol);
       if (symbol_item != null) {
@@ -504,11 +508,16 @@ class WebSocketBroker {
     // 빗썸
     else if (this.exchange_cd === "E0020001") {
       const ts = parseInt(msg.tms / 1000);
-      const collectorAt = now;
       const units = msg?.obu || msg?.orderbook_units || [];
       const symbol = msg?.cd || msg?.code;
-      bids = units.slice(0, DEPTH).map((u) => [u.bp ?? u.bid_price, u.bs ?? u.bid_size]);
-      asks = units.slice(0, DEPTH).map((u) => [u.ap ?? u.ask_price, u.as ?? u.ask_size]);
+
+      bids = units.slice(0, DEPTH)
+        .map((u) => [toNum(u.bp ?? u.bid_price), toNum(u.bs ?? u.bid_size)])
+        .filter(([price, qty]) => qty > 0 && price > 0);
+      asks = units.slice(0, DEPTH)
+        .map((u) => [toNum(u.ap ?? u.ask_price), toNum(u.as ?? u.ask_size)])
+        .filter(([price, qty]) => qty > 0 && price > 0);
+
       const symbol_item = this.symbols.get(symbol);
       if (symbol_item != null) {
         orderbook_item = {
@@ -534,9 +543,16 @@ class WebSocketBroker {
       if (!d) return null;
       const ts = d.t;
       const symbol = `${d.qc}-${d.tc}`;
-      const collectorAt = now;
-      bids = (d.b || d.bids || []).map((u) => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, DEPTH);
-      asks = (d.a || d.asks || []).reverse().map((u) => [Number(u.p ?? u.price), Number(u.q ?? u.qty)]).slice(0, DEPTH);
+
+      bids = (d.b || d.bids || [])
+        .map((u) => [Number(u.p ?? u.price), Number(u.q ?? u.qty)])
+        .filter(([price, qty]) => qty > 0 && price > 0)
+        .slice(0, DEPTH);
+      asks = (d.a || d.asks || [])
+        .reverse()
+        .map((u) => [Number(u.p ?? u.price), Number(u.q ?? u.qty)])
+        .filter(([price, qty]) => qty > 0 && price > 0)
+        .slice(0, DEPTH);
 
       const symbol_item = this.symbols.get(symbol);
       if (symbol_item != null) {
@@ -551,7 +567,7 @@ class WebSocketBroker {
           bid: bids,
           ask: asks,
         };
-        // console.log(this.exchange_cd, this.exchange_nm, orderbook_item);
+
       } else {
         logger.debug({ ex: this.exchange_nm, symbol }, "symbol_item not found, returning null");
         return null;
@@ -560,11 +576,17 @@ class WebSocketBroker {
     // 코빗
     else if (this.exchange_cd === "E0050001") {
       const ts = msg.timestamp;
-      const collectorAt = now;
       const symbol = msg.symbol;
-      bids = (msg.data?.bids || []).slice(0, DEPTH).map((x) => [Number(x.price), Number(x.qty)]);
-      asks = (msg.data?.asks || []).slice(0, DEPTH).map((x) => [Number(x.price), Number(x.qty)]);
-      // console.log("symbol !!!!!!!!!!!!!!!!!!!!!", this.symbols, symbol);
+
+      bids = (msg.data?.bids || [])
+        .map((x) => [Number(x.price), Number(x.qty)])
+        .filter(([price, qty]) => qty > 0 && price > 0)
+        .slice(0, DEPTH);
+      asks = (msg.data?.asks || [])
+        .map((x) => [Number(x.price), Number(x.qty)])
+        .filter(([price, qty]) => qty > 0 && price > 0)
+        .slice(0, DEPTH);
+
       const symbol_item = this.symbols.get(symbol);
       if (symbol_item != null) {
         orderbook_item = {
@@ -587,10 +609,17 @@ class WebSocketBroker {
     // 고팍스
     else if (this.exchange_cd === "E0080001") {
       const ts = now;
-      const collectorAt = now;
       const symbol = msg.o?.tradingPairName;
-      bids = (msg.o?.bid || []).slice(0, DEPTH).map((x) => [Number(x.price), Number(x.volume)]);
-      asks = (msg.o?.ask || []).slice(0, DEPTH).map((x) => [Number(x.price), Number(x.volume)]);
+
+      bids = (msg.o?.bid || [])
+        .map((x) => [Number(x.price), Number(x.volume)])
+        .filter(([price, qty]) => qty > 0 && price > 0)
+        .slice(0, DEPTH);
+      asks = (msg.o?.ask || [])
+        .map((x) => [Number(x.price), Number(x.volume)])
+        .filter(([price, qty]) => qty > 0 && price > 0)
+        .slice(0, DEPTH);
+
       const symbol_item = this.symbols.get(symbol);
       if (symbol_item != null) {
         orderbook_item = {
@@ -613,10 +642,16 @@ class WebSocketBroker {
       return null;
     }
     // orderbook_item이 유효한지 확인 (symbol이 비어있으면 유효하지 않음)
-    if (!orderbook_item || !orderbook_item.symbol || !orderbook_item.exchange_cd) {
-      console.log("orderbook_item!!!", this.exchange_nm, msg);
-      return null;
+    // if (!orderbook_item || !orderbook_item.symbol || !orderbook_item.exchange_cd) {
+    //   console.log("orderbook_item!!!", this.exchange_nm, msg);
+    //   return null;
+    // }
+
+    if ( orderbook_item.bid.length != DEPTH || orderbook_item.ask.length != DEPTH) {
+      // console.log("CHECK DEPTH LENGTH", this.exchange_nm, orderbook_item.bid.length, orderbook_item.ask.length);
+      // return null;
     }
+
     return { bids, asks, orderbook_item };
   }
 
@@ -1017,7 +1052,7 @@ function initializeWebsocketClients(process_info_detail_list) {
     });
 
     startIntervals();
-    scheduleDailyReport();
+
     logger.info("All clients initialized and started");
   } catch (error) {
     logger.error(
@@ -1100,77 +1135,6 @@ function startIntervals() {
   }
 }
 
-function scheduleDailyReport() {
-  const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0);
-
-  const msUntilMidnight = tomorrow.getTime() - now.getTime();
-
-  setTimeout(async () => {
-    if (!clients || clients.length === 0) {
-      logger.warn("scheduleDailyReport: clients not initialized, rescheduling...");
-      scheduleDailyReport();
-      return;
-    }
-
-    const dailyStats = clients.map((client) => ({
-      exchange: client.exchange_nm,
-      date: new Date().toISOString().split("T")[0],
-      dailyProcessed: client.queueStats.dailyProcessed,
-      maxProcessedPerSecond: client.queueStats.maxProcessedPerSecond,
-    }));
-
-    logger.info(
-      JSON.stringify(
-        {
-          type: "daily_queue_statistics",
-          timestamp: new Date().toISOString(),
-          exchanges: dailyStats,
-          collectorRole: COLLECTOR_ROLE,
-        },
-        null,
-        2
-      )
-    );
-
-    try {
-      if (quest_db && quest_db.sequelize) {
-        const reportContent = JSON.stringify({
-          type: "daily_queue_statistics",
-          timestamp: new Date().toISOString(),
-          exchanges: dailyStats,
-          collectorRole: COLLECTOR_ROLE,
-        });
-
-        await quest_db.sequelize.query(
-          `INSERT INTO tb_report (title, content, createdAt) VALUES (:title, :content, NOW())`,
-          {
-            replacements: {
-              title: "orderbook-collector",
-              content: reportContent,
-            },
-          }
-        );
-
-        logger.info({ ex: "REPORT", title: "orderbook-collector", exchanges: dailyStats.length }, "[tb_report] Successfully inserted daily report");
-      } else {
-        logger.warn("[tb_report] Unable to insert report: missing sequelize instance.");
-      }
-    } catch (err) {
-      logger.error({ ex: "REPORT", err: String(err), stack: err.stack }, "[tb_report] insert error");
-    }
-
-    clients.forEach((client) => {
-      client.queueStats.dailyProcessed = 0;
-      client.queueStats.maxProcessedPerSecond = 0;
-      client.queueStats.lastResetDate = new Date().toDateString();
-    });
-
-    scheduleDailyReport();
-  }, msUntilMidnight);
-}
 
 /**
  * WebSocket 클라이언트 종료

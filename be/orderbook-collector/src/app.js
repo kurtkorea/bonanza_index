@@ -325,6 +325,9 @@ async function initializeApp() {
 			} else {
 				logger.info('[APP] 리더십 획득 실패. 팔로워로 대기 중 (WebSocket은 계속 연결, ZMQ 전송만 중지)');
 			}
+
+			console.log('VERSION : 2026-01-15:00');
+
 		} else {
 			// 리더 선출 비활성화 시 기존 방식으로 동작 (항상 ZMQ 전송)
 			setLeaderElectionEnabled(false);

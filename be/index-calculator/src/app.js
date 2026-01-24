@@ -4,16 +4,12 @@
 
 const path = require("path");
 const dotenv = require("dotenv");
-const http = require('http');
 const logger = require('./utils/logger');
 
 const { init_zmq_depth_subscriber, init_zmq_ticker_subscriber } = require('./utils/zmq-data-sub.js');
 const { connect_quest_db, quest_db } = require("./db/quest_db.js");
 const { fkbrti_1sec_schema } = require('./ddl/fkbrti_1sec_ddl.js');
-// fkbrti_summary는 MySQL을 사용하므로 QuestDB DDL 제거
-
 const { init_zmq_pub } = require('./utils/zmq-sender-pub.js');
-const { SummaryScheduler } = require('./service/summary_scheduler.js');
 
 // Start of Selection
 global.logging = false;
@@ -170,43 +166,6 @@ async function initializeApp() {
 		});
 
 		logger.info('ZMQ 초기화 완료');
-
-		// Summary Scheduler 초기화
-		const summarySymbols = process.env.SUMMARY_SYMBOLS 
-			? process.env.SUMMARY_SYMBOLS.split(',').map(s => s.trim())
-			: ['KRW-BTC'];
-		const summaryEnabled = process.env.SUMMARY_ENABLED !== 'false';
-		const summaryIntervalMs = Number(process.env.SUMMARY_INTERVAL_MS || 60 * 60 * 1000); // 기본 1시간
-
-		if (summaryEnabled) {
-			const summaryScheduler = new SummaryScheduler({
-				intervalMs: summaryIntervalMs,
-				symbols: summarySymbols,
-				enabled: true
-			});
-			global.summaryScheduler = summaryScheduler;
-			
-			// try {
-			// 	await summaryScheduler.execute();
-			// } catch (error) {
-			// 	logger.error({
-			// 		err: String(error),
-			// 		stack: error.stack
-			// 	}, 'Summary 초기 계산 중 오류 발생 (계속 진행)');
-			// 	// 초기 계산 실패해도 프로세스는 계속 진행
-			// }
-			
-			// 스케줄러 시작 (주기적 실행)
-			summaryScheduler.start();
-			
-			logger.info({
-				intervalMs: summaryIntervalMs,
-				symbols: summarySymbols
-			}, 'Summary Scheduler 초기화 및 시작 완료');
-		} else {
-			logger.info('Summary 기능이 비활성화되어 있습니다.');
-		}
-
 		logger.info('애플리케이션 초기화 완료');
 	} catch (error) {
 		logger.error({ ex: "APP", err: String(error), stack: error.stack }, "애플리케이션 초기화 실패:");
