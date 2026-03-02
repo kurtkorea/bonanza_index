@@ -1,5 +1,4 @@
 // ddl.js
-const logger = require('../utils/logger.js');
 
 async function ticker_schema(db) {
     try {
@@ -8,7 +7,6 @@ async function ticker_schema(db) {
             ts           TIMESTAMP,               -- 거래소에서 찍혀온 시간
             symbol       SYMBOL CAPACITY 128,
             exchange_no  SYMBOL CAPACITY 128,
-            exchange_name SYMBOL CAPACITY 128,
             open        DOUBLE,
             high        DOUBLE,
             low         DOUBLE,
@@ -20,9 +18,9 @@ async function ticker_schema(db) {
             WITH maxUncommittedRows=500000, o3MaxLag=600000000us;
         ;`;
         await db.sequelize.query(ticker);
-        logger.info("[DDL] tb_ticker ensured (WAL, PARTITION BY DAY).");
+        console.log("[DDL] tb_ticker ensured (WAL, PARTITION BY DAY).");
     } catch (error) {
-        logger.error({ ex: "DDL", err: String(error), stack: error.stack }, "[DDL] tb_ticker error");
+        console.error("[DDL] tb_ticker error", error);
     }
 }
 

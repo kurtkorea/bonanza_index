@@ -61,7 +61,7 @@ router.get("/", prePaging("createdAt", "desc", 100), async (req, resp, next) => 
 			no_publish: item.no_publish,
 			provisional: item.provisional,
 			UPBIT: item.expected_status.find(item => item.exchange == "E0010001")?.price,
-			BITTHUMB: item.expected_status.find(item => item.exchange == "E0020001")?.price,
+			BITHUMB: item.expected_status.find(item => item.exchange == "E0020001")?.price,
 			COINONE: item.expected_status.find(item => item.exchange == "E0030001")?.price,
 			KORBIT: item.expected_status.find(item => item.exchange == "E0050001")?.price,
 			diff_1: item.diff,
@@ -82,7 +82,7 @@ router.get("/", prePaging("createdAt", "desc", 100), async (req, resp, next) => 
 			}
 		  }
   
-		  let colF = new_item.BITTHUMB;
+		  let colF = new_item.BITHUMB;
 		  let colI = new_item.UPBIT;
   
 		  if (!colI && colI !== 0) {

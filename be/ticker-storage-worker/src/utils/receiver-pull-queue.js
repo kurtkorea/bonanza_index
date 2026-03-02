@@ -154,30 +154,36 @@ function toNs(anyTs, fallbackMs = Date.now()) {
    // ns 변환(디자인네이티드용) - 중복 제거
   
   function escTag(s){ return String(s ?? "").replace(/[,= ]/g, "\\$&"); }
+
+  // QuestDB ILP 라인 끝 designated timestamp (나노초)
+  function tsNanos(v) {
+    let ms;
+    if (v instanceof Date) ms = v.getTime();
+    else if (typeof v === "number" && Number.isFinite(v)) ms = v < 1e12 ? v * 1000 : v;
+    else ms = Date.parse(String(v));
+    if (!Number.isFinite(ms)) ms = Date.now();
+    return Math.trunc(ms * 1e6); // ms → ns (1e6 = 1_000_000)
+  }
+
 /**
- * @param {string} topic  (로깅용)
- * @param {any} eventTs   marketAt(권장) 또는 수신 ts(문자/숫자/Date/BigInt)
- * @param {object} data   { symbol, exchange_no, exchange_name, seq, side, price, size, marketAt, collectorAt, dbAt, diff_ms, diff_ms_db }
+ * tb_ticker 스키마에 맞춘 ILP 라인 생성
+ * 스키마: ts TIMESTAMP, symbol SYMBOL, exchange_no SYMBOL, open/high/low/close/volume DOUBLE
+ * @param {object} data   { symbol, exchange_cd|exchange_no, open, high, low, close, volume, marketAt }
  * @returns string  ILP 라인 (끝에 \n)
  */
-
  function toILP_Ticker(data) {
-     const tags = `symbol=${escTag(data.symbol)},exchange_name=${escTag(data.exchange_name)}`;
+     const symbol = escTag(data.symbol ?? "");
+     const exchange_no = escTag(data.exchange_cd ?? data.exchange_no ?? "");
+     const tags = `symbol=${symbol},exchange_no=${exchange_no}`;
      const fields = [];
-     if (data.exchange_no != null) fields.push(`exchange_no=${intField(data.exchange_no)}`); // INT → i
-     if (data.seq != null)         fields.push(`seq=${intField(data.seq)}`);                 // LONG → i
-     if (data.open != null)        fields.push(`open=${floatField(data.open)}`);
-     if (data.high != null)        fields.push(`high=${floatField(data.high)}`);
-     if (data.low != null)         fields.push(`low=${floatField(data.low)}`);
-     if (data.close != null)       fields.push(`close=${floatField(data.close)}`);
-     if (data.volume != null)      fields.push(`volume=${floatField(data.volume)}`);
-     if (data.marketAt)              fields.push(`marketAt=${tsFieldMicros(data.marketAt)}`); // ★ TIMESTAMP → μs + t
-     if (data.collectorAt)           fields.push(`collectorAt=${tsFieldMicros(data.collectorAt)}`); // ★ TIMESTAMP → μs + t
-     if (data.dbAt)           fields.push(`dbAt=${tsFieldMicros(data.dbAt)}`); // ★ TIMESTAMP → μs + t
-     if (data.diff_ms != null && data.diff_ms !== undefined) fields.push(`diff_ms=${floatField(data.diff_ms)}`);
-     if (data.diff_ms_db != null && data.diff_ms_db !== undefined) fields.push(`diff_ms_db=${floatField(data.diff_ms_db)}`);
-     if (!fields.length) fields.push("dummy=1");
-     return `tb_ticker,${tags} ${fields.join(",")}\n`;
+     if (data.open != null)   fields.push(`open=${floatField(data.open)}`);
+     if (data.high != null)   fields.push(`high=${floatField(data.high)}`);
+     if (data.low != null)    fields.push(`low=${floatField(data.low)}`);
+     if (data.close != null)  fields.push(`close=${floatField(data.close)}`);
+     if (data.volume != null) fields.push(`volume=${floatField(data.volume)}`);
+     if (!fields.length) fields.push("open=0", "high=0", "low=0", "close=0", "volume=0");
+     const ts = data.ts != null ? tsNanos(data.ts) : (data.marketAt != null ? tsNanos(data.marketAt) : tsNanos(Date.now()));
+     return `tb_ticker,${tags} ${fields.join(",")} ${ts}\n`;
  }
 
  function toILP_Trade(data) {

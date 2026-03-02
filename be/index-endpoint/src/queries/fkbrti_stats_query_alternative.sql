@@ -27,13 +27,13 @@ extracted_prices AS (
                 '.*"exchange"\s*:\s*101[^}]*"price"\s*:\s*([0-9.]+).*', '\1'
             ) AS DOUBLE
         ) AS upbit_price,
-        -- BITTHUMB(102) 가격 추출 (정규식 사용)
+        -- BITHUMB(102) 가격 추출 (정규식 사용)
         CAST(
             regexp_replace(
                 regexp_replace(expected_status, '.*"exchange"\s*:\s*"102"[^}]*"price"\s*:\s*([0-9.]+).*', '\1'),
                 '.*"exchange"\s*:\s*102[^}]*"price"\s*:\s*([0-9.]+).*', '\1'
             ) AS DOUBLE
-        ) AS bitthumb_price
+        ) AS bithumb_price
     FROM base_data
     WHERE expected_status LIKE '%"exchange"%'
         AND expected_status LIKE '%"price"%'
@@ -43,37 +43,37 @@ calculated_data AS (
         createdAt,
         CASE 
             WHEN upbit_price > 0 THEN upbit_price
-            WHEN bitthumb_price > 0 THEN bitthumb_price
+            WHEN bithumb_price > 0 THEN bithumb_price
             ELSE 0
         END AS base_price,
         fkbrti_1s,
         fkbrti_5s,
         CASE 
             WHEN upbit_price > 0 THEN upbit_price - fkbrti_1s
-            WHEN bitthumb_price > 0 THEN bitthumb_price - fkbrti_1s
+            WHEN bithumb_price > 0 THEN bithumb_price - fkbrti_1s
             ELSE 0
         END AS diff_1s,
         CASE 
             WHEN upbit_price > 0 THEN upbit_price - fkbrti_5s
-            WHEN bitthumb_price > 0 THEN bitthumb_price - fkbrti_5s
+            WHEN bithumb_price > 0 THEN bithumb_price - fkbrti_5s
             ELSE 0
         END AS diff_5s,
         CASE 
             WHEN upbit_price > 0 AND upbit_price > 0
             THEN ABS((upbit_price - fkbrti_1s) / upbit_price) * 100
-            WHEN bitthumb_price > 0 AND bitthumb_price > 0
-            THEN ABS((bitthumb_price - fkbrti_1s) / bitthumb_price) * 100
+            WHEN bithumb_price > 0 AND bithumb_price > 0
+            THEN ABS((bithumb_price - fkbrti_1s) / bithumb_price) * 100
             ELSE 0
         END AS ratio_1s,
         CASE 
             WHEN upbit_price > 0 AND upbit_price > 0
             THEN ABS((upbit_price - fkbrti_5s) / upbit_price) * 100
-            WHEN bitthumb_price > 0 AND bitthumb_price > 0
-            THEN ABS((bitthumb_price - fkbrti_5s) / bitthumb_price) * 100
+            WHEN bithumb_price > 0 AND bithumb_price > 0
+            THEN ABS((bithumb_price - fkbrti_5s) / bithumb_price) * 100
             ELSE 0
         END AS ratio_5s
     FROM extracted_prices
-    WHERE (upbit_price > 0 OR bitthumb_price > 0)
+    WHERE (upbit_price > 0 OR bithumb_price > 0)
         AND fkbrti_1s IS NOT NULL
         AND fkbrti_5s IS NOT NULL
 )

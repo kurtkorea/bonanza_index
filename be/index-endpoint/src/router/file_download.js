@@ -106,7 +106,7 @@ router.get("/", async (req, resp, next) => {
 			'fkbrti_5s',
 			'fkbrti_10s',
 			'UPBIT',
-			'BITTHUMB',
+			'BITHUMB',
 			'COINONE',
 			'KORBIT',
 			'ACTUAL_AVG',
@@ -232,12 +232,12 @@ router.get("/", async (req, resp, next) => {
 					}
 
 					const upbitEntry = expectedStatus.find(x => x.exchange == "E0010001");
-					const bitthumbEntry = expectedStatus.find(x => x.exchange == "E0020001");
+					const bithumbEntry = expectedStatus.find(x => x.exchange == "E0020001");
 					const coinoneEntry = expectedStatus.find(x => x.exchange == "E0030001");
 					const korbitEntry = expectedStatus.find(x => x.exchange == "E0050001");
 
 					const upbitPrice = upbitEntry?.price ?? null;
-					const bitthumbPrice = bitthumbEntry?.price ?? null;
+					const bithumbPrice = bithumbEntry?.price ?? null;
 					const coinonePrice = coinoneEntry?.price ?? null;
 					const korbitPrice = korbitEntry?.price ?? null;
 
@@ -253,7 +253,7 @@ router.get("/", async (req, resp, next) => {
 
 					let basePrice = upbitPrice;
 					if (basePrice === undefined || basePrice === null) {
-						basePrice = bitthumbPrice;
+						basePrice = bithumbPrice;
 					}
 
 					const diff1 = basePrice !== undefined && basePrice !== null ? basePrice - indexMid : 0;
@@ -278,7 +278,7 @@ router.get("/", async (req, resp, next) => {
 						fkbrti5,
 						fkbrti10,
 						upbitPrice,
-						bitthumbPrice,
+						bithumbPrice,
 						coinonePrice,
 						korbitPrice,
 						actualAvg,

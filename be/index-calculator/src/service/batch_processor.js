@@ -537,14 +537,13 @@ class BatchProcessor {
       FROM tb_order_book_units
       WHERE ts >= :startTime 
         AND ts < :endTime
+        AND size > 0
     `;
     
     const replacements = {
       startTime: chunkStart.toISOString(),
       endTime: chunkEnd.toISOString()
     };
-
-    console.log("replacements=", replacements);
 
     // product_id 필터링 (있는 경우)
     if (productIds && productIds.length > 0) {

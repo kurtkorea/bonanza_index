@@ -56,9 +56,9 @@ export const optimizedColumns = [
     render: renderPrice,
   },
   {
-    title: 'BITTHUMB',
-    dataIndex: 'BITTHUMB',
-    key: 'BITTHUMB',
+    title: 'BITHUMB',
+    dataIndex: 'BITHUMB',
+    key: 'BITHUMB',
     width: 100,
     align: 'right',
     fixed: 'left',

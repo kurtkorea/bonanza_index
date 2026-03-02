@@ -48,7 +48,7 @@ async function runSubscriber() {
                             no_publish: item?.no_publish,
                             provisional: item?.provisional,
                             UPBIT: item?.expected_status?.find(item => item?.exchange == "E0010001")?.price,
-                            BITTHUMB: item?.expected_status?.find(item => item?.exchange == "E0020001")?.price,
+                            BITHUMB: item?.expected_status?.find(item => item?.exchange == "E0020001")?.price,
                             COINONE: item?.expected_status?.find(item => item?.exchange == "E0030001")?.price,
                             KORBIT: item?.expected_status?.find(item => item?.exchange == "E0050001")?.price,
                             actual_avg: item?.actual_avg,
@@ -71,7 +71,7 @@ async function runSubscriber() {
 
                         new_item.actual_avg = common.isEmpty( sum / count ) ? 0 : sum / count;
                 
-                        let colF = new_item.BITTHUMB;
+                        let colF = new_item.BITHUMB;
                         let colI = new_item.UPBIT;
                 
                         if (!colI && colI !== 0) {

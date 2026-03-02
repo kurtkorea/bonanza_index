@@ -29,35 +29,35 @@ extracted_prices AS (
             WHERE (elem->>'exchange') IN ('101', '101')
             LIMIT 1
         ) AS upbit_price,
-        -- BITTHUMB(102) 가격 추출
+        -- BITHUMB(102) 가격 추출
         (
             SELECT (value->>'price')::double
             FROM jsonb_array_elements(expected_status_json) AS elem
             WHERE (elem->>'exchange') IN ('102', '102')
             LIMIT 1
-        ) AS bitthumb_price
+        ) AS bithumb_price
     FROM base_data
 ),
 calculated_data AS (
     SELECT
         createdAt,
-        COALESCE(upbit_price, bitthumb_price, 0) AS base_price,
+        COALESCE(upbit_price, bithumb_price, 0) AS base_price,
         fkbrti_1s,
         fkbrti_5s,
-        COALESCE(upbit_price, bitthumb_price, 0) - fkbrti_1s AS diff_1s,
-        COALESCE(upbit_price, bitthumb_price, 0) - fkbrti_5s AS diff_5s,
+        COALESCE(upbit_price, bithumb_price, 0) - fkbrti_1s AS diff_1s,
+        COALESCE(upbit_price, bithumb_price, 0) - fkbrti_5s AS diff_5s,
         CASE 
-            WHEN COALESCE(upbit_price, bitthumb_price, 0) > 0 
-            THEN ABS((COALESCE(upbit_price, bitthumb_price, 0) - fkbrti_1s) / COALESCE(upbit_price, bitthumb_price, 0)) * 100
+            WHEN COALESCE(upbit_price, bithumb_price, 0) > 0 
+            THEN ABS((COALESCE(upbit_price, bithumb_price, 0) - fkbrti_1s) / COALESCE(upbit_price, bithumb_price, 0)) * 100
             ELSE 0
         END AS ratio_1s,
         CASE 
-            WHEN COALESCE(upbit_price, bitthumb_price, 0) > 0 
-            THEN ABS((COALESCE(upbit_price, bitthumb_price, 0) - fkbrti_5s) / COALESCE(upbit_price, bitthumb_price, 0)) * 100
+            WHEN COALESCE(upbit_price, bithumb_price, 0) > 0 
+            THEN ABS((COALESCE(upbit_price, bithumb_price, 0) - fkbrti_5s) / COALESCE(upbit_price, bithumb_price, 0)) * 100
             ELSE 0
         END AS ratio_5s
     FROM extracted_prices
-    WHERE COALESCE(upbit_price, bitthumb_price, 0) > 0
+    WHERE COALESCE(upbit_price, bithumb_price, 0) > 0
         AND fkbrti_1s IS NOT NULL
         AND fkbrti_5s IS NOT NULL
 ),

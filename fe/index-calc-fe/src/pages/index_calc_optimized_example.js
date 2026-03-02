@@ -163,7 +163,7 @@ const IndexCalcTableOptimized = () => {
             { key: "fkbrti_1s" },
             { key: "fkbrti_5s" },
             { key: "fkbrti_10s" },
-            { key: "BITTHUMB" },
+            { key: "BITHUMB" },
             { key: "UPBIT" },
             { key: "ACTUAL_AVG" },
           ]}
@@ -176,7 +176,7 @@ const IndexCalcTableOptimized = () => {
           rows={transformedData}
           columns={[
             { key: "fkbrti_1s" },
-            { key: "BITTHUMB" },
+            { key: "BITHUMB" },
             { key: "UPBIT" },
           ]}
           stepSec={1}

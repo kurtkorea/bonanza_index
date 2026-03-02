@@ -592,14 +592,14 @@ module.exports = class tb_fkbrti_1sec extends Sequelize.Model {
 				const expectedStatus = this.parseJSON(item.expected_status);
 				if (!expectedStatus || !Array.isArray(expectedStatus)) continue;
 
-				// UPBIT(101) 및 BITTHUMB(102) 가격 추출
+				// UPBIT(101) 및 BITHUMB(102) 가격 추출
 				const upbit = expectedStatus.find(x => x.exchange === 'E0010001');
-				const bitthumb = expectedStatus.find(x => x.exchange === 'E0020001');
+				const bithumb = expectedStatus.find(x => x.exchange === 'E0020001');
 				
 				const basePrice = (upbit && upbit.price !== undefined && upbit.price !== null) 
 					? upbit.price 
-					: (bitthumb && bitthumb.price !== undefined && bitthumb.price !== null) 
-						? bitthumb.price 
+					: (bithumb && bithumb.price !== undefined && bithumb.price !== null)
+						? bithumb.price
 						: null;
 
 				if (!basePrice || basePrice === 0) continue;

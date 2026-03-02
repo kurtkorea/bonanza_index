@@ -12,6 +12,7 @@
 6. [diff (차이값)](#6-diff-차이값)
 7. [ratio (비율)](#7-ratio-비율)
 8. [데이터 필터링 규칙](#8-데이터-필터링-규칙)
+9. [provisional / no_publish](#9-provisional--no_publish)
 
 ---
 
@@ -291,6 +292,59 @@ ratio = |diff / index_mid| × 100
     ↓
 11. 반올림 및 저장
 ```
+
+---
+
+## 9. provisional / no_publish
+
+### provisional == true 인 경우
+
+**발생 조건 (모두 만족할 때)**
+
+1. **기대 거래소가 하나도 유효하지 않음**  
+   `expected_status`에서 `reason === "ok"`인 거래소가 하나도 없음  
+   (전부 no_data / stale / crossed / empty_book).
+2. **이전에 유효한 계산값이 있음**  
+   `this.last`가 존재 (과거에 한 번이라도 정상 산출된 적 있음).
+3. **잠정 구간 이내**  
+   위 상태가 **PROV_MAX_MS(기본 60초) 이내**일 때.
+
+**이때 동작**
+
+- **vwap_buy, vwap_sell, index_mid**: 이번 호가로 새로 계산하지 않고 **이전 값(`this.last`)을 그대로 사용**.
+- **provisional**: `true`로 저장·전파.
+- **no_publish**: `false` → **DB 저장 및 ZMQ 발행 수행** (잠정치라도 계속 내보냄).
+- **reason**: `"all_expected_exchanges_unavailable_or_invalid"`.
+
+즉, “지금은 모든 기대 거래소가 쓸 수 없지만, 아직 60초 안이니까 마지막으로 믿을 수 있던 값을 잠정치로 쓴다”는 의미입니다.
+
+### provisional == false 이면서 no_publish == true 인 경우
+
+- 위와 같이 **기대 거래소가 전부 유효하지 않고**, 이전 값(`this.last`)은 있지만,
+- **경과 시간이 PROV_MAX_MS(60초)를 초과**한 경우.
+
+**동작**
+
+- vwap_buy, vwap_sell, index_mid는 여전히 `this.last` 사용.
+- **provisional**: `false`.
+- **no_publish**: `true` → **DB에는 저장하지만 ZMQ로는 발행하지 않음** (오래된 잠정치는 더 이상 퍼뜨리지 않음).
+
+### 이전 값도 없는 경우 (this.last 없음)
+
+- 기대 거래소 전부 유효하지 않고, 과거 정상 산출 이력도 없을 때.
+- **vwap_buy, vwap_sell, index_mid**: `null`.
+- **provisional**: `false`.
+- **no_publish**: `true`.
+- **reason**: `"no_history_and_all_expected_unavailable_or_invalid"`.
+
+### 요약 표
+
+| 조건                         | provisional | no_publish | vwap_buy/sell, index_mid |
+|-----------------------------|-------------|------------|---------------------------|
+| 기대 거래소 중 1곳이라도 ok | false       | false      | 이번 계산값 사용          |
+| 전부 무효 + 이전값 있음 + 60초 이내  | **true**    | false      | 이전값 재사용             |
+| 전부 무효 + 이전값 있음 + 60초 초과 | false       | true       | 이전값 재사용(저장만)     |
+| 전부 무효 + 이전값 없음     | false       | true       | null                      |
 
 ---
 

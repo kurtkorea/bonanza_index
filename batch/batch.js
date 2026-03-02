@@ -123,7 +123,11 @@ function log(color, message) {
 async function downloadCSV(startDate, endDate, tableName, outputFile) {
     return new Promise((resolve, reject) => {
         const timestampColumn = getTimestampColumn(tableName);
-        const query = `SELECT * FROM ${tableName} WHERE ${timestampColumn} >= '${startDate} 00:00:00' AND ${timestampColumn} < '${endDate} 23:59:59' ORDER BY ${timestampColumn} ASC`;
+        let whereClause = `${timestampColumn} >= '${startDate} 00:00:00' AND ${timestampColumn} < '${endDate} 23:59:59'`;
+        if (tableName === 'tb_order_book_units') {
+            whereClause += ' AND size > 0';
+        }
+        const query = `SELECT * FROM ${tableName} WHERE ${whereClause} ORDER BY ${timestampColumn} ASC`;
         const queryEncoded = encodeURIComponent(query);
         const url = `http://${QDB_HOST}:${QDB_PORT}/exp?query=${queryEncoded}`;
 

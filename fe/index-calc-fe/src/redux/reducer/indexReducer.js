@@ -1,5 +1,6 @@
 import { produce } from 'immer';
 import moment from 'moment';
+import { fillZeroPricesWithPrevious, recalculateDerivedFromFilledPrices } from '../../pages/index_calc_data_transformer';
 
 const initState = {
   index_data: [],
@@ -258,9 +259,8 @@ export default (state = initState, { type, payload }) => {
       return produce(state, draft => {
         draft.current_page = 1;
         draft.index_data = payload.datalist;
-        // const stats = computeMinMaxInfo(draft.index_data);
-        // draft.MIN_MAX_INFO = stats;
-        // draft.total_count = stats.total_count;
+        fillZeroPricesWithPrevious(draft.index_data);
+        recalculateDerivedFromFilledPrices(draft.index_data);
       });
     case 'fkbrti/update':
       return produce(state, draft => {
@@ -279,7 +279,7 @@ export default (state = initState, { type, payload }) => {
               vwap_sell: item.vwap_sell,
               no_publish: item.no_publish,
               provisional: item.provisional,
-              BITTHUMB: item.expected_status.find(item => item.exchange == "E0020001")?.price,
+              BITHUMB: item.expected_status.find(item => item.exchange == "E0020001")?.price,
               COINONE: item.expected_status.find(item => item.exchange == "E0030001")?.price,
               KORBIT: item.expected_status.find(item => item.exchange == "E0050001")?.price,
               UPBIT: item.expected_status.find(item => item.exchange == "E0010001")?.price,
@@ -297,6 +297,8 @@ export default (state = initState, { type, payload }) => {
 
           new_datalist = new_datalist.filter(item => !draft.index_data.some(existingItem => existingItem.createdAt >= item.createdAt));
           draft.index_data = [...new_datalist, ...draft.index_data];
+          fillZeroPricesWithPrevious(draft.index_data);
+          recalculateDerivedFromFilledPrices(draft.index_data);
 
           // const stats = computeMinMaxInfo(draft.index_data);
           // draft.MIN_MAX_INFO = stats;
@@ -326,7 +328,7 @@ export default (state = initState, { type, payload }) => {
               vwap_sell: item.vwap_sell,
               no_publish: item.no_publish,
               provisional: item.provisional,
-              BITTHUMB: item.expected_status.find(item => item.exchange == "E0020001")?.price,
+              BITHUMB: item.expected_status.find(item => item.exchange == "E0020001")?.price,
               COINONE: item.expected_status.find(item => item.exchange == "E0030001")?.price,
               KORBIT: item.expected_status.find(item => item.exchange == "E0050001")?.price,
               UPBIT: item.expected_status.find(item => item.exchange == "E0010001")?.price,
@@ -347,6 +349,8 @@ export default (state = initState, { type, payload }) => {
           }
 
           draft.index_data = [...draft.index_data, ...new_datalist];
+          fillZeroPricesWithPrevious(draft.index_data);
+          recalculateDerivedFromFilledPrices(draft.index_data);
 
           // const stats = computeMinMaxInfo(draft.index_data);
           // draft.MIN_MAX_INFO = stats;

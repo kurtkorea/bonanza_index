@@ -31,12 +31,12 @@ import {
  * className: wrapper className (Tailwind ready)
  */
 
-// NOTE: "BITHUMB" 과 "BITTHUMB" 오타 일치 문제 있음.
+// NOTE: 과거 "BITTHUMB" 오타 호환용으로 수신 데이터에 BITHUMB 없으면 BITTHUMB 참조
 const SERIES = [
   { key: "fkbrti_1s", name: "fkbrti-1s" },
   { key: "fkbrti_5s", name: "fkbrti-5s" },
   { key: "fkbrti_10s", name: "fkbrti-10s" },
-  { key: "BITTHUMB", name: "BITTHUMB" },
+  { key: "BITHUMB", name: "BITHUMB" },
   { key: "COINONE", name: "COINONE" },
   { key: "KORBIT", name: "KORBIT" },
   { key: "UPBIT", name: "UPBIT" },
@@ -47,7 +47,7 @@ const STROKES = {
   fkbrti_1s: "#3B82F6",
   fkbrti_5s: "#EA580C",
   fkbrti_10s: "#9CA3AF",
-  BITTHUMB: "#F59E0B",
+  BITHUMB: "#F59E0B",
   COINONE: "#1D4ED8",
   KORBIT: "#10B981",
   UPBIT: "#93C5FD",
@@ -65,19 +65,32 @@ function sanitizeData(raw) {
   if (!raw) return [];
   // "BITTHUMB" vs "BITHUMB" 오타 변환, seq 자동 부여
   let seq = 1;
-  return raw.map((row) => {
+  let data = raw.map((row) => {
     // row.seq가 없으면 자동 부여
     let newRow = {...row};
     if (!("seq" in newRow)) newRow.seq = seq++;
-    // 오타 일치: "BITHUMB" → "BITTHUMB"
-    if ('BITHUMB' in newRow && !('BITTHUMB' in newRow)) {
-      newRow['BITTHUMB'] = newRow['BITHUMB'];
-    }
+  // "BITTHUMB" 오타 호환: 수신 데이터를 BITHUMB로 통일
     if ('BITTHUMB' in newRow && !('BITHUMB' in newRow)) {
       newRow['BITHUMB'] = newRow['BITTHUMB'];
     }
+    if ('BITHUMB' in newRow && !('BITTHUMB' in newRow)) {
+      newRow['BITTHUMB'] = newRow['BITHUMB'];
+    }
     return newRow;
   });
+  // price가 0인 경우 직전값으로 보정
+  const PRICE_KEYS = ["UPBIT", "BITHUMB", "COINONE", "KORBIT", "ACTUAL_AVG"];
+  const last = {};
+  for (const key of PRICE_KEYS) last[key] = 0;
+  for (const row of data) {
+    for (const key of PRICE_KEYS) {
+      const v = row[key];
+      const num = v != null ? Number(v) : 0;
+      if (num === 0 && last[key] > 0) row[key] = last[key];
+      else if (num > 0) last[key] = num;
+    }
+  }
+  return data;
 }
 
 export default function MultiExchangeChart({
@@ -91,7 +104,7 @@ export default function MultiExchangeChart({
   showBrush = true,
   className = "",
 }) {
-  // 차트가 나오지 않는 현상 방지용: seq와 BITTHUMB 키 확인 및 오타 수정
+  // 차트가 나오지 않는 현상 방지용: seq와 BITHUMB 키 확인 및 오타 호환
   const [activeKeys, setActiveKeys] = useState(new Set(SERIES.map((s) => s.key)));
   const [seriesData, setSeriesData] = useState(sanitizeData(data));
 
@@ -219,19 +232,19 @@ function defaultParse(msg) {
   // 오타 일관성 대응
   if (msg && typeof msg === "object" && !Array.isArray(msg)) {
     let newMsg = { ...msg };
-    if ("BITHUMB" in newMsg && !("BITTHUMB" in newMsg)) newMsg.BITTHUMB = newMsg.BITHUMB;
     if ("BITTHUMB" in newMsg && !("BITHUMB" in newMsg)) newMsg.BITHUMB = newMsg.BITTHUMB;
+    if ("BITHUMB" in newMsg && !("BITTHUMB" in newMsg)) newMsg.BITTHUMB = newMsg.BITHUMB;
     return newMsg;
   }
   if (Array.isArray(msg)) {
     // [seq, fk1, fk5, fk10, bt, co, kb, up, avg]
     const [seq, fk1, fk5, fk10, bt, co, kb, up, avg] = msg;
-    return { seq, fkbrti_1s: fk1, fkbrti_5s: fk5, fkbrti_10s: fk10, BITTHUMB: bt, COINONE: co, KORBIT: kb, UPBIT: up, ACTUAL_AVG: avg };
+    return { seq, fkbrti_1s: fk1, fkbrti_5s: fk5, fkbrti_10s: fk10, BITHUMB: bt, COINONE: co, KORBIT: kb, UPBIT: up, ACTUAL_AVG: avg };
   }
   // If plain string CSV: seq,fk1,fk5,fk10,bt,co,kb,up,avg
   if (typeof msg === "string" && msg.includes(",")) {
     const [seq, fk1, fk5, fk10, bt, co, kb, up, avg] = msg.split(",");
-    return { seq, fkbrti_1s: +fk1, fkbrti_5s: +fk5, fkbrti_10s: +fk10, BITTHUMB: +bt, COINONE: +co, KORBIT: +kb, UPBIT: +up, ACTUAL_AVG: +avg };
+    return { seq, fkbrti_1s: +fk1, fkbrti_5s: +fk5, fkbrti_10s: +fk10, BITHUMB: +bt, COINONE: +co, KORBIT: +kb, UPBIT: +up, ACTUAL_AVG: +avg };
   }
   return null;
 }
