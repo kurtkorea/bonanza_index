@@ -205,5 +205,7 @@ export const recalculateDerivedFromFilledPrices = (dataList) => {
     row.ratio_1 = basePrice > 0 ? Math.abs(row.diff_1 / basePrice) * 100 : 0;
     row.ratio_5 = basePrice > 0 ? Math.abs(row.diff_5 / basePrice) * 100 : 0;
     row.ratio_10 = basePrice > 0 ? Math.abs(row.diff_10 / basePrice) * 100 : 0;
+    // 상관관계 테이블 등에서 ACTUAL_AVG 키로 참조할 수 있도록 동기화
+    row.ACTUAL_AVG = row.actual_avg;
   }
 };
