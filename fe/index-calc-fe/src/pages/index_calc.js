@@ -28,7 +28,7 @@ const columns = [
     render: (text, record) => common.convertDateKST(text),
   },
   {
-    title: 'fkbrit-1s',
+    title: 'fkbrti-1s',
     dataIndex: 'fkbrti_1s',
     key: 'fkbrti_1s',
     width: 100,
@@ -37,7 +37,7 @@ const columns = [
     render: (text, record) => common.pricisionFormat_Precision(text, 0),
   },
   {
-    title: 'fkbrit-5s',
+    title: 'fkbrti-5s',
     dataIndex: 'fkbrti_5s',
     key: 'fkbrti_5s',
     width: 100,
@@ -46,7 +46,7 @@ const columns = [
     render: (text, record) => common.pricisionFormat_Precision(text, 0),
   },
   {
-    title: 'fkbrit-10s',
+    title: 'fkbrti-10s',
     dataIndex: 'fkbrti_10s',
     key: 'fkbrti_10s',
     width: 100,
